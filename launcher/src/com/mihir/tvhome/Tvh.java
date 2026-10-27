@@ -81,6 +81,26 @@ final class Tvh {
         boolean failed() { return schedStatus.contains("Error") || schedStatus.contains("Failed") || "missed".equals(schedStatus); }
     }
 
+    // Where each recording was left off, so it can carry on ("Continue watching").
+    static final String RESUME = "resume";
+
+    static SharedPreferences resume(Context c) {
+        return c.getApplicationContext().getSharedPreferences(RESUME, Context.MODE_PRIVATE);
+    }
+
+    /** Remember (or forget, near the start or end) where a recording was stopped. */
+    static void saveResume(Context c, String uuid, String title, long posMs, long durMs) {
+        SharedPreferences.Editor e = resume(c).edit();
+        boolean keep = posMs > 60_000 && durMs > 0 && posMs < durMs * 0.95;
+        if (keep) e.putLong(uuid, posMs).putString("last", uuid).putString("last_title", title)
+                .putInt("last_pct", (int) (posMs * 100 / durMs));
+        else {
+            e.remove(uuid);
+            if (uuid.equals(resume(c).getString("last", null))) e.remove("last").remove("last_title").remove("last_pct");
+        }
+        e.apply();
+    }
+
     /** Background work for every Tvheadend call; small pool so logos load in parallel. */
     static final ExecutorService IO = Executors.newFixedThreadPool(3);
 
@@ -220,6 +240,115 @@ final class Tvh {
         }
         for (List<Event> l : out.values()) Collections.sort(l, (a, b) -> Long.compare(a.start, b.start));
         return out;
+    }
+
+    /** What's on now and next on every channel: channel uuid → {now, next} (either may be null). */
+    Map<String, Event[]> nowNext() throws IOException {
+        long nowSec = System.currentTimeMillis() / 1000;
+        Map<String, Event[]> out = new HashMap<>();
+        for (Map.Entry<String, List<Event>> e : window(nowSec, nowSec + 4 * 3600).entrySet()) {
+            Event[] nn = new Event[2];
+            for (Event x : e.getValue()) {
+                if (x.isOn(nowSec)) nn[0] = x;
+                else if (x.start >= nowSec && nn[1] == null) nn[1] = x;
+            }
+            out.put(e.getKey(), nn);
+        }
+        return out;
+    }
+
+    /** Programmes still to air (or airing) whose title contains the text, soonest first. */
+    List<Event> search(String text) throws IOException {
+        JSONArray rows = json("/api/epg/events/grid?limit=300&title=" + enc(text)).optJSONArray("entries");
+        List<Event> out = new ArrayList<>();
+        long nowSec = System.currentTimeMillis() / 1000;
+        if (rows != null) for (int i = 0; i < rows.length(); i++) {
+            Event e = event(rows.optJSONObject(i));
+            if (e.stop > nowSec) out.add(e);
+        }
+        Collections.sort(out, (a, b) -> Long.compare(a.start, b.start));
+        return out;
+    }
+
+    // ---------------------------------------------------------------- series
+
+    static final class SeriesRule {
+        String uuid, title, channel;
+    }
+
+    /** "Record every episode": Tvheadend matches this title on this channel from now on. */
+    void recordSeries(long eventId) throws IOException {
+        get("/api/dvr/autorec/create_by_series?event_id=" + eventId + "&config_uuid=");
+    }
+
+    List<SeriesRule> seriesRules() throws IOException {
+        JSONArray rows = json("/api/dvr/autorec/grid?limit=500").optJSONArray("entries");
+        List<SeriesRule> out = new ArrayList<>();
+        if (rows != null) for (int i = 0; i < rows.length(); i++) {
+            JSONObject o = rows.optJSONObject(i);
+            if (o == null) continue;
+            SeriesRule r = new SeriesRule();
+            r.uuid = o.optString("uuid");
+            r.title = o.optString("name", "");
+            if (r.title.isEmpty()) r.title = o.optString("title", "").replace("\\", "");
+            Channel ch = find(o.optString("channel", ""));
+            r.channel = ch == null ? "Any channel" : ch.name;
+            out.add(r);
+        }
+        return out;
+    }
+
+    /** Stop a series; its scheduled episodes go with it, finished recordings stay. */
+    void deleteSeries(String uuid) throws IOException {
+        get("/api/idnode/delete?uuid=" + enc(uuid));
+    }
+
+    // ---------------------------------------------------------------- status
+
+    /** Tuner and stream figures for the stream info overlay; any part may be missing. */
+    static final class Status {
+        String tuner, signal, snr, errors;
+        long bitrate; // bits per second into Tvheadend for this channel, 0 if unknown
+    }
+
+    Status status(String channelName) throws IOException {
+        Status s = new Status();
+        JSONArray subs = json("/api/status/subscriptions").optJSONArray("entries");
+        if (subs != null) for (int i = 0; i < subs.length(); i++) {
+            JSONObject o = subs.optJSONObject(i);
+            if (o != null && channelName.equals(o.optString("channel"))) s.bitrate = Math.max(s.bitrate, o.optLong("in") * 8);
+        }
+        JSONArray inputs = json("/api/status/inputs").optJSONArray("entries");
+        if (inputs != null) for (int i = 0; i < inputs.length(); i++) {
+            JSONObject o = inputs.optJSONObject(i);
+            if (o == null || o.optInt("subs") == 0) continue;
+            s.tuner = o.optString("input").replaceAll("\\s*#\\d+", "").replace(" : ", " · ");
+            s.signal = level(o.optInt("signal"), o.optInt("signal_scale"), "dBm");
+            s.snr = level(o.optInt("snr"), o.optInt("snr_scale"), "dB");
+            s.errors = "BER " + o.optInt("ber") + " · UNC " + o.optInt("unc") + " · CC " + o.optInt("cc");
+            if (s.bitrate == 0) s.bitrate = o.optLong("bps");
+            break;
+        }
+        return s;
+    }
+
+    /** Tvheadend scale: 1 = relative 0–65535, 2 = thousandths of a decibel. */
+    private static String level(int v, int scale, String unit) {
+        if (scale == 1) return Math.round(v * 100.0 / 65535) + " %";
+        if (scale == 2) return String.format(Locale.ROOT, "%.1f %s", v / 1000.0, unit);
+        return null;
+    }
+
+    /** Recording storage {free, total} in bytes, from Tvheadend's status feed; null if not reported. */
+    long[] diskSpace() throws IOException {
+        JSONArray msgs = json("/comet/poll").optJSONArray("messages");
+        if (msgs != null) for (int i = 0; i < msgs.length(); i++) {
+            JSONObject o = msgs.optJSONObject(i);
+            if (o != null && o.has("totaldiskspace") && o.optLong("totaldiskspace") > 0) {
+                return new long[]{o.optLong("freediskspace"), o.optLong("totaldiskspace")};
+            }
+        }
+        return null;
     }
 
     // ---------------------------------------------------------------- recordings

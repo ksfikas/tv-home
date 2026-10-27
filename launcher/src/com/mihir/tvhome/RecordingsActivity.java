@@ -47,7 +47,7 @@ public class RecordingsActivity extends Activity {
         title.setText("Recordings");
         root.addView(title);
         TextView hint = Ui.text(this, 12, "sans-serif", 0x80FFFFFF);
-        hint.setText("OK to play · hold OK to delete · record from the TV guide or the player menu");
+        hint.setText("OK to play · hold OK to delete · record, series and reminders from the TV guide or search");
         root.addView(hint, new LinearLayout.LayoutParams(-2, -2));
 
         ScrollView sv = new ScrollView(this);
@@ -72,20 +72,27 @@ public class RecordingsActivity extends Activity {
         empty.setText("Loading…");
         Tvh.IO.execute(() -> {
             List<Tvh.Recording> all = null;
+            List<Tvh.SeriesRule> series = Collections.emptyList();
             String err = null;
-            try { all = tvh.recordings(); } catch (IOException e) { err = e.getMessage(); }
+            try {
+                all = tvh.recordings();
+                series = tvh.seriesRules();
+            } catch (IOException e) { err = e.getMessage(); }
             List<Tvh.Recording> res = all;
+            List<Tvh.SeriesRule> ser = series;
             String e2 = err;
-            runOnUiThread(() -> { if (!isDestroyed()) show(res, e2); });
+            runOnUiThread(() -> { if (!isDestroyed()) show(res, ser, e2); });
         });
     }
 
-    private void show(List<Tvh.Recording> all, String err) {
+    private void show(List<Tvh.Recording> all, List<Tvh.SeriesRule> series, String err) {
         View focused = getCurrentFocus();
         if (focused != null && focused.getTag() instanceof Tvh.Recording) focusUuid = ((Tvh.Recording) focused.getTag()).uuid;
         list.removeAllViews();
         list.addView(empty);
         if (all == null) { empty.setText(err); return; }
+        List<Reminders.Reminder> reminders = Reminders.all(this);
+        boolean nothing = all.isEmpty() && series.isEmpty() && reminders.isEmpty();
         List<Tvh.Recording> now = new ArrayList<>(), sched = new ArrayList<>(), done = new ArrayList<>(), failed = new ArrayList<>();
         for (Tvh.Recording r : all) {
             if (r.recording()) now.add(r);
@@ -96,17 +103,16 @@ public class RecordingsActivity extends Activity {
         Collections.sort(sched, (a, b) -> Long.compare(a.start, b.start));
         Collections.sort(done, (a, b) -> Long.compare(b.start, a.start));
         Collections.sort(failed, (a, b) -> Long.compare(b.start, a.start));
-        empty.setText(all.isEmpty() ? "Nothing recorded yet. Open the TV guide and press OK on a programme to record it." : "");
-        empty.setVisibility(all.isEmpty() ? View.VISIBLE : View.GONE);
+        empty.setText(nothing ? "Nothing recorded yet. Open the TV guide and press OK on a programme to record it." : "");
+        empty.setVisibility(nothing ? View.VISIBLE : View.GONE);
         View first = null, refocus = null;
+        // The recording you were last watching goes first.
+        String last = Tvh.resume(this).getString("last", null);
+        for (Tvh.Recording r : done) if (r.uuid.equals(last)) { done.remove(r); done.add(0, r); break; }
         for (Object[] section : new Object[][]{{"RECORDING NOW", now}, {"SCHEDULED", sched}, {"RECORDED", done}, {"FAILED", failed}}) {
             @SuppressWarnings("unchecked") List<Tvh.Recording> rs = (List<Tvh.Recording>) section[1];
             if (rs.isEmpty()) continue;
-            TextView h = Ui.text(this, 11, "sans-serif-medium", 0x99FFFFFF);
-            h.setText((String) section[0]);
-            h.setLetterSpacing(0.22f);
-            h.setPadding(Ui.dp(this, 16), Ui.dp(this, 18), 0, Ui.dp(this, 6));
-            list.addView(h);
+            list.addView(header((String) section[0]));
             for (Tvh.Recording r : rs) {
                 TextView row = Ui.row(this, label(r));
                 row.setTag(r);
@@ -117,8 +123,48 @@ public class RecordingsActivity extends Activity {
                 if (r.uuid.equals(focusUuid)) refocus = row;
             }
         }
+        if (!series.isEmpty()) {
+            list.addView(header("SERIES"));
+            for (Tvh.SeriesRule s : series) {
+                TextView row = Ui.row(this, twoLine(s.title, s.channel + "   every episode"));
+                row.setOnClickListener(v -> Ui.confirm(this, s.title,
+                        "Stop recording this series? Scheduled episodes are cancelled; recorded ones stay.", "Stop series",
+                        () -> run(() -> tvh.deleteSeries(s.uuid), "Series stopped")));
+                list.addView(row, new LinearLayout.LayoutParams(-1, -2));
+                if (first == null) first = row;
+            }
+        }
+        if (!reminders.isEmpty()) {
+            list.addView(header("REMINDERS"));
+            for (Reminders.Reminder r : reminders) {
+                TextView row = Ui.row(this, twoLine(r.title, r.channelName + "   " + Ui.day(r.start) + "  " + Ui.time(this, r.start)));
+                row.setOnClickListener(v -> Ui.confirm(this, r.title, "Cancel this reminder?", "Cancel reminder", () -> {
+                    Reminders.remove(this, r.id);
+                    load();
+                }));
+                list.addView(row, new LinearLayout.LayoutParams(-1, -2));
+                if (first == null) first = row;
+            }
+        }
         View f = refocus != null ? refocus : first;
         if (f != null) f.requestFocus();
+    }
+
+    private TextView header(String s) {
+        TextView h = Ui.text(this, 11, "sans-serif-medium", 0x99FFFFFF);
+        h.setText(s);
+        h.setLetterSpacing(0.22f);
+        h.setPadding(Ui.dp(this, 16), Ui.dp(this, 18), 0, Ui.dp(this, 6));
+        return h;
+    }
+
+    private static CharSequence twoLine(String title, String meta) {
+        SpannableStringBuilder s = new SpannableStringBuilder(title).append("\n");
+        int m = s.length();
+        s.append(meta);
+        s.setSpan(new RelativeSizeSpan(0.8f), m, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        s.setSpan(new ForegroundColorSpan(0x99888888), m, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return s;
     }
 
     private CharSequence label(Tvh.Recording r) {
@@ -131,6 +177,8 @@ public class RecordingsActivity extends Activity {
                 .append("   ").append(Ui.duration((r.stop - r.start) * 1000));
         if (r.size > 0) s.append("   ").append(String.valueOf(r.size / (1024 * 1024))).append(" MB");
         if (r.recording()) s.append("   ● REC");
+        long pos = Tvh.resume(this).getLong(r.uuid, 0);
+        if (pos > 0 && r.stop > r.start) s.append("   ▶ ").append(String.valueOf(Math.min(99, pos / 10 / (r.stop - r.start)))).append("% watched");
         if (r.failed()) s.append("   ").append(r.status);
         s.setSpan(new RelativeSizeSpan(0.8f), metaStart, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         s.setSpan(new ForegroundColorSpan(0x99888888), metaStart, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -153,7 +201,10 @@ public class RecordingsActivity extends Activity {
     private void delete(Tvh.Recording r) {
         if (r.scheduled()) { open(r); return; }
         Ui.confirm(this, r.title, r.recording() ? "Stop and delete this recording?" : "Delete this recording from the server?",
-                "Delete", () -> run(() -> tvh.deleteRecording(r.uuid), "Deleted"));
+                "Delete", () -> {
+                    Tvh.saveResume(this, r.uuid, r.title, 0, 0); // and its "continue watching" tile
+                    run(() -> tvh.deleteRecording(r.uuid), "Deleted");
+                });
     }
 
     private void run(GuideActivity.IoAction a, String done) {

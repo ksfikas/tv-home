@@ -27,9 +27,24 @@ separate TV client.
 - **Recordings**: what's recording, scheduled, recorded or failed. Play with seeking, cancel,
   delete. Record from the guide or from the player.
 - **Radio**: stations get their own row and a calm now-playing screen with a **live spectrum**.
+- **Mini guide while watching**: OK shows every channel with its logo, what's on (and how long is
+  left) and what's next, over the picture.
+- **Series recording**: "Record every episode" from the guide, search or player; manage series
+  under Recordings.
+- **Search**: find a programme by title in the whole guide, then watch, record or get a reminder.
+- **Reminders**: a popup a minute before a programme starts, with Watch / Dismiss, even over other apps.
+- **Continue watching**: recordings carry on where you stopped, and the last one gets a tile on
+  the home row.
+- **Sleep timer**: 15 min to 2 h, or the end of the programme; a one-minute warning, then standby.
+- **Stream info**: codec, resolution, bitrate, plus the tuner's signal, SNR and error counters.
 - **Pause live TV**, then carry on from where you paused, or jump back to live.
 - **Audio and subtitle tracks**, with the language remembered from channel to channel.
 - **Favourites**: hold OK on a channel to pin it; the row then shows only your favourites, in your order.
+- A **red dot** on channels that are recording right now, and a warning next to LIVE TV when the
+  server's recordings disk is nearly full.
+- **Radio screensaver**: after three idle minutes the radio screen dims and drifts slowly.
+- **Weather** under the clock (Open-Meteo, no account), and **Box status**: free memory and
+  storage, uptime, the recordings disk; the launcher tidies its own cache once a day.
 - **Hide apps** from the grid by holding OK on them.
 - Optional: start the last channel when the box boots.
 
@@ -61,14 +76,16 @@ video on its own layer, which screenshots don't capture.</sub>
 | Watching TV | Up / Down, Channel ± | Next / previous channel |
 | | Left | Back to the previous channel |
 | | Right, Info | Now/next banner |
-| | OK | Channel list |
-| | Hold OK, Menu | Options: pause, back to live, audio, subtitles, record, guide, recordings |
+| | OK | Mini guide (now and next on every channel) |
+| | Hold OK, Menu | Options: pause, back to live, audio, subtitles, record, every episode, guide, recordings, sleep timer, stream info |
 | | Play/Pause | Pause or resume live TV |
 | | 0–9 | Tune by number |
 | Guide | Arrows | Move around; more of the schedule loads as you go right |
-| | OK | Watch (on now) or record / cancel (later) |
-| | Hold OK | Record what's on now |
-| Recordings | OK, hold OK | Play (or cancel if scheduled), delete |
+| | OK | Watch (on now), or record / every episode / remind me (later) |
+| | Hold OK | The same menu for any programme |
+| | Menu | Search |
+| Search | Type, then Down | Results; OK for watch / record / every episode / remind me |
+| Recordings | OK, hold OK | Play (or cancel if scheduled), delete; OK on a series or reminder stops it |
 | Playing a recording | Left / Right, Up / Down | Back / forward 30 s, 5 min |
 | | OK | Pause |
 
@@ -93,6 +110,17 @@ video on its own layer, which screenshots don't capture.</sub>
    adb shell cmd package set-home-activity --user 0 com.mihir.tvhome/.MainActivity
    ```
 
+   Two optional extras, also one line each:
+
+   ```bash
+   adb shell appops set com.mihir.tvhome SYSTEM_ALERT_WINDOW allow     # reminders pop up over other apps
+   adb shell dpm set-active-admin com.mihir.tvhome/.SleepAdmin         # sleep timer can put the box to standby
+   ```
+
+   The second makes the launcher a device admin with one power, turning the screen off. Android
+   won't uninstall a device admin, so run `adb shell dpm remove-active-admin com.mihir.tvhome/.SleepAdmin`
+   before uninstalling (updates are fine). Without it, the sleep timer just stops playback.
+
    Undo with `tools/restore.sh` (macOS/Linux) or `tools/windows/restore.ps1` (Windows).
 
 4. **Connect Live TV**: on the home screen, select **Set up Live TV** (or *Inputs → Live TV
@@ -109,6 +137,12 @@ commands on the TV.
   channels, logos won't load; set each channel's *icon* to a URL instead. The community
   [tv-logo/tv-logos](https://github.com/tv-logo/tv-logos) set covers many countries.
 - Radio stations are recognised by Tvheadend's own *Radio channels* tag.
+- Stream info's signal figures and the disk warning come from Tvheadend's status pages, which
+  need an admin user; without one they're simply left out.
+- "Record every episode" is a Tvheadend autorec rule matching the title on that channel; if an
+  episode is on right now, it starts recording straight away.
+- On a Raspberry Pi with one tuner, fewer EPG scans help: once a day with a short timeout is
+  plenty, since EIT is also collected while you watch.
 
 ## How it stays light
 
@@ -126,6 +160,9 @@ The box this was built on has 2 GB of RAM, so every feature had to earn its plac
 - **The spectrum** taps the decoded audio the player already has (no microphone permission) and
   runs only while the radio screen is visible.
 - **Logos** are cached on disk, and in memory at exactly the size they're drawn.
+- **Reminders** are alarms held by Android, not a background service; the sleep timer and stream
+  info only tick while the player is on screen. Weather is fetched at most every 30 minutes, and
+  only while home is showing.
 - **Logins** use Digest auth. Live streams use Tvheadend's short-lived ticket links, so the player
   never holds your password. The login is stored only in the app's private storage on the TV.
 

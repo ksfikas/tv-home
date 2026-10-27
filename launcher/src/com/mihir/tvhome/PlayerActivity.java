@@ -70,6 +70,8 @@ import java.util.Locale;
 public class PlayerActivity extends Activity {
 
     static final String EXTRA_CHANNEL = "channel", EXTRA_RECORDING = "recording", EXTRA_TITLE = "title";
+    /** Channel on screen right now, or null; reminders for it are skipped. */
+    static volatile String playing;
 
     private Tvh tvh;
     private List<Tvh.Channel> list = new ArrayList<>();
@@ -92,8 +94,19 @@ public class PlayerActivity extends Activity {
     private TextView radioName, radioNow, radioNext;
     private FrameLayout listPanel;
     private LinearLayout listRows;
+    private final java.util.Map<String, TextView> listLabels = new java.util.HashMap<>();
+    private java.util.Map<String, Tvh.Event[]> nowNext;
+    private long nowNextAt;
+    private TextView infoPanel, sleepBadge;
+    private boolean infoShown, swallowKeyUp;
+    private long sleepAt; // elapsedRealtime when the sleep timer goes off, 0 = off
+    private boolean saverOn;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable infoTick = this::refreshInfo;
+    private final Runnable sleepTick = this::sleepTick;
+    private final Runnable startSaver = this::startSaver;
+    private final Runnable drift = this::drift;
     private final Runnable hideBanner = () -> banner.animate().alpha(0f).setDuration(250).start();
     private final Runnable tuneNow = this::startPlayback;
     private final Runnable commitDigits = this::commitDigits;
@@ -172,14 +185,32 @@ public class PlayerActivity extends Activity {
         super.onStart();
         visible = true;
         if ((index >= 0 || isRecording()) && player == null) startPlayback();
+        if (sleepAt > 0) sleepTick();
+        if (infoShown) refreshInfo();
+        wake();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         visible = false;
+        playing = null;
         handler.removeCallbacksAndMessages(null);
         releasePlayer();
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        // While "going to sleep" shows, any key keeps watching and does nothing else.
+        if (sleepBadge.getVisibility() == View.VISIBLE && e.getAction() == KeyEvent.ACTION_DOWN) {
+            setSleep(0);
+            Toast.makeText(this, "Sleep timer off", Toast.LENGTH_SHORT).show();
+            swallowKeyUp = true;
+            return true;
+        }
+        if (swallowKeyUp && e.getAction() == KeyEvent.ACTION_UP) { swallowKeyUp = false; return true; }
+        if (e.getAction() == KeyEvent.ACTION_DOWN && wake()) return true; // first key just wakes the radio screen
+        return super.dispatchKeyEvent(e);
     }
 
     // ---------------------------------------------------------------- playback
@@ -195,6 +226,7 @@ public class PlayerActivity extends Activity {
         boolean radio = list.get(i).radio;
         radioPanel.setVisibility(radio ? View.VISIBLE : View.GONE);
         videoFrame.setVisibility(radio ? View.GONE : View.VISIBLE);
+        wake();
         showBanner();
         handler.removeCallbacks(tuneNow);
         handler.removeCallbacks(retry);
@@ -212,6 +244,7 @@ public class PlayerActivity extends Activity {
         if (player != null) player.stop();
         if (isRecording()) { play(tvh.recordingUrl(recordingUuid)); return; }
         Tvh.Channel ch = list.get(index);
+        playing = ch.uuid;
         Tvh.IO.execute(() -> {
             String url;
             try {
@@ -243,6 +276,12 @@ public class PlayerActivity extends Activity {
                         | DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS);
         player.setMediaSource(new ProgressiveMediaSource.Factory(source, extractors)
                 .createMediaSource(MediaItem.fromUri(url)));
+        // A recording stopped part-way carries on from there; "Start from the beginning" is in the menu.
+        long resumeAt = isRecording() ? Tvh.resume(this).getLong(recordingUuid, 0) : 0;
+        if (resumeAt > 0) {
+            player.seekTo(resumeAt);
+            Toast.makeText(this, "Continuing from " + Ui.duration(resumeAt), Toast.LENGTH_SHORT).show();
+        }
         player.prepare();
         player.setPlayWhenReady(true);
     }
@@ -286,7 +325,7 @@ public class PlayerActivity extends Activity {
                 if (state == Player.STATE_READY) { retries = 0; status(""); }
                 else if (state == Player.STATE_BUFFERING) status("…");
                 else if (state == Player.STATE_ENDED) {
-                    if (isRecording()) finish();
+                    if (isRecording()) { Tvh.saveResume(PlayerActivity.this, recordingUuid, recordingTitle, 0, 0); finish(); }
                     else failed("Stream ended"); // also how an over-long live pause gets back to live
                 }
             }
@@ -331,7 +370,11 @@ public class PlayerActivity extends Activity {
 
     private void releasePlayer() {
         tuneSeq++;
-        if (player != null) { player.release(); player = null; }
+        if (player != null) {
+            if (isRecording()) Tvh.saveResume(this, recordingUuid, recordingTitle, player.getCurrentPosition(), player.getDuration());
+            player.release();
+            player = null;
+        }
         cues.setCues(Collections.emptyList());
     }
 
@@ -404,6 +447,7 @@ public class PlayerActivity extends Activity {
             case KeyEvent.KEYCODE_GUIDE: openGuide(); return true;
             case KeyEvent.KEYCODE_BACK:
                 if (banner.getAlpha() > 0.5f) { handler.removeCallbacks(hideBanner); hideBanner.run(); return true; }
+                if (infoShown) { infoShown = false; refreshInfo(); return true; }
                 finish(); return true;
         }
         if (isRecording()) {
@@ -492,6 +536,10 @@ public class PlayerActivity extends Activity {
             actions.add(this::togglePause);
         }
         if (!isRecording() && (pausedAt > 0 || behindMs > 0)) { labels.add("Back to live"); actions.add(this::backToLive); }
+        if (isRecording() && player != null && player.getCurrentPosition() > 10_000) {
+            labels.add("Start from the beginning");
+            actions.add(() -> { player.seekTo(0); showBanner(); });
+        }
         labels.add("Audio: " + selectedTrack(C.TRACK_TYPE_AUDIO, "Default"));
         actions.add(() -> pickTrack(C.TRACK_TYPE_AUDIO));
         if (!isRadio()) {
@@ -507,11 +555,19 @@ public class PlayerActivity extends Activity {
                 labels.add("Record “" + ev.title + "”");
                 actions.add(() -> dvr(() -> tvh.record(ev.id), "Recording"));
             }
+            if (ev != null) {
+                labels.add("Record every episode");
+                actions.add(() -> recordSeries(this, tvh, ev, this::showBanner));
+            }
             labels.add("TV guide");
             actions.add(this::openGuide);
             labels.add("Recordings");
             actions.add(() -> startActivity(new Intent(this, RecordingsActivity.class)));
         }
+        labels.add(sleepAt > 0 ? "Sleep timer: " + Math.max(1, (sleepAt - android.os.SystemClock.elapsedRealtime()) / 60_000) + " min left" : "Sleep timer: Off");
+        actions.add(this::pickSleep);
+        labels.add(infoShown ? "Hide stream info" : "Stream info");
+        actions.add(() -> { infoShown = !infoShown; refreshInfo(); });
         Ui.menu(this, isRecording() ? recordingTitle : list.get(index).name, labels.toArray(new String[0]),
                 i -> actions.get(i).run());
     }
@@ -527,6 +583,189 @@ public class PlayerActivity extends Activity {
 
     private void openGuide() {
         startActivity(new Intent(this, GuideActivity.class));
+    }
+
+    /** Shared by the player, guide and search: confirm, then set up a series recording. */
+    static void recordSeries(Activity a, Tvh tvh, Tvh.Event ev, Runnable after) {
+        Tvh.Channel ch = Tvh.find(ev.channelUuid);
+        Ui.confirm(a, "Record every episode",
+                "Records “" + ev.title + "” every time it airs on " + (ch == null ? "this channel" : ch.name)
+                        + ", starting now if it's on. Manage series under Recordings.",
+                "Record series", () -> Tvh.IO.execute(() -> {
+                    String msg = "Series recording set";
+                    try { tvh.recordSeries(ev.id); } catch (IOException e) { msg = e.getMessage(); }
+                    String m = msg;
+                    a.runOnUiThread(() -> {
+                        Toast.makeText(a, m, Toast.LENGTH_SHORT).show();
+                        if (after != null) after.run();
+                    });
+                }));
+    }
+
+    // ---------------------------------------------------------------- sleep timer
+
+    private void pickSleep() {
+        List<String> labels = new ArrayList<>();
+        List<Long> mins = new ArrayList<>();
+        labels.add("Off"); mins.add(0L);
+        for (long m : new long[]{15, 30, 60, 90, 120}) { labels.add(m + " minutes"); mins.add(m); }
+        long nowSec = System.currentTimeMillis() / 1000;
+        if (!isRecording() && current != null && current.stop > nowSec + 60) {
+            labels.add("End of this programme (" + Ui.time(this, current.stop) + ")");
+            mins.add(-(current.stop - nowSec)); // negative: seconds, not minutes
+        } else if (isRecording() && player != null && player.getDuration() != C.TIME_UNSET) {
+            labels.add("End of this recording");
+            mins.add(-Math.max(60, (player.getDuration() - player.getCurrentPosition()) / 1000));
+        }
+        Ui.menu(this, "Sleep timer", labels.toArray(new String[0]), i -> {
+            long v = mins.get(i);
+            setSleep(v >= 0 ? v * 60_000 : -v * 1000);
+            if (v != 0) Toast.makeText(this, "Going to sleep in " + Ui.duration(v >= 0 ? v * 60_000 : -v * 1000), Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void setSleep(long inMs) {
+        handler.removeCallbacks(sleepTick);
+        sleepBadge.setVisibility(View.GONE);
+        sleepAt = inMs > 0 ? android.os.SystemClock.elapsedRealtime() + inMs : 0;
+        if (sleepAt > 0) sleepTick();
+    }
+
+    /** Wakes once a minute, then every second during the last minute's warning. */
+    private void sleepTick() {
+        handler.removeCallbacks(sleepTick);
+        if (sleepAt == 0) return;
+        long left = sleepAt - android.os.SystemClock.elapsedRealtime();
+        if (left <= 0) { goToSleep(); return; }
+        if (left <= 60_000) {
+            sleepBadge.setText("Going to sleep in " + (left / 1000 + 1) + " s  ·  press any button to keep watching");
+            sleepBadge.setVisibility(View.VISIBLE);
+            handler.postDelayed(sleepTick, Math.min(1000, left));
+        } else {
+            handler.postDelayed(sleepTick, Math.min(60_000, left - 60_000));
+        }
+    }
+
+    /**
+     * Stop playing and put the box to standby. That needs the launcher to be a device admin
+     * (set once over ADB, see the README); without it the player just closes and the box's own
+     * screen-off timer takes over.
+     */
+    private void goToSleep() {
+        sleepAt = 0;
+        sleepBadge.setVisibility(View.GONE);
+        releasePlayer();
+        android.app.admin.DevicePolicyManager dpm = getSystemService(android.app.admin.DevicePolicyManager.class);
+        android.content.ComponentName admin = new android.content.ComponentName(this, SleepAdmin.class);
+        finish();
+        if (dpm != null && dpm.isAdminActive(admin)) dpm.lockNow();
+    }
+
+    // ---------------------------------------------------------------- stream info
+
+    /** Codec, resolution and bitrate, plus the tuner's signal; refreshes every 2 s while shown. */
+    private void refreshInfo() {
+        handler.removeCallbacks(infoTick);
+        if (!infoShown) { infoPanel.setVisibility(View.GONE); return; }
+        StringBuilder s = new StringBuilder();
+        Format v = player == null ? null : player.getVideoFormat(), a = player == null ? null : player.getAudioFormat();
+        if (v != null) {
+            s.append("Video    ").append(codec(v.sampleMimeType));
+            if (v.width > 0) s.append("  ·  ").append(v.width).append('×').append(v.height);
+            if (v.frameRate > 0) s.append("  ·  ").append(Math.round(v.frameRate)).append(" fps");
+            s.append('\n');
+        }
+        if (a != null) {
+            s.append("Audio    ").append(codec(a.sampleMimeType));
+            if (a.channelCount > 0) s.append("  ·  ").append(a.channelCount == 6 ? "5.1" : a.channelCount == 2 ? "stereo" : a.channelCount == 1 ? "mono" : a.channelCount + " ch");
+            if (a.sampleRate > 0) s.append("  ·  ").append(a.sampleRate / 1000).append(" kHz");
+            if (a.language != null && !"und".equals(a.language)) s.append("  ·  ").append(new Locale(a.language).getDisplayLanguage());
+            s.append('\n');
+        }
+        if (s.length() == 0) s.append("Waiting for the stream…\n");
+        String base = s.toString();
+        infoPanel.setText(base.trim());
+        infoPanel.setVisibility(View.VISIBLE);
+        if (!isRecording() && index >= 0) {
+            String name = list.get(index).name;
+            Tvh.IO.execute(() -> {
+                Tvh.Status st;
+                try { st = tvh.status(name); } catch (IOException e) { st = null; }
+                Tvh.Status f = st;
+                runOnUiThread(() -> {
+                    if (!infoShown || isDestroyed()) return;
+                    StringBuilder t = new StringBuilder(base);
+                    if (f == null) t.append("Signal   only shown to Tvheadend admins");
+                    else {
+                        if (f.bitrate > 0) t.append("Stream   ").append(String.format(Locale.ROOT, "%.1f Mbit/s", f.bitrate / 1e6)).append('\n');
+                        if (f.tuner != null) t.append("Tuner    ").append(f.tuner).append('\n');
+                        if (f.signal != null || f.snr != null) {
+                            t.append("Signal   ").append(f.signal == null ? "–" : f.signal);
+                            if (f.snr != null) t.append("  ·  SNR ").append(f.snr);
+                            t.append('\n');
+                        }
+                        if (f.errors != null) t.append("Errors   ").append(f.errors);
+                    }
+                    infoPanel.setText(t.toString().trim());
+                });
+            });
+        }
+        handler.postDelayed(infoTick, 2000);
+    }
+
+    private static String codec(String mime) {
+        if (mime == null) return "?";
+        switch (mime) {
+            case "video/avc": return "H.264";
+            case "video/hevc": return "HEVC";
+            case "video/mpeg2": return "MPEG-2";
+            case "audio/mpeg": case "audio/mpeg-L2": return "MP2";
+            case "audio/mp4a-latm": return "AAC";
+            case "audio/ac3": return "Dolby Digital";
+            case "audio/eac3": return "Dolby Digital+";
+            default: return mime.substring(mime.indexOf('/') + 1).toUpperCase(Locale.ROOT);
+        }
+    }
+
+    // ---------------------------------------------------------------- radio screensaver
+
+    /** Any key: restore the radio screen; true if it was dimmed (that key only wakes it). */
+    private boolean wake() {
+        handler.removeCallbacks(startSaver);
+        handler.removeCallbacks(drift);
+        boolean was = saverOn;
+        if (saverOn) {
+            saverOn = false;
+            for (int i = 0; i < radioPanel.getChildCount(); i++) {
+                radioPanel.getChildAt(i).animate().alpha(1f).translationX(0).translationY(0).setDuration(400).start();
+            }
+        }
+        if (isRadio() && visible) handler.postDelayed(startSaver, 3 * 60_000);
+        return was;
+    }
+
+    /** After three idle minutes on radio: dim everything but the spectrum and let it drift slowly. */
+    private void startSaver() {
+        if (!isRadio() || radioPanel.getVisibility() != View.VISIBLE || listPanel.getVisibility() == View.VISIBLE) return;
+        saverOn = true;
+        handler.removeCallbacks(hideBanner);
+        hideBanner.run();
+        for (int i = 0; i < radioPanel.getChildCount(); i++) {
+            View c = radioPanel.getChildAt(i);
+            c.animate().alpha(c instanceof Spectrum.Bars ? 0.7f : c == radioLogo ? 0f : 0.45f).setDuration(2500).start();
+        }
+        drift();
+    }
+
+    private void drift() {
+        if (!saverOn) return;
+        java.util.Random r = new java.util.Random();
+        float dx = (r.nextFloat() * 2 - 1) * Ui.dp(this, 140), dy = (r.nextFloat() * 2 - 1) * Ui.dp(this, 90);
+        for (int i = 0; i < radioPanel.getChildCount(); i++) {
+            radioPanel.getChildAt(i).animate().translationX(dx).translationY(dy).setDuration(12_000)
+                    .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator()).start();
+        }
+        handler.postDelayed(drift, 60_000);
     }
 
     private static String trackLabel(Format f, int n) {
@@ -677,29 +916,97 @@ public class PlayerActivity extends Activity {
 
     // ---------------------------------------------------------------- channel list
 
+    /** Mini guide: every channel with its logo, what's on now (time left) and next; the picture keeps playing. */
     private void openList() {
         if (list.isEmpty()) return;
         listRows.removeAllViews();
+        listLabels.clear();
         View currentRow = null;
+        int logoW = Ui.dp(this, 56), logoH = Ui.dp(this, 32);
         for (int i = 0; i < list.size(); i++) {
             Tvh.Channel ch = list.get(i);
-            String now = ch.now == null ? "" : "   " + ch.now.title;
-            TextView row = Ui.row(this, ch.numberLabel() + "   " + ch.name + now);
-            row.setSingleLine(true);
+            TextView row = Ui.row(this, listLabel(ch));
+            row.setMaxLines(3);
             row.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            row.setCompoundDrawablePadding(Ui.dp(this, 14));
+            setRowLogo(row, Tvh.cachedLogo(ch.icon, GuideActivity.LOGO_W), logoW, logoH);
             int target = i;
             row.setOnClickListener(v -> { closeList(); if (target != index) tuneTo(target, false); });
-            listRows.addView(row, new LinearLayout.LayoutParams(-1, Ui.dp(this, 40)));
+            listRows.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            listLabels.put(ch.uuid, row);
             if (i == index) currentRow = row;
         }
         listPanel.setVisibility(View.VISIBLE);
         View focus = currentRow != null ? currentRow : listRows.getChildAt(0);
         focus.post(focus::requestFocus);
+        List<Tvh.Channel> chs = new ArrayList<>(list);
+        boolean stale = nowNext == null || android.os.SystemClock.elapsedRealtime() - nowNextAt > 60_000;
+        Tvh.IO.execute(() -> {
+            java.util.Map<String, Tvh.Event[]> nn = null;
+            if (stale) try { nn = tvh.nowNext(); } catch (IOException ignored) { }
+            java.util.Map<String, Tvh.Event[]> got = nn;
+            runOnUiThread(() -> {
+                if (got != null) { nowNext = got; nowNextAt = android.os.SystemClock.elapsedRealtime(); }
+                if (listPanel.getVisibility() != View.VISIBLE) return;
+                for (Tvh.Channel ch : chs) { TextView r = listLabels.get(ch.uuid); if (r != null) r.setText(listLabel(ch)); }
+            });
+            // Logos: usually on disk already; small, shared with the guide's cache.
+            for (Tvh.Channel ch : chs) {
+                if (ch.icon == null || Tvh.cachedLogo(ch.icon, GuideActivity.LOGO_W) != null) continue;
+                Bitmap b = tvh.logo(this, ch, GuideActivity.LOGO_W);
+                if (b != null) runOnUiThread(() -> { TextView r = listLabels.get(ch.uuid); if (r != null) setRowLogo(r, b, logoW, logoH); });
+            }
+        });
+    }
+
+    private void setRowLogo(TextView row, Bitmap b, int w, int h) {
+        android.graphics.drawable.Drawable d;
+        if (b == null) d = new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT);
+        else {
+            d = new android.graphics.drawable.BitmapDrawable(getResources(), b);
+            // Fit inside w×h, keeping the logo's shape.
+            float s = Math.min(w / (float) b.getWidth(), h / (float) b.getHeight());
+            int dw = Math.round(b.getWidth() * s), dh = Math.round(b.getHeight() * s);
+            d = new android.graphics.drawable.InsetDrawable(d, (w - dw) / 2, (h - dh) / 2, w - dw - (w - dw) / 2, h - dh - (h - dh) / 2);
+        }
+        d.setBounds(0, 0, w, h);
+        row.setCompoundDrawables(d, null, null, null);
+    }
+
+    private CharSequence listLabel(Tvh.Channel ch) {
+        Tvh.Event[] nn = nowNext == null ? null : nowNext.get(ch.uuid);
+        Tvh.Event now = nn != null && nn[0] != null ? nn[0] : ch.now, nxt = nn == null ? null : nn[1];
+        long nowSec = System.currentTimeMillis() / 1000;
+        android.text.SpannableStringBuilder s = new android.text.SpannableStringBuilder();
+        String num = ch.numberLabel();
+        if (!num.isEmpty()) {
+            s.append(num).append("   ");
+            s.setSpan(new android.text.style.ForegroundColorSpan(0x99888888), 0, s.length(), 0);
+        }
+        s.append(ch.name);
+        if (now != null && now.isOn(nowSec)) {
+            int a = s.length();
+            if (now.recordingSet()) {
+                s.append("\n● ");
+                s.setSpan(new android.text.style.ForegroundColorSpan(0xFFE53935), a + 1, s.length(), 0);
+            } else s.append("\n");
+            // One line for "now", so the next programme always shows.
+            s.append(now.title.length() > 48 ? now.title.substring(0, 46).trim() + "…" : now.title).append("  ·  ").append(String.valueOf(Math.max(1, (now.stop - nowSec) / 60))).append(" min left");
+            s.setSpan(new android.text.style.RelativeSizeSpan(0.85f), a, s.length(), 0);
+        }
+        if (nxt != null) {
+            int a = s.length();
+            s.append("\n").append(Ui.time(this, nxt.start)).append("  ").append(nxt.title);
+            s.setSpan(new android.text.style.RelativeSizeSpan(0.75f), a, s.length(), 0);
+            s.setSpan(new android.text.style.ForegroundColorSpan(0x99888888), a, s.length(), 0);
+        }
+        return s;
     }
 
     private void closeList() {
         listPanel.setVisibility(View.GONE);
         listRows.removeAllViews();
+        listLabels.clear();
     }
 
     // ---------------------------------------------------------------- layout
@@ -823,7 +1130,30 @@ public class PlayerActivity extends Activity {
         listRows.setPadding(Ui.dp(this, 12), Ui.dp(this, 24), Ui.dp(this, 12), Ui.dp(this, 24));
         sv.addView(listRows, new FrameLayout.LayoutParams(-1, -2));
         listPanel.addView(sv, new FrameLayout.LayoutParams(-1, -1));
-        root.addView(listPanel, new FrameLayout.LayoutParams(Ui.dp(this, 380), -1, Gravity.START));
+        root.addView(listPanel, new FrameLayout.LayoutParams(Ui.dp(this, 520), -1, Gravity.START));
+
+        // Stream info, top right; monospace so the labels line up.
+        infoPanel = Ui.text(this, 13, "sans-serif-medium", 0xE6FFFFFF);
+        infoPanel.setLineSpacing(Ui.dp(this, 4), 1f);
+        infoPanel.setPadding(Ui.dp(this, 18), Ui.dp(this, 14), Ui.dp(this, 18), Ui.dp(this, 14));
+        infoPanel.setTypeface(Typeface.MONOSPACE);
+        GradientDrawable ib = new GradientDrawable();
+        ib.setCornerRadius(Ui.dp(this, 14));
+        ib.setColor(0xD91C1C1E);
+        infoPanel.setBackground(ib);
+        infoPanel.setVisibility(View.GONE);
+        FrameLayout.LayoutParams il = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        il.setMargins(0, Ui.dp(this, 32), Ui.dp(this, 48), 0);
+        root.addView(infoPanel, il);
+
+        sleepBadge = Ui.text(this, 16, "sans-serif-medium", Color.WHITE);
+        sleepBadge.setPadding(Ui.dp(this, 20), Ui.dp(this, 10), Ui.dp(this, 20), Ui.dp(this, 10));
+        GradientDrawable sb = new GradientDrawable();
+        sb.setCornerRadius(Ui.dp(this, 22));
+        sb.setColor(0xE61C1C1E);
+        sleepBadge.setBackground(sb);
+        sleepBadge.setVisibility(View.GONE);
+        root.addView(sleepBadge, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
         return root;
     }
 

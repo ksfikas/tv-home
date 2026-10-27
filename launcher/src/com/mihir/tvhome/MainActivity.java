@@ -101,7 +101,8 @@ public class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable rotateWallpaper = this::nextWallpaper;
     static final long WALLPAPER_INTERVAL_MS = 10 * 60 * 1000;
-    private TextView greeting, clock, ampm, date, title, wifiPill, appsLabel;
+    private TextView greeting, clock, ampm, date, weather, title, wifiPill, appsLabel, liveLabel;
+    private String diskWarning; // recordings disk nearly full, shown next to LIVE TV
     private int glowColor = 0xFF3A3A3A;
     private ValueAnimator glowAnim;
     private int lastFocusedId = View.NO_ID;
@@ -125,7 +126,7 @@ public class MainActivity extends Activity {
     static final long CHANNELS_TTL_MS = 15 * 60 * 1000, NOW_TTL_MS = 60 * 1000;
 
     private final BroadcastReceiver tick = new BroadcastReceiver() {
-        @Override public void onReceive(Context c, Intent i) { updateClock(); updateWifi(); tickLive(); }
+        @Override public void onReceive(Context c, Intent i) { updateClock(); updateWifi(); tickLive(); updateWeather(); }
     };
     private final BroadcastReceiver packages = new BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) { buildApps(); }
@@ -173,7 +174,10 @@ public class MainActivity extends Activity {
         registerReceiver(tick, tf);
         updateClock();
         updateWifi();
+        updateWeather();
+        BoxHealth.dailyTidy(this);
         isResumed = true;
+        if (!shownChannels.isEmpty()) showChannels(Tvh.channels); // e.g. a new "continue watching" tile
         refreshLive(false);
         View last = lastFocusedId == View.NO_ID ? null : findViewById(lastFocusedId);
         if (last == null && !dockCards.isEmpty()) last = dockCards.get(0);
@@ -295,7 +299,7 @@ public class MainActivity extends Activity {
         liveSection.setOrientation(LinearLayout.VERTICAL);
         liveSection.setClipChildren(false);
         liveSection.setClipToPadding(false);
-        TextView liveLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
+        liveLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
         liveLabel.setText("LIVE TV");
         liveLabel.setLetterSpacing(0.22f);
         liveSection.addView(liveLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
@@ -358,7 +362,11 @@ public class MainActivity extends Activity {
         date.setPadding(0, 0, dp(16), 0); // letterSpacing is not counted in the measured width
         date.setLetterSpacing(0.22f);
         left.addView(date);
-        for (TextView t : new TextView[]{greeting, clock, ampm, date}) t.setShadowLayer(dp(10), 0, dp(1), 0xB3000000);
+        weather = text(12, "sans-serif-light", 0xCCFFFFFF);
+        weather.setSingleLine(true);
+        weather.setVisibility(View.GONE);
+        left.addView(weather, llp(-2, -2, 0, dp(6), 0, 0));
+        for (TextView t : new TextView[]{greeting, clock, ampm, date, weather}) t.setShadowLayer(dp(10), 0, dp(1), 0xB3000000);
         header.addView(left, new FrameLayout.LayoutParams(dp(420), -2, Gravity.START | Gravity.TOP));
 
         LinearLayout right = new LinearLayout(this);
@@ -659,6 +667,8 @@ public class MainActivity extends Activity {
         }
         if (isInstalled(liveTvPkg)) rows.add(inputRow("Live TV", () -> openPackage(liveTvPkg)));
         rows.add(inputRow("Live TV setup…", this::showLiveSetup));
+        rows.add(inputRow("Weather…", this::showWeatherSetup));
+        rows.add(inputRow("Box status…", () -> BoxHealth.show(this)));
         if (!Tvh.prefs(this).getStringSet("hidden_user", Collections.emptySet()).isEmpty()) {
             rows.add(inputRow("Show hidden apps", () -> {
                 Tvh.prefs(this).edit().remove("hidden_user").apply();
@@ -730,7 +740,13 @@ public class MainActivity extends Activity {
             String error = null;
             List<Tvh.Channel> list = null;
             try {
-                if (needChannels) list = tvh.loadChannels();
+                if (needChannels) {
+                    list = tvh.loadChannels();
+                    // With the channel list (every 15 min): is the recordings disk getting full?
+                    long[] disk = null;
+                    try { disk = tvh.diskSpace(); } catch (java.io.IOException ignored) { }
+                    diskWarning = BoxHealth.diskWarning(disk);
+                }
                 else { list = new ArrayList<>(Tvh.channels); tvh.fillNow(list); }
             } catch (java.io.IOException e) {
                 error = e.getMessage();
@@ -784,7 +800,12 @@ public class MainActivity extends Activity {
             if (ch.radio) radio.add(ch);
             else if (favs.isEmpty()) tv.add(ch);
         }
+        android.content.SharedPreferences resume = Tvh.resume(this);
+        String cont = resume.getString("last", null);
+        liveLabel.setText(diskWarning == null ? "LIVE TV" : "LIVE TV    ·    " + diskWarning);
+        liveLabel.setTextColor(diskWarning == null ? 0x99FFFFFF : 0xE6FFB74D);
         List<String> ids = new ArrayList<>();
+        ids.add("c:" + cont + resume.getInt("last_pct", 0));
         for (Tvh.Channel ch : tv) ids.add(ch.uuid);
         ids.add("|");
         for (Tvh.Channel ch : radio) ids.add(ch.uuid);
@@ -798,6 +819,14 @@ public class MainActivity extends Activity {
             channelNow.clear();
             channelProgress.clear();
             addTile(channelRow, actionTile("Guide", "☰", v -> launch(new Intent(this, GuideActivity.class)), channelCards), true, false);
+            if (cont != null) {
+                // Continue watching: the recording last stopped part-way.
+                String t = resume.getString("last_title", "Recording");
+                addTile(channelRow, actionTile(t + "  ·  " + resume.getInt("last_pct", 0) + "%", "▶",
+                        v -> launch(new Intent(this, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_RECORDING, cont)
+                                .putExtra(PlayerActivity.EXTRA_TITLE, t)), channelCards), false, false);
+            }
+            addTile(channelRow, actionTile("Search", "⌕", v -> launch(new Intent(this, SearchActivity.class)), channelCards), false, false);
             addTile(channelRow, actionTile("Recordings", "●", v -> launch(new Intent(this, RecordingsActivity.class)), channelCards), false, tv.isEmpty());
             for (int i = 0; i < tv.size(); i++) addTile(channelRow, channelTile(tv.get(i), channelCards), false, i == tv.size() - 1);
             for (int i = 0; i < radio.size(); i++) addTile(radioRow, channelTile(radio.get(i), radioCards), i == 0, i == radio.size() - 1);
@@ -812,7 +841,7 @@ public class MainActivity extends Activity {
             TextView t = channelNow.get(ch.uuid);
             ProgressBar p = channelProgress.get(ch.uuid);
             if (t == null || p == null) continue;
-            t.setText(ch.now == null ? " " : ch.now.title);
+            t.setText(nowText(ch));
             p.setVisibility(ch.now == null ? View.INVISIBLE : View.VISIBLE);
             if (ch.now != null) p.setProgress((int) (ch.now.progress(nowSec) * 1000));
         }
@@ -897,6 +926,8 @@ public class MainActivity extends Activity {
         TextView l = text(11, "sans-serif-medium", 0xE6FFFFFF);
         l.setText(label);
         l.setGravity(Gravity.CENTER);
+        l.setSingleLine(true);
+        l.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
         box.addView(l, llp(-1, -2, 0, dp(10), 0, 0));
         card.setOnClickListener(onClick);
         card.setOnFocusChangeListener((v, has) -> {
@@ -994,7 +1025,7 @@ public class MainActivity extends Activity {
         TextView now = text(11, "sans-serif-medium", 0xE6FFFFFF);
         now.setSingleLine(true);
         now.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        now.setText(ch.now == null ? " " : ch.now.title);
+        now.setText(nowText(ch));
         box.addView(now, llp(-1, -2, dp(2), dp(10), dp(2), 0));
 
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -1025,6 +1056,15 @@ public class MainActivity extends Activity {
         });
         into.add(card);
         return box;
+    }
+
+    /** What's on now under a channel card; a red dot when it's being recorded. */
+    private static CharSequence nowText(Tvh.Channel ch) {
+        if (ch.now == null) return " ";
+        if (!ch.now.recordingSet() || !ch.now.dvrState.startsWith("recording")) return ch.now.title;
+        android.text.SpannableString s = new android.text.SpannableString("●  " + ch.now.title);
+        s.setSpan(new android.text.style.ForegroundColorSpan(0xFFFF5252), 0, 1, 0);
+        return s;
     }
 
     private void onChannelFocus(View card) {
@@ -1105,6 +1145,47 @@ public class MainActivity extends Activity {
             });
         });
         dialog.show();
+    }
+
+    /** City for the weather under the clock; empty turns it off. */
+    private void showWeatherSetup() {
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(24), dp(8), dp(24), 0);
+        EditText city = field(form, "City (leave empty for no weather)", Weather.city(this), InputType.TYPE_CLASS_TEXT);
+        TextView result = text(13, "sans-serif", 0xFFFF8A80);
+        form.addView(result, llp(-1, -2, 0, dp(6), 0, 0));
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Weather")
+                .setView(form)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String name = city.getText().toString();
+            result.setTextColor(0xB3FFFFFF);
+            result.setText("Looking it up…");
+            Tvh.IO.execute(() -> {
+                String err = Weather.setCity(this, name);
+                runOnUiThread(() -> {
+                    if (err != null) { result.setTextColor(0xFFFF8A80); result.setText(err); return; }
+                    dialog.dismiss();
+                    updateWeather();
+                });
+            });
+        }));
+        dialog.show();
+    }
+
+    private void updateWeather() {
+        String cached = Weather.current(this, false);
+        weather.setText(cached == null ? "" : cached + "  ·  " + Weather.city(this));
+        weather.setVisibility(cached == null ? View.GONE : View.VISIBLE);
+        if (Weather.city(this).isEmpty()) return;
+        Tvh.IO.execute(() -> {
+            String s = Weather.current(this, true);
+            if (s != null && !s.equals(cached)) runOnUiThread(this::updateWeather);
+        });
     }
 
     private EditText field(LinearLayout form, String label, String value, int type) {

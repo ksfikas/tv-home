@@ -30,8 +30,8 @@ import java.util.Set;
 /**
  * Full-screen programme guide: channels down the side, time across, drawn by one custom view.
  * Loads six hours at a time and fetches more as you move right.
- * OK on a programme that's on now watches it; OK on a later one records it (or cancels).
- * Long-press OK on one that's on now to record it.
+ * OK on a programme that's on now watches it; OK on a later one opens its menu (record,
+ * every episode, remind me). Long-press OK for the menu on any programme. Menu opens search.
  */
 public class GuideActivity extends Activity {
 
@@ -157,6 +157,9 @@ public class GuideActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
                 if (e.getRepeatCount() == 0) { e.startTracking(); longPress = false; }
                 return true;
+            case KeyEvent.KEYCODE_MENU: case KeyEvent.KEYCODE_SEARCH:
+                startActivity(new Intent(this, SearchActivity.class));
+                return true;
         }
         return super.onKeyDown(code, e);
     }
@@ -192,27 +195,59 @@ public class GuideActivity extends Activity {
     }
 
     private void recordMenu(Tvh.Event ev) {
+        programmeMenu(this, tvh, ev, this::reload);
+    }
+
+    /**
+     * Everything you can do with one programme, for the guide and search: watch (if it's on),
+     * record or stop/cancel, record every episode, remind me. `after` runs once something changed.
+     */
+    static void programmeMenu(Activity a, Tvh tvh, Tvh.Event ev, Runnable after) {
         long now = System.currentTimeMillis() / 1000;
         if (ev.stop <= now) return;
+        Tvh.Channel ch = Tvh.find(ev.channelUuid);
+        List<String> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        if (ev.isOn(now) && ch != null) {
+            labels.add("Watch on " + ch.name);
+            actions.add(() -> {
+                a.startActivity(new Intent(a, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_CHANNEL, ch.uuid)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                a.finish();
+            });
+        }
         if (ev.recordingSet()) {
             boolean running = ev.dvrState.startsWith("recording");
-            Ui.confirm(this, ev.title, running ? "Stop this recording? What's recorded so far is kept."
-                    : "Cancel this scheduled recording?", running ? "Stop" : "Cancel recording",
-                    () -> dvr(() -> tvh.stopOrCancel(ev.dvrUuid, running), running ? "Recording stopped" : "Recording cancelled"));
+            labels.add(running ? "Stop recording (keeps what's recorded)" : "Cancel the recording");
+            actions.add(() -> dvr(a, () -> tvh.stopOrCancel(ev.dvrUuid, running), running ? "Recording stopped" : "Recording cancelled", after));
         } else {
-            Ui.confirm(this, ev.title, Ui.day(ev.start) + "  " + Ui.time(this, ev.start) + " – " + Ui.time(this, ev.stop),
-                    "Record", () -> dvr(() -> tvh.record(ev.id), "Will record"));
+            labels.add(ev.isOn(now) ? "Record (from now)" : "Record");
+            actions.add(() -> dvr(a, () -> tvh.record(ev.id), "Will record", after));
         }
+        labels.add("Record every episode");
+        actions.add(() -> PlayerActivity.recordSeries(a, tvh, ev, after));
+        if (ev.start > now) {
+            boolean set = Reminders.isSet(a, ev.id);
+            labels.add(set ? "Cancel reminder" : "Remind me when it starts");
+            actions.add(() -> {
+                if (set) Reminders.remove(a, ev.id); else Reminders.add(a, ev);
+                Toast.makeText(a, set ? "Reminder cancelled" : "Reminder set for " + Ui.time(a, ev.start), Toast.LENGTH_SHORT).show();
+                if (after != null) after.run();
+            });
+        }
+        String when = Ui.day(ev.start) + "  " + Ui.time(a, ev.start) + " – " + Ui.time(a, ev.stop);
+        Ui.menu(a, ev.title + "  ·  " + (ch == null ? "" : ch.name + "  ") + when, labels.toArray(new String[0]),
+                i -> actions.get(i).run());
     }
 
     interface IoAction { void run() throws IOException; }
 
-    private void dvr(IoAction action, String done) {
+    static void dvr(Activity a, IoAction action, String done, Runnable after) {
         Tvh.IO.execute(() -> {
             String msg = done;
             try { action.run(); } catch (IOException e) { msg = e.getMessage(); }
             String m = msg;
-            runOnUiThread(() -> { Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); reload(); });
+            a.runOnUiThread(() -> { Toast.makeText(a, m, Toast.LENGTH_SHORT).show(); if (after != null) after.run(); });
         });
     }
 
@@ -374,6 +409,14 @@ public class GuideActivity extends Activity {
                         fill.setColor(0xFFE53935);
                         c.drawCircle(tx + Ui.dp(ctx, 4), y + rowH / 2f, Ui.dp(ctx, 4), fill);
                         tx += Ui.dp(ctx, 14);
+                    } else if (Reminders.isSet(ctx, e.id)) {
+                        // Reminder: a hollow ring where a recording would show a red dot.
+                        fill.setColor(isSel ? 0xFF111111 : 0xCCFFFFFF);
+                        fill.setStyle(Paint.Style.STROKE);
+                        fill.setStrokeWidth(Ui.dp(ctx, 1.5f));
+                        c.drawCircle(tx + Ui.dp(ctx, 4), y + rowH / 2f, Ui.dp(ctx, 3.5f), fill);
+                        fill.setStyle(Paint.Style.FILL);
+                        tx += Ui.dp(ctx, 14);
                     }
                     text.setColor(isSel ? 0xFF111111 : on ? Color.WHITE : 0xCCFFFFFF);
                     text.setTextSize(Ui.dp(ctx, 13));
@@ -402,9 +445,10 @@ public class GuideActivity extends Activity {
                 text.setTextSize(Ui.dp(ctx, 13));
                 text.setColor(0xB3FFFFFF);
                 String meta = ch.name + "   " + Ui.day(sel.start) + "  " + Ui.time(ctx, sel.start) + " – " + Ui.time(ctx, sel.stop)
-                        + (sel.recordingSet() ? "   ● Recording set" : "")
-                        + (sel.isOn(now) ? "   OK to watch · hold OK to " + (sel.recordingSet() ? "stop recording" : "record")
-                           : sel.start > now ? (sel.recordingSet() ? "   OK to cancel the recording" : "   OK to record") : "");
+                        + (sel.recordingSet() ? "   ● Recording set" : Reminders.isSet(ctx, sel.id) ? "   ○ Reminder set" : "")
+                        + (sel.isOn(now) ? "   OK to watch · hold OK to record and more"
+                           : sel.start > now ? "   OK to record or set a reminder" : "")
+                        + "   ·   Menu to search";
                 c.drawText(meta, pad, iy + Ui.dp(ctx, 44), text);
                 if (sel.description != null) {
                     text.setColor(0x99FFFFFF);
