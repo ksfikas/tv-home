@@ -15,19 +15,16 @@
 
     <!-- Never shown as tiles: system helpers, and the Live TV app (it's in the Inputs menu). -->
     <string-array name="hidden_apps">
-        <item>com.tcl.tv</item>
-        <item>com.tcl.suspension</item>
-        <item>com.tcl.t_solo</item>
-        <item>com.tcl.dashboard</item>
     </string-array>
 
-    <!-- The TV's Live TV / tuner app, listed last in the Inputs menu. Empty to leave it out.
-         Common ones: com.tcl.tv (TCL), com.mediatek.wwtv.tvcenter (Xiaomi, many MediaTek sets),
-         com.google.android.tv (Google Live Channels), com.sony.dtv.tvx (Sony). -->
+    <!-- The TV's own Live TV / tuner app, listed last in the Inputs menu. Empty to leave it out
+         (Tvheadend channels have their own row). Examples: com.google.android.tv (Google Live
+         Channels), com.sony.dtv.tvx (Sony), com.mediatek.wwtv.tvcenter (many MediaTek sets). -->
     <string name="live_tv_package" translatable="false"></string>
 
-    <!-- The manufacturer's own source picker, used if switching to an input directly fails. -->
-    <string name="input_picker_package" translatable="false">com.tcl.suspension</string>
+    <!-- The manufacturer's own source picker, used if switching to an input directly fails.
+         Empty on boxes without one. -->
+    <string name="input_picker_package" translatable="false"></string>
 
     <!-- Tiles per row in the grid. -->
     <integer name="columns">5</integer>

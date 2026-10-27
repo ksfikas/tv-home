@@ -451,9 +451,9 @@ public class PlayerActivity extends Activity {
 
         LinearLayout textCol = new LinearLayout(this);
         textCol.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams tcl = new LinearLayout.LayoutParams(0, -2, 1f);
-        tcl.setMargins(dp(20), 0, 0, 0);
-        banner.addView(textCol, tcl);
+        LinearLayout.LayoutParams colLp = new LinearLayout.LayoutParams(0, -2, 1f);
+        colLp.setMargins(dp(20), 0, 0, 0);
+        banner.addView(textCol, colLp);
 
         LinearLayout nameRow = new LinearLayout(this);
         nameRow.setGravity(Gravity.BOTTOM);
