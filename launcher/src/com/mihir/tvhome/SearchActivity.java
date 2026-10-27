@@ -37,6 +37,8 @@ public class SearchActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable search = this::search;
     private int seq;
+    private TextView mic;
+    private boolean focusFirstResult; // after voice input: jump straight to the results
 
     @Override
     protected void onCreate(Bundle b) {
@@ -69,9 +71,28 @@ public class SearchActivity extends Activity {
         qb.setStroke(Ui.dp(this, 2), 0x00FFFFFF);
         query.setBackground(qb);
         query.setOnFocusChangeListener((v, has) -> qb.setStroke(Ui.dp(this, 2), has ? 0xE6FFFFFF : 0x00FFFFFF));
+        // Mic first: OK and say the title (Google's voice input, through the remote's microphone).
+        LinearLayout bar = new LinearLayout(this);
+        bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        mic = Ui.text(this, 22, "sans-serif", Color.WHITE);
+        mic.setText("🎙");
+        mic.setGravity(android.view.Gravity.CENTER);
+        mic.setFocusable(true);
+        mic.setClickable(true);
+        GradientDrawable mb = new GradientDrawable();
+        mb.setShape(GradientDrawable.OVAL);
+        mb.setColor(0xFF1C1C1E);
+        mic.setBackground(mb);
+        mic.setOnFocusChangeListener((v, has) -> mb.setColor(has ? 0xF2FFFFFF : 0xFF1C1C1E));
+        mic.setOnClickListener(v -> listen());
+        int ms = Ui.dp(this, 48);
+        LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(ms, ms);
+        mlp.setMargins(0, 0, Ui.dp(this, 12), 0);
+        bar.addView(mic, mlp);
+        bar.addView(query, new LinearLayout.LayoutParams(0, -2, 1f));
         LinearLayout.LayoutParams ql = new LinearLayout.LayoutParams(-1, -2);
         ql.setMargins(0, Ui.dp(this, 16), 0, Ui.dp(this, 8));
-        root.addView(query, ql);
+        root.addView(bar, ql);
         query.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b2, int c) { }
             @Override public void onTextChanged(CharSequence s, int a, int b2, int c) { }
@@ -98,7 +119,39 @@ public class SearchActivity extends Activity {
         message.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), 0, 0);
         results.addView(message);
         setContentView(root);
+        mic.requestFocus();
+    }
+
+    private static final int VOICE = 1;
+
+    private void listen() {
+        android.content.Intent i = new android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Say a programme title");
+        try {
+            // Google TV's own voice input (the remote's microphone), so Android doesn't ask which app.
+            startActivityForResult(new android.content.Intent(i).setPackage("com.google.android.katniss"), VOICE);
+        } catch (android.content.ActivityNotFoundException notGoogleTv) {
+            try { startActivityForResult(i, VOICE); } catch (android.content.ActivityNotFoundException e) { voiceMissing(); }
+        }
+    }
+
+    private void voiceMissing() {
+        message.setText("Voice input isn't available on this box; type instead");
         query.requestFocus();
+    }
+
+    @Override
+    protected void onActivityResult(int request, int result, android.content.Intent data) {
+        super.onActivityResult(request, result, data);
+        if (request != VOICE || result != RESULT_OK || data == null) return;
+        java.util.ArrayList<String> said = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
+        if (said == null || said.isEmpty()) return;
+        query.setText(said.get(0));
+        query.setSelection(query.length());
+        handler.removeCallbacks(search);
+        search();
+        focusFirstResult = true;
     }
 
     @Override
@@ -154,6 +207,7 @@ public class SearchActivity extends Activity {
             results.addView(row, new LinearLayout.LayoutParams(-1, -2));
             if (ev.id == keepId) row.requestFocus();
         }
+        if (focusFirstResult && results.getChildCount() > 1) { focusFirstResult = false; results.getChildAt(1).requestFocus(); }
     }
 
     private CharSequence label(Tvh.Event ev, long nowSec) {

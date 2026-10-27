@@ -156,6 +156,7 @@ public class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setContentView(buildUi());
         buildApps();
+        RemoteServer.start(this); // only if the phone remote was turned on
         showLiveState(null);
         // Just booted and Live TV is set to resume: go straight back to the last channel.
         if (b == null && SystemClock.elapsedRealtime() < 4 * 60 * 1000 && Sources.configured(this)
@@ -724,6 +725,7 @@ public class MainActivity extends Activity {
         rows.add(inputRow("Live TV setup…", this::showLiveSetup));
         rows.add(inputRow("Weather…", this::showWeatherSetup));
         rows.add(inputRow("Box status…", () -> BoxHealth.show(this)));
+        rows.add(inputRow("Phone remote…", this::showRemoteSetup));
         if (!Tvh.prefs(this).getStringSet("hidden_user", Collections.emptySet()).isEmpty()) {
             rows.add(inputRow("Show hidden apps", () -> {
                 Tvh.prefs(this).edit().remove("hidden_user").apply();
@@ -1299,6 +1301,25 @@ public class MainActivity extends Activity {
             });
         });
         dialog.show();
+    }
+
+    /** Phone remote: on/off, and the address and PIN to pair a phone. */
+    private void showRemoteSetup() {
+        boolean on = RemoteServer.enabled(this);
+        String addr = RemoteServer.address();
+        String msg = on
+                ? "On your phone (same Wi-Fi), open\n\n" + (addr == null ? "(no network)" : addr) + "\n\nand enter the PIN  " + RemoteServer.pin(this)
+                  + "\n\nAdd it to your home screen for one-tap access. Turning it off forgets paired phones."
+                : "Control Live TV, the guide, recordings, apps and volume from your phone's browser, on your home network only.";
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Phone remote")
+                .setMessage(msg)
+                .setPositiveButton(on ? "Turn off" : "Turn on", (d, w) -> {
+                    RemoteServer.setEnabled(this, !on);
+                    if (!on) showRemoteSetup();
+                })
+                .setNegativeButton("Close", null)
+                .show();
     }
 
     /** City for the weather under the clock; empty turns it off. */

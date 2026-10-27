@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e0e10">
+<title>TV Remote</title>
+<style>
+  :root {
+    --bg: #0e0e10; --card: #1c1c1e; --card2: #2a2a2e; --line: #ffffff1f;
+    --text: #fff; --dim: #ffffff99; --accent: #fff; --rec: #e53935;
+    font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--text); padding: env(safe-area-inset-top) 16px calc(76px + env(safe-area-inset-bottom)); }
+  h1 { font-weight: 300; font-size: 28px; margin: 18px 0 4px; }
+  .sub { color: var(--dim); font-size: 14px; margin-bottom: 18px; }
+  button { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer; }
+  button:active { background: var(--text); color: #111; }
+  .grid { display: grid; gap: 10px; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .big { font-size: 22px; padding: 20px 10px; }
+  .label { color: var(--dim); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin: 22px 4px 10px; }
+  .now { background: var(--card); border-radius: 18px; padding: 16px; border: 1px solid var(--line); }
+  .now b { font-size: 20px; font-weight: 500; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border-radius: 14px; margin-bottom: 8px; border: 1px solid var(--line); }
+  .row .num { color: var(--dim); width: 34px; flex: none; font-variant-numeric: tabular-nums; }
+  .row .main { flex: 1; min-width: 0; }
+  .row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .m { color: var(--dim); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .acts button { padding: 8px 12px; font-size: 14px; border-radius: 10px; }
+  .on { background: var(--text); color: #111; }
+  input { width: 100%; font: inherit; font-size: 17px; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; outline: none; }
+  input:focus { border-color: #fff8; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: #141416ee; backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; background: none; border: 0; border-radius: 0; color: var(--dim); padding: 14px 4px; font-size: 13px; }
+  nav button.sel { color: var(--text); }
+  .rec { color: var(--rec); }
+  .hide { display: none; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #fff; color: #111; padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .pin input { font-size: 32px; letter-spacing: .5em; text-align: center; }
+</style>
+</head>
+<body>
+
+<section id="pair" class="hide pin">
+  <h1>Pair with the TV</h1>
+  <div class="sub">Enter the 4-digit PIN shown on the TV under Inputs → Phone remote.</div>
+  <input id="pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code">
+  <p><button style="width:100%" onclick="pair()">Pair</button></p>
+</section>
+
+<section id="tab-remote" class="hide">
+  <h1>Remote</h1>
+  <div class="now" id="now"><span class="sub">Nothing playing</span></div>
+  <div class="label">Channel</div>
+  <div class="grid g3">
+    <button class="big" onclick="player('down')">▼ CH</button>
+    <button class="big" onclick="player('prev')">↺ Prev</button>
+    <button class="big" onclick="player('up')">CH ▲</button>
+  </div>
+  <div class="label">Playback</div>
+  <div class="grid g3">
+    <button onclick="player('pause')">❚❚ Pause</button>
+    <button onclick="player('live')">● Live</button>
+    <button onclick="player('info')">ⓘ Info</button>
+  </div>
+  <div class="label">Volume</div>
+  <div class="grid g3">
+    <button class="big" onclick="call('volume',{do:'down'})">−</button>
+    <button class="big" onclick="call('volume',{do:'mute'})">🔇</button>
+    <button class="big" onclick="call('volume',{do:'up'})">+</button>
+  </div>
+  <div class="label">Sleep timer</div>
+  <div class="grid g3">
+    <button onclick="sleepIn(30)">30 min</button>
+    <button onclick="sleepIn(60)">1 h</button>
+    <button onclick="sleepIn(0)">Off</button>
+  </div>
+  <div class="label">TV</div>
+  <div class="grid g2">
+    <button onclick="call('home')">⌂ Home</button>
+    <button onclick="player('stop')">■ Stop watching</button>
+  </div>
+</section>
+
+<section id="tab-channels" class="hide">
+  <h1>Channels</h1>
+  <div class="sub">Tap to watch on the TV</div>
+  <div id="channels"></div>
+</section>
+
+<section id="tab-guide" class="hide">
+  <h1>Guide</h1>
+  <input id="q" type="search" placeholder="Search a programme title" enterkeyhint="search">
+  <div id="results" style="margin-top:12px"></div>
+</section>
+
+<section id="tab-apps" class="hide">
+  <h1>Apps</h1>
+  <div class="sub">Opens on the TV</div>
+  <div class="grid g2" id="apps"></div>
+</section>
+
+<nav id="nav" class="hide">
+  <button data-tab="remote" class="sel">Remote</button>
+  <button data-tab="channels">Channels</button>
+  <button data-tab="guide">Guide</button>
+  <button data-tab="apps">Apps</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+let token = null;
+try { token = localStorage.getItem('tvToken'); } catch (e) {}
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hhmm = t => new Date(t * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+const day = t => new Date(t * 1000).toLocaleDateString([], {weekday: 'short', day: 'numeric', month: 'short'});
+
+function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('show'), 1600); }
+
+async function call(path, params = {}) {
+  const r = await fetch('/api/' + path, {method: 'POST', headers: {'X-Token': token || '', 'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams(params)});
+  if (r.status === 401) { showPair(); throw new Error('pair'); }
+  const j = await r.json();
+  if (j.error) { toast(j.error); throw new Error(j.error); }
+  return j;
+}
+const player = (d, arg) => call('player', {do: d, arg: arg || ''}).then(() => setTimeout(state, 700));
+const sleepIn = m => player('sleep', m).then(() => toast(m ? 'Sleep in ' + m + ' min' : 'Sleep timer off'));
+
+function showPair() { $('pair').classList.remove('hide'); $('nav').classList.add('hide'); document.querySelectorAll('[id^=tab-]').forEach(s => s.classList.add('hide')); }
+async function pair() {
+  const r = await fetch('/api/pair', {method: 'POST', body: new URLSearchParams({pin: $('pin').value})});
+  const j = await r.json();
+  if (!j.token) { toast(j.error || 'Wrong PIN'); return; }
+  token = j.token;
+  try { localStorage.setItem('tvToken', token); } catch (e) {}
+  $('pair').classList.add('hide'); start();
+}
+
+function tab(name) {
+  document.querySelectorAll('[id^=tab-]').forEach(s => s.classList.toggle('hide', s.id !== 'tab-' + name));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('sel', b.dataset.tab === name));
+  if (name === 'channels') channels();
+  if (name === 'apps') apps();
+  if (name === 'remote') state();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => tab(b.dataset.tab));
+
+async function state() {
+  const s = await call('state');
+  const p = s.playing;
+  $('now').innerHTML = p ? `<div class="sub" style="margin:0 0 4px">Watching</div><b>${esc(p.number)} ${esc(p.name)}</b>` +
+    (p.now ? `<div class="sub" style="margin:6px 0 0">${esc(p.now)} · until ${hhmm(p.stop)}</div>` : '')
+    : '<span class="sub">Nothing playing on the TV</span>';
+}
+
+async function channels() {
+  const list = await call('channels');
+  $('channels').innerHTML = list.map(c => `<div class="row" data-ch="${esc(c.uuid)}"><div class="num">${esc(c.number)}</div>
+    <div class="main"><div class="t">${c.radio ? '♪ ' : ''}${esc(c.name)}</div><div class="m">${esc(c.now || '')}</div></div></div>`).join('');
+  $('channels').querySelectorAll('.row').forEach(r => r.onclick = () => call('watch', {ch: r.dataset.ch}).then(() => toast('Watching on the TV')));
+}
+
+async function apps() {
+  const list = await call('apps');
+  list.sort((a, b) => a.name.localeCompare(b.name));
+  $('apps').innerHTML = list.map(a => `<button data-pkg="${esc(a.pkg)}">${esc(a.name)}</button>`).join('');
+  $('apps').querySelectorAll('button').forEach(b => b.onclick = () => call('open', {pkg: b.dataset.pkg}).then(() => toast('Opening on the TV')));
+}
+
+let searchTimer;
+$('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(search, 500); });
+async function search() {
+  const q = $('q').value.trim();
+  if (q.length < 2) { $('results').innerHTML = ''; return; }
+  const list = await call('search', {q});
+  $('results').innerHTML = list.length ? list.map((e, i) => `<div class="row" style="display:block">
+    <div class="t">${e.rec ? '<span class="rec">● </span>' : ''}${esc(e.title)}${e.subtitle ? ' · ' + esc(e.subtitle) : ''}</div>
+    <div class="m">${esc(e.channel)} · ${e.on ? 'on now, until ' + hhmm(e.stop) : day(e.start) + ' ' + hhmm(e.start)}</div>
+    <div class="acts">${e.on ? `<button data-i="${i}" data-a="watch">Watch</button>` : ''}
+      ${e.rec ? '' : `<button data-i="${i}" data-a="record">Record</button>`}
+      <button data-i="${i}" data-a="series">Every episode</button>
+      ${e.on ? '' : `<button data-i="${i}" data-a="remind" class="${e.remind ? 'on' : ''}">${e.remind ? 'Reminder set' : 'Remind me'}</button>`}</div></div>`).join('')
+    : '<div class="sub">Nothing coming up with that title</div>';
+  $('results').querySelectorAll('button').forEach(b => b.onclick = () => {
+    const e = list[+b.dataset.i];
+    const done = m => () => { toast(m); search(); };
+    if (b.dataset.a === 'watch') call('watch', {ch: e.ch}).then(() => toast('Watching on the TV'));
+    if (b.dataset.a === 'record') call('record', {id: e.id}).then(done('Will record'));
+    if (b.dataset.a === 'series') { if (confirm('Record every episode of “' + e.title + '” on ' + e.channel + '?')) call('record', {id: e.id, kind: 'series'}).then(done('Series recording set')); }
+    if (b.dataset.a === 'remind') call('remind', {id: e.id, ch: e.ch, title: e.title, start: e.start}).then(done(e.remind ? 'Reminder cancelled' : 'Reminder set'));
+  });
+}
+
+function start() { $('nav').classList.remove('hide'); tab('remote'); }
+if (token) start(); else showPair();
+setInterval(() => { if (!document.hidden && !$('tab-remote').classList.contains('hide')) state().catch(() => {}); }, 10000);
+</script>
+</body>
+</html>

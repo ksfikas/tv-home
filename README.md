@@ -58,6 +58,11 @@ separate TV client.
   ("▶ title · show · 12 min left", with a progress bar and the artwork faded in behind), or "Paused
   at 14:49", or "Last opened 20 min ago" for apps that don't say what they play. Only what was played on
   this box, kept on the box.
+- **Phone remote**: Inputs → Phone remote… turns on a small page served by the box (home network
+  only, paired once with a PIN shown on the TV). From the phone: zap, pause, back to live, volume,
+  sleep timer, the channel list, guide search with record / every episode / remind me, and opening
+  apps. Android doesn't let it press keys inside other apps.
+- **Voice search**: the mic in Search uses Google TV's voice input through the remote.
 - **Hide apps** from the grid by holding OK on them.
 - Optional: start the last channel when the box boots.
 

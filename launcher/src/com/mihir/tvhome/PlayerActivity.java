@@ -72,6 +72,25 @@ public class PlayerActivity extends Activity {
     static final String EXTRA_CHANNEL = "channel", EXTRA_RECORDING = "recording", EXTRA_TITLE = "title";
     /** Channel on screen right now, or null; reminders for it are skipped. */
     static volatile String playing;
+    private static java.lang.ref.WeakReference<PlayerActivity> shown = new java.lang.ref.WeakReference<>(null);
+
+    /** From the phone remote: zap, pause, back to live, banner, sleep timer, leave. */
+    static void remote(String what, String arg) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            PlayerActivity p = shown.get();
+            if (p == null || p.isDestroyed() || !p.visible || what == null) return;
+            switch (what) {
+                case "up": p.zap(+1); break;
+                case "down": p.zap(-1); break;
+                case "prev": if (p.previousIndex >= 0 && p.previousIndex < p.list.size()) p.tuneTo(p.previousIndex, false); break;
+                case "pause": p.togglePause(); break;
+                case "live": p.backToLive(); break;
+                case "info": p.showBanner(); break;
+                case "sleep": try { p.setSleep(Long.parseLong(arg) * 60_000); } catch (NumberFormatException ignored) { } break;
+                case "stop": p.finish(); break;
+            }
+        });
+    }
 
     private Tvh tvh;
     private List<Tvh.Channel> list = new ArrayList<>();
@@ -185,6 +204,7 @@ public class PlayerActivity extends Activity {
     protected void onStart() {
         super.onStart();
         visible = true;
+        shown = new java.lang.ref.WeakReference<>(this);
         if ((index >= 0 || isRecording()) && player == null) startPlayback();
         if (sleepAt > 0) sleepTick();
         if (infoShown) refreshInfo();
