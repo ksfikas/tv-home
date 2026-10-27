@@ -23,3 +23,5 @@ com.mitv.tvhome.mitvplus                 # Mi TV+ free ad-supported channels
 com.xiaomi.android.tvsetup.partnercustomizer  # partner branding / promo rows
 com.mitv.gallery                         # Mi photo gallery
 com.xiaomi.mitv.mediaexplorer            # USB and network media player
+com.mitv.tvhome.atv                      # PatchWall, Xiaomi's TV home and its always-on Guard service (~70 MB);
+                                         # unused once another launcher is home
