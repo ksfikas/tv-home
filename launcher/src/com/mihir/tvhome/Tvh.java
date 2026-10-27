@@ -333,7 +333,7 @@ final class Tvh {
     }
 
     /** Tvheadend scale: 1 = relative 0–65535, 2 = thousandths of a decibel. */
-    private static String level(int v, int scale, String unit) {
+    static String level(int v, int scale, String unit) {
         if (scale == 1) return Math.round(v * 100.0 / 65535) + " %";
         if (scale == 2) return String.format(Locale.ROOT, "%.1f %s", v / 1000.0, unit);
         return null;
@@ -417,7 +417,13 @@ final class Tvh {
      * Profile "pass" sends the broadcast untouched so the box decodes it in hardware.
      */
     String streamUrl(String channelUuid) throws IOException {
-        String m3u = new String(get("/playlist/ticket/channel/" + enc(channelUuid) + "?profile=pass"), StandardCharsets.UTF_8);
+        String url = firstStream(new String(get("/playlist/ticket/channel/" + enc(channelUuid) + "?profile=pass"), StandardCharsets.UTF_8));
+        if (url == null) throw new IOException("Tvheadend returned no stream for this channel");
+        return url;
+    }
+
+    /** The first stream link in an M3U playlist, forced to the pass-through profile; null if none. */
+    static String firstStream(String m3u) {
         for (String line : m3u.split("\r?\n")) {
             line = line.trim();
             if (line.startsWith("http")) {
@@ -425,7 +431,7 @@ final class Tvh {
                 return line;
             }
         }
-        throw new IOException("Tvheadend returned no stream for this channel");
+        return null;
     }
 
     /** Logo at this width if it's already in memory; never blocks (for drawing). */
@@ -563,9 +569,6 @@ final class Tvh {
         }
         if (nonce == null) return null;
         String alg = algorithm == null ? "MD5" : algorithm;
-        String hashAlg = alg.toUpperCase(Locale.ROOT).startsWith("SHA-256") ? "SHA-256" : "MD5";
-        String ha1 = hex(hashAlg, user + ":" + realm + ":" + pass);
-        String ha2 = hex(hashAlg, "GET:" + uri);
         StringBuilder h = new StringBuilder("Digest username=\"").append(user)
                 .append("\", realm=\"").append(realm)
                 .append("\", nonce=\"").append(nonce)
@@ -577,12 +580,22 @@ final class Tvh {
             new SecureRandom().nextBytes(r);
             String cnonce = hexBytes(r);
             h.append(", qop=auth, nc=").append(ncs).append(", cnonce=\"").append(cnonce)
-                    .append("\", response=\"").append(hex(hashAlg, ha1 + ":" + nonce + ":" + ncs + ":" + cnonce + ":auth:" + ha2)).append('"');
+                    .append("\", response=\"").append(digestResponse(alg, user, realm, pass, "GET", uri, nonce, ncs, cnonce)).append('"');
         } else {
-            h.append(", response=\"").append(hex(hashAlg, ha1 + ":" + nonce + ":" + ha2)).append('"');
+            h.append(", response=\"").append(digestResponse(alg, user, realm, pass, "GET", uri, nonce, null, null)).append('"');
         }
         if (opaque != null) h.append(", opaque=\"").append(opaque).append('"');
         return h.toString();
+    }
+
+    /** RFC 2617 / 7616 response hash; nc and cnonce are null when the server asked for no qop. */
+    static String digestResponse(String alg, String user, String realm, String pass, String method, String uri,
+                                 String nonce, String nc, String cnonce) {
+        String hashAlg = alg.toUpperCase(Locale.ROOT).startsWith("SHA-256") ? "SHA-256" : "MD5";
+        String ha1 = hex(hashAlg, user + ":" + realm + ":" + pass);
+        String ha2 = hex(hashAlg, method + ":" + uri);
+        return nc == null ? hex(hashAlg, ha1 + ":" + nonce + ":" + ha2)
+                : hex(hashAlg, ha1 + ":" + nonce + ":" + nc + ":" + cnonce + ":auth:" + ha2);
     }
 
     private static String hex(String alg, String s) {
@@ -599,7 +612,7 @@ final class Tvh {
         return sb.toString();
     }
 
-    private static Event event(JSONObject o) {
+    static Event event(JSONObject o) {
         Event e = new Event();
         e.id = o.optLong("eventId");
         e.channelUuid = o.optString("channelUuid");

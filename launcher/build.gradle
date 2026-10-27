@@ -22,6 +22,9 @@ android {
             res.srcDirs = ["res"]
             assets.srcDirs = ["assets"]
         }
+        test {
+            java.srcDirs = ["test"]
+        }
     }
 
     compileOptions {
@@ -34,6 +37,8 @@ android {
         disable "UnsafeOptInUsageError"
         // Sideloaded, never published to Play; targetSdk 30 matches the original launcher.
         disable "ExpiredTargetSdkVersion"
+        // It's the Home screen (category HOME), deliberately not an app in the TV's app list.
+        disable "MissingLeanbackLauncher"
     }
 
     // Sideloaded, so any stable key works; what matters is that every build uses the same one, or an
@@ -64,4 +69,8 @@ android {
 dependencies {
     // Live TV playback (hardware decoding through MediaCodec). No UI module: the player draws on a plain SurfaceView.
     implementation "androidx.media3:media3-exoplayer:1.4.1"
+
+    // Unit tests (JVM, run in CI). Android's org.json is a stub off-device, so tests use the real one.
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.json:json:20240303"
 }

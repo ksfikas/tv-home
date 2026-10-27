@@ -66,7 +66,7 @@ final class Weather {
     }
 
     /** WMO weather codes, in words. */
-    private static String describe(int code, boolean day) {
+    static String describe(int code, boolean day) {
         if (code == 0) return day ? "Sunny" : "Clear";
         if (code <= 2) return "Partly cloudy";
         if (code == 3) return "Cloudy";

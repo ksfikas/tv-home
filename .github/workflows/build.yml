@@ -37,6 +37,21 @@ jobs:
           echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/signing.keystore"
           echo "TVHOME_KEYSTORE=$RUNNER_TEMP/signing.keystore" >> "$GITHUB_ENV"
 
+      # Unit tests and Android lint first: a failure stops the build, so no broken APK is released.
+      - name: Test
+        run: |
+          chmod +x gradlew
+          ./gradlew :launcher:testReleaseUnitTest :launcher:lintRelease --console=plain
+
+      - name: Test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            launcher/build/reports/tests/
+            launcher/build/reports/lint-results-release.html
+
       - name: Build
         env:
           TVHOME_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
