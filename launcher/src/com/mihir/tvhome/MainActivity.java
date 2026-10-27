@@ -110,9 +110,10 @@ public class MainActivity extends Activity {
     private PopupWindow inputsPopup;
 
     // Live TV row (Tvheadend).
-    private LinearLayout liveSection, channelRow;
-    private HorizontalScrollView channelScroll;
-    private final List<View> channelCards = new ArrayList<>();
+    private LinearLayout liveSection, channelRow, radioSection, radioRow;
+    private RowScroller channelScroll, radioScroll;
+    private final List<View> channelCards = new ArrayList<>(); // Guide, Recordings, then TV channels
+    private final List<View> radioCards = new ArrayList<>();
     private final Map<String, TextView> channelNow = new HashMap<>();
     private final Map<String, ProgressBar> channelProgress = new HashMap<>();
     private List<String> shownChannels = Collections.emptyList();
@@ -298,18 +299,25 @@ public class MainActivity extends Activity {
         liveLabel.setText("LIVE TV");
         liveLabel.setLetterSpacing(0.22f);
         liveSection.addView(liveLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
-        channelScroll = new HorizontalScrollView(this);
-        channelScroll.setHorizontalScrollBarEnabled(false);
-        channelScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        channelScroll.setClipChildren(false);
-        channelScroll.setClipToPadding(false);
-        channelScroll.setPadding(dp(68), dp(14), dp(68), dp(14));
-        channelRow = new LinearLayout(this);
-        channelRow.setClipChildren(false);
-        channelRow.setClipToPadding(false);
-        channelScroll.addView(channelRow, new FrameLayout.LayoutParams(-2, -2));
+        channelScroll = rowScroller();
+        channelRow = (LinearLayout) channelScroll.getChildAt(0);
         liveSection.addView(channelScroll, new LinearLayout.LayoutParams(-1, -2));
         content.addView(liveSection, llp(-1, -2, 0, 0, 0, dp(30)));
+
+        // Radio: same shape, its own row so stations don't crowd the TV channels.
+        radioSection = new LinearLayout(this);
+        radioSection.setOrientation(LinearLayout.VERTICAL);
+        radioSection.setClipChildren(false);
+        radioSection.setClipToPadding(false);
+        TextView radioLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
+        radioLabel.setText("RADIO");
+        radioLabel.setLetterSpacing(0.22f);
+        radioSection.addView(radioLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
+        radioScroll = rowScroller();
+        radioRow = (LinearLayout) radioScroll.getChildAt(0);
+        radioSection.addView(radioScroll, new LinearLayout.LayoutParams(-1, -2));
+        radioSection.setVisibility(View.GONE);
+        content.addView(radioSection, llp(-1, -2, 0, 0, 0, dp(30)));
 
         appsLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
         appsLabel.setText("ALL APPS");
@@ -399,10 +407,11 @@ public class MainActivity extends Activity {
         android.content.pm.ChangedPackages changed = pm.getChangedPackages(packageSeq);
         if (changed != null) packageSeq = changed.getSequenceNumber();
         Intent q = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
+        Set<String> userHidden = Tvh.prefs(this).getStringSet("hidden_user", Collections.emptySet());
         Map<String, App> byPkg = new HashMap<>();
         for (ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
             ActivityInfo ai = ri.activityInfo;
-            if (hidden.contains(ai.packageName) || byPkg.containsKey(ai.packageName)) continue;
+            if (hidden.contains(ai.packageName) || userHidden.contains(ai.packageName) || byPkg.containsKey(ai.packageName)) continue;
             App a = new App();
             a.pkg = ai.packageName;
             a.label = String.valueOf(ri.loadLabel(pm));
@@ -517,6 +526,17 @@ public class MainActivity extends Activity {
                 .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
                 .setComponent(app.component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)));
+        // Hold OK on an app in the grid to hide its tile (the app itself is untouched).
+        if (!inDock) card.setOnLongClickListener(v -> {
+            Ui.menu(this, app.label, new String[]{"Hide from All Apps"}, i -> {
+                Set<String> h = new HashSet<>(Tvh.prefs(this).getStringSet("hidden_user", new HashSet<>()));
+                h.add(app.pkg);
+                Tvh.prefs(this).edit().putStringSet("hidden_user", h).apply();
+                lastFocusedId = View.NO_ID;
+                buildApps();
+            });
+            return true;
+        });
         card.setOnFocusChangeListener((v, has) -> {
             float s = has ? (inDock ? 1.12f : 1.1f) : 1f;
             v.animate().scaleX(s).scaleY(s).translationZ(has ? dp(14) : 0)
@@ -545,7 +565,13 @@ public class MainActivity extends Activity {
 
     /** Explicit D-pad targets: one row per press, ends of rows and of the top bar don't wrap. */
     private void wireFocus() {
-        int d = dockCards.size(), g = gridCards.size(), ch = channelCards.size();
+        int d = dockCards.size(), g = gridCards.size();
+        // Live rows between the dock and the apps: TV (with Guide/Recordings), then radio.
+        List<List<View>> live = new ArrayList<>();
+        if (!channelCards.isEmpty()) live.add(channelCards);
+        if (!radioCards.isEmpty()) live.add(radioCards);
+        View firstLive = live.isEmpty() ? null : live.get(0).get(0);
+        View lastLive = live.isEmpty() ? null : live.get(live.size() - 1).get(0);
         for (int i = 0; i < pills.size(); i++) {
             View p = pills.get(i);
             p.setNextFocusLeftId(i == 0 ? p.getId() : pills.get(i - 1).getId());
@@ -559,23 +585,28 @@ public class MainActivity extends Activity {
             c.setNextFocusUpId(topId);
             c.setNextFocusLeftId(i == 0 ? c.getId() : dockCards.get(i - 1).getId());
             c.setNextFocusRightId(i == d - 1 ? c.getId() : dockCards.get(i + 1).getId());
-            c.setNextFocusDownId(ch > 0 ? channelCards.get(0).getId()
+            c.setNextFocusDownId(firstLive != null ? firstLive.getId()
                     : g > 0 ? gridCards.get(Math.min(i, g - 1)).getId() : c.getId());
         }
-        // Channel row: one line, Up to the dock, Down to the apps. Its own scroller keeps the focused card in view.
-        for (int i = 0; i < ch; i++) {
-            View c = channelCards.get(i);
-            c.setNextFocusLeftId(i == 0 ? c.getId() : channelCards.get(i - 1).getId());
-            c.setNextFocusRightId(i == ch - 1 ? c.getId() : channelCards.get(i + 1).getId());
-            c.setNextFocusUpId(d > 0 ? dockCards.get(0).getId() : topId);
-            c.setNextFocusDownId(g > 0 ? gridCards.get(0).getId() : c.getId());
+        // Each live row is one line: Up to the row above (or the dock), Down to the next (or the apps).
+        for (int r = 0; r < live.size(); r++) {
+            List<View> row = live.get(r);
+            int above = r == 0 ? (d > 0 ? dockCards.get(0).getId() : topId) : live.get(r - 1).get(0).getId();
+            for (int i = 0; i < row.size(); i++) {
+                View c = row.get(i);
+                c.setNextFocusLeftId(i == 0 ? c.getId() : row.get(i - 1).getId());
+                c.setNextFocusRightId(i == row.size() - 1 ? c.getId() : row.get(i + 1).getId());
+                c.setNextFocusUpId(above);
+                c.setNextFocusDownId(r + 1 < live.size() ? live.get(r + 1).get(0).getId()
+                        : g > 0 ? gridCards.get(0).getId() : c.getId());
+            }
         }
         int lastRow = (g - 1) / cols;
         for (int j = 0; j < g; j++) {
             View c = gridCards.get(j);
             int r = j / cols, col = j % cols;
             c.setNextFocusUpId(r == 0
-                    ? (ch > 0 ? channelCards.get(0).getId() : d > 0 ? dockCards.get(Math.min(col, d - 1)).getId() : topId)
+                    ? (lastLive != null ? lastLive.getId() : d > 0 ? dockCards.get(Math.min(col, d - 1)).getId() : topId)
                     : gridCards.get(j - cols).getId());
             c.setNextFocusDownId(j + cols < g ? gridCards.get(j + cols).getId()
                     : r < lastRow ? gridCards.get(g - 1).getId() : c.getId());
@@ -628,6 +659,12 @@ public class MainActivity extends Activity {
         }
         if (isInstalled(liveTvPkg)) rows.add(inputRow("Live TV", () -> openPackage(liveTvPkg)));
         rows.add(inputRow("Live TV setup…", this::showLiveSetup));
+        if (!Tvh.prefs(this).getStringSet("hidden_user", Collections.emptySet()).isEmpty()) {
+            rows.add(inputRow("Show hidden apps", () -> {
+                Tvh.prefs(this).edit().remove("hidden_user").apply();
+                buildApps();
+            }));
+        }
         if (inputs.isEmpty() && isInstalled(inputPickerPkg)) rows.add(inputRow("All sources…", () -> openPackage(inputPickerPkg)));
 
         for (TextView r : rows) {
@@ -732,27 +769,43 @@ public class MainActivity extends Activity {
         if (ended || SystemClock.elapsedRealtime() - nowLoadedAt > 5 * NOW_TTL_MS) refreshLive(false);
     }
 
-    /** Rebuild the row only when the channel line-up changed; otherwise update the text in place. */
+    /**
+     * TV row: Guide, Recordings, then favourites (in the user's order) or every TV channel.
+     * Radio row: every radio station. Rebuilt only when the line-up changes; otherwise the
+     * "now" text and progress bars are updated in place.
+     */
     private void showChannels(List<Tvh.Channel> list) {
+        List<String> favs = Tvh.favourites(this);
+        List<Tvh.Channel> tv = new ArrayList<>(), radio = new ArrayList<>();
+        if (!favs.isEmpty()) for (String u : favs) {
+            for (Tvh.Channel ch : list) if (ch.uuid.equals(u) && !ch.radio) tv.add(ch);
+        }
+        for (Tvh.Channel ch : list) {
+            if (ch.radio) radio.add(ch);
+            else if (favs.isEmpty()) tv.add(ch);
+        }
         List<String> ids = new ArrayList<>();
-        for (Tvh.Channel ch : list) ids.add(ch.uuid);
+        for (Tvh.Channel ch : tv) ids.add(ch.uuid);
+        ids.add("|");
+        for (Tvh.Channel ch : radio) ids.add(ch.uuid);
         if (!ids.equals(shownChannels)) {
             View focused = getCurrentFocus();
-            int focusedChannel = channelCards.indexOf(focused);
+            int focusedTv = channelCards.indexOf(focused), focusedRadio = radioCards.indexOf(focused);
             channelRow.removeAllViews();
+            radioRow.removeAllViews();
             channelCards.clear();
+            radioCards.clear();
             channelNow.clear();
             channelProgress.clear();
-            for (int i = 0; i < list.size(); i++) {
-                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(tileWidth(), -2);
-                p.setMargins(i == 0 ? 0 : dp(10), 0, i == list.size() - 1 ? 0 : dp(10), 0);
-                channelRow.addView(channelTile(list.get(i)), p);
-            }
+            addTile(channelRow, actionTile("Guide", "☰", v -> launch(new Intent(this, GuideActivity.class)), channelCards), true, false);
+            addTile(channelRow, actionTile("Recordings", "●", v -> launch(new Intent(this, RecordingsActivity.class)), channelCards), false, tv.isEmpty());
+            for (int i = 0; i < tv.size(); i++) addTile(channelRow, channelTile(tv.get(i), channelCards), false, i == tv.size() - 1);
+            for (int i = 0; i < radio.size(); i++) addTile(radioRow, channelTile(radio.get(i), radioCards), i == 0, i == radio.size() - 1);
+            radioSection.setVisibility(radio.isEmpty() ? View.GONE : View.VISIBLE);
             shownChannels = ids;
             wireFocus();
-            if (focusedChannel >= 0 && !channelCards.isEmpty()) {
-                channelCards.get(Math.min(focusedChannel, channelCards.size() - 1)).requestFocus();
-            }
+            if (focusedTv >= 0 && !channelCards.isEmpty()) channelCards.get(Math.min(focusedTv, channelCards.size() - 1)).requestFocus();
+            if (focusedRadio >= 0 && !radioCards.isEmpty()) radioCards.get(Math.min(focusedRadio, radioCards.size() - 1)).requestFocus();
         }
         long nowSec = System.currentTimeMillis() / 1000;
         for (Tvh.Channel ch : list) {
@@ -772,7 +825,10 @@ public class MainActivity extends Activity {
         if (key.equals(liveStateKey) && shownChannels.isEmpty() && !channelCards.isEmpty()) return;
         liveStateKey = key;
         channelRow.removeAllViews();
+        radioRow.removeAllViews();
         channelCards.clear();
+        radioCards.clear();
+        radioSection.setVisibility(View.GONE);
         channelNow.clear();
         channelProgress.clear();
         shownChannels = Collections.emptyList();
@@ -812,7 +868,86 @@ public class MainActivity extends Activity {
         wireFocus();
     }
 
-    private View channelTile(Tvh.Channel ch) {
+    private void addTile(LinearLayout row, View tile, boolean first, boolean last) {
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(tileWidth(), -2);
+        p.setMargins(first ? 0 : dp(10), 0, last ? 0 : dp(10), 0);
+        row.addView(tile, p);
+    }
+
+    /** Guide / Recordings: same card shape as a channel, with a glyph and a label. */
+    private View actionTile(String label, String glyph, View.OnClickListener onClick, List<View> into) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setClipChildren(false);
+        box.setClipToPadding(false);
+        FrameLayout card = new AspectFrame(this);
+        card.setId(View.generateViewId());
+        card.setFocusable(true);
+        card.setClickable(true);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(10));
+        bg.setColor(0x33FFFFFF);
+        bg.setStroke(dp(2), 0x00FFFFFF);
+        card.setBackground(bg);
+        TextView g = text(30, "sans-serif-light", Color.WHITE);
+        g.setText(glyph);
+        g.setGravity(Gravity.CENTER);
+        card.addView(g, new FrameLayout.LayoutParams(-1, -1));
+        box.addView(card, new LinearLayout.LayoutParams(-1, -2));
+        TextView l = text(11, "sans-serif-medium", 0xE6FFFFFF);
+        l.setText(label);
+        l.setGravity(Gravity.CENTER);
+        box.addView(l, llp(-1, -2, 0, dp(10), 0, 0));
+        card.setOnClickListener(onClick);
+        card.setOnFocusChangeListener((v, has) -> {
+            bg.setStroke(dp(2), has ? 0xE6FFFFFF : 0x00FFFFFF);
+            v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).translationZ(has ? dp(14) : 0)
+                    .setInterpolator(has ? new OvershootInterpolator(1.8f) : new DecelerateInterpolator())
+                    .setDuration(has ? 320 : 200).start();
+            if (has) onChannelFocus(v);
+        });
+        into.add(card);
+        return box;
+    }
+
+    /** Hold OK on a channel: favourites, order, setup. */
+    private void channelMenu(Tvh.Channel ch) {
+        List<String> favs = Tvh.favourites(this);
+        boolean fav = favs.contains(ch.uuid);
+        List<String> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        if (!ch.radio) {
+            labels.add(fav ? "Remove from favourites" : "Add to favourites");
+            actions.add(() -> {
+                if (fav) favs.remove(ch.uuid); else favs.add(ch.uuid);
+                Tvh.setFavourites(this, favs);
+                showChannels(Tvh.channels);
+            });
+            if (fav && favs.size() > 1) {
+                int i = favs.indexOf(ch.uuid);
+                if (i > 0) { labels.add("Move left"); actions.add(() -> moveFavourite(favs, i, -1)); }
+                if (i < favs.size() - 1) { labels.add("Move right"); actions.add(() -> moveFavourite(favs, i, +1)); }
+            }
+            if (!favs.isEmpty()) {
+                labels.add("Show all channels (clear favourites)");
+                actions.add(() -> { Tvh.setFavourites(this, new ArrayList<>()); showChannels(Tvh.channels); });
+            }
+        }
+        labels.add("Live TV setup…");
+        actions.add(this::showLiveSetup);
+        Ui.menu(this, ch.name, labels.toArray(new String[0]), i -> actions.get(i).run());
+    }
+
+    private void moveFavourite(List<String> favs, int i, int d) {
+        String u = favs.remove(i);
+        favs.add(i + d, u);
+        Tvh.setFavourites(this, favs);
+        int keep = channelCards.indexOf(getCurrentFocus());
+        showChannels(Tvh.channels);
+        if (keep >= 0 && keep + d < channelCards.size()) channelCards.get(keep + d).requestFocus();
+    }
+
+    private View channelTile(Tvh.Channel ch, List<View> into) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setClipChildren(false);
@@ -874,7 +1009,7 @@ public class MainActivity extends Activity {
 
         card.setOnClickListener(v -> launch(new Intent(this, PlayerActivity.class)
                 .putExtra(PlayerActivity.EXTRA_CHANNEL, ch.uuid)));
-        card.setOnLongClickListener(v -> { showLiveSetup(); return true; });
+        card.setOnLongClickListener(v -> { channelMenu(ch); return true; });
         card.setOnFocusChangeListener((v, has) -> {
             v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).translationZ(has ? dp(14) : 0)
                     .setInterpolator(has ? new OvershootInterpolator(1.8f) : new DecelerateInterpolator())
@@ -888,7 +1023,7 @@ public class MainActivity extends Activity {
             android.graphics.Bitmap bm = tvh.logo(this, ch, tileWidth());
             if (bm != null) runOnUiThread(() -> { logo.setImageBitmap(bm); fallback.setVisibility(View.GONE); });
         });
-        channelCards.add(card);
+        into.add(card);
         return box;
     }
 
@@ -896,11 +1031,16 @@ public class MainActivity extends Activity {
         lastFocusedId = card.getId();
         fadeGlow(0.35f);
         title.animate().alpha(0f).setDuration(200).start();
-        // Same spot as the first app row in the original layout: the dock band slides to the top edge.
+        boolean inRadio = radioCards.contains(card);
+        // TV row: the dock band slides to the top edge (the original's first-app-row spot).
+        // Radio row: sits a third of the way down, with the TV row still peeking above.
         View band = (View) dockRow.getParent();
-        int target = hero.getTop() + band.getTop() + dockRow.getTop() - dp(22);
+        int screenH = getResources().getDisplayMetrics().heightPixels;
+        int target = inRadio ? radioSection.getTop() - (int) (screenH * 0.38f)
+                : hero.getTop() + band.getTop() + dockRow.getTop() - dp(22);
         int max = Math.max(0, content.getHeight() - scroll.getHeight());
         scroll.smoothScrollTo(0, Math.max(0, Math.min(target, max)));
+        (inRadio ? radioScroll : channelScroll).reveal(card);
     }
 
     /** Same width as an app tile in the grid, so the channel row lines up with it. */
@@ -1209,6 +1349,42 @@ public class MainActivity extends Activity {
         @Override protected void onMeasure(int w, int h) {
             int width = MeasureSpec.getSize(w);
             super.onMeasure(w, MeasureSpec.makeMeasureSpec(width * 9 / 16, MeasureSpec.EXACTLY));
+        }
+    }
+
+    private RowScroller rowScroller() {
+        RowScroller s = new RowScroller(this);
+        s.setHorizontalScrollBarEnabled(false);
+        s.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        s.setClipChildren(false);
+        s.setClipToPadding(false);
+        s.setPadding(dp(68), dp(14), dp(68), dp(14));
+        LinearLayout row = new LinearLayout(this);
+        row.setClipChildren(false);
+        row.setClipToPadding(false);
+        s.addView(row, new FrameLayout.LayoutParams(-2, -2));
+        return s;
+    }
+
+    /**
+     * Horizontal row that only scrolls when told to. The stock HorizontalScrollView brings a focused
+     * card just to the very edge, ignoring the side padding and the card's focus zoom, so the first
+     * and last cards ended up partly off screen. {@link #reveal} keeps the whole card inside the margins.
+     */
+    static final class RowScroller extends HorizontalScrollView {
+        RowScroller(Context c) { super(c); }
+
+        @Override protected int computeScrollDeltaToGetChildRectOnScreen(android.graphics.Rect r) { return 0; }
+
+        void reveal(View card) {
+            View box = (View) card.getParent();
+            int margin = getPaddingLeft();
+            int left = getPaddingLeft() + box.getLeft(), right = getPaddingLeft() + box.getRight();
+            int x = getScrollX();
+            if (left - margin < x) x = left - margin;
+            else if (right + margin > x + getWidth()) x = right + margin - getWidth();
+            int max = Math.max(0, getChildAt(0).getWidth() + getPaddingLeft() + getPaddingRight() - getWidth());
+            smoothScrollTo(Math.max(0, Math.min(x, max)), 0);
         }
     }
 

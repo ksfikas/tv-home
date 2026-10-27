@@ -43,6 +43,7 @@ final class Tvh {
     static final class Channel {
         String uuid, name, icon;
         double number;
+        boolean radio;
         Event now;
 
         String numberLabel() {
@@ -52,22 +53,64 @@ final class Tvh {
     }
 
     static final class Event {
-        String title, subtitle;
+        long id;
+        String channelUuid, title, subtitle, description;
+        String dvrUuid, dvrState; // set when a recording is scheduled/running for this programme
         long start, stop; // epoch seconds
 
         float progress(long nowSec) {
             if (stop <= start) return 0f;
             return Math.max(0f, Math.min(1f, (nowSec - start) / (float) (stop - start)));
         }
+
+        boolean isOn(long nowSec) { return start <= nowSec && nowSec < stop; }
+
+        boolean recordingSet() {
+            return dvrUuid != null && dvrState != null
+                    && (dvrState.startsWith("scheduled") || dvrState.startsWith("recording"));
+        }
+    }
+
+    static final class Recording {
+        String uuid, title, subtitle, channel, schedStatus, status;
+        long start, stop, size;
+
+        boolean scheduled() { return schedStatus.startsWith("scheduled"); }
+        boolean recording() { return schedStatus.startsWith("recording"); }
+        boolean playable() { return size > 0 && (recording() || schedStatus.startsWith("completed")); }
+        boolean failed() { return schedStatus.contains("Error") || schedStatus.contains("Failed") || "missed".equals(schedStatus); }
     }
 
     /** Background work for every Tvheadend call; small pool so logos load in parallel. */
     static final ExecutorService IO = Executors.newFixedThreadPool(3);
 
-    /** Last channel list loaded, shared by the home screen and the player for zapping. */
+    /** Last channel list loaded (TV and radio), shared by the home screen, guide and player. */
     static volatile List<Channel> channels = Collections.emptyList();
 
-    private static final LruCache<String, Bitmap> logos = new LruCache<String, Bitmap>(3 * 1024 * 1024) {
+    static List<Channel> ofKind(boolean radio) {
+        List<Channel> out = new ArrayList<>();
+        for (Channel ch : channels) if (ch.radio == radio) out.add(ch);
+        return out;
+    }
+
+    static Channel find(String uuid) {
+        if (uuid != null) for (Channel ch : channels) if (uuid.equals(ch.uuid)) return ch;
+        return null;
+    }
+
+    // Favourites: channel uuids in the user's order, kept on the box.
+    static List<String> favourites(Context c) {
+        String s = prefs(c).getString("favourites", "");
+        List<String> out = new ArrayList<>();
+        for (String u : s.split(",")) if (!u.isEmpty()) out.add(u);
+        return out;
+    }
+
+    static void setFavourites(Context c, List<String> uuids) {
+        prefs(c).edit().putString("favourites", android.text.TextUtils.join(",", uuids)).apply();
+    }
+
+    private static final LruCache<String, Bitmap> logos = new LruCache<String, Bitmap>(4 * 1024 * 1024) {
         @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); }
     };
 
@@ -103,6 +146,13 @@ final class Tvh {
 
     /** Enabled channels sorted by number, with what's on now filled in. */
     List<Channel> loadChannels() throws IOException {
+        // Tvheadend tags radio services itself ("Radio channels"); that tag is how radio is told apart.
+        java.util.Set<String> radioTags = new java.util.HashSet<>();
+        JSONArray tags = json("/api/channeltag/grid?limit=500").optJSONArray("entries");
+        if (tags != null) for (int i = 0; i < tags.length(); i++) {
+            JSONObject t = tags.optJSONObject(i);
+            if (t != null && t.optString("name").toLowerCase(Locale.ROOT).contains("radio")) radioTags.add(t.optString("uuid"));
+        }
         JSONArray rows = json("/api/channel/grid?limit=5000").optJSONArray("entries");
         List<Channel> out = new ArrayList<>();
         if (rows != null) for (int i = 0; i < rows.length(); i++) {
@@ -114,6 +164,8 @@ final class Tvh {
             ch.number = o.optDouble("number", 0);
             String icon = o.optString("icon_public_url", "");
             ch.icon = icon.isEmpty() ? null : icon;
+            JSONArray ct = o.optJSONArray("tags");
+            if (ct != null) for (int j = 0; j < ct.length(); j++) if (radioTags.contains(ct.optString(j))) ch.radio = true;
             out.add(ch);
         }
         Collections.sort(out, (a, b) -> {
@@ -152,6 +204,84 @@ final class Tvh {
         return out;
     }
 
+    /** Every programme overlapping [from, to) (epoch seconds), grouped by channel uuid, sorted by start. */
+    Map<String, List<Event>> window(long from, long to) throws IOException {
+        String filter = "[{\"field\":\"stop\",\"type\":\"numeric\",\"value\":" + from + ",\"comparison\":\"gt\"},"
+                + "{\"field\":\"start\",\"type\":\"numeric\",\"value\":" + to + ",\"comparison\":\"lt\"}]";
+        JSONArray rows = json("/api/epg/events/grid?limit=20000&filter=" + enc(filter)).optJSONArray("entries");
+        Map<String, List<Event>> out = new HashMap<>();
+        if (rows != null) for (int i = 0; i < rows.length(); i++) {
+            JSONObject o = rows.optJSONObject(i);
+            if (o == null) continue;
+            Event e = event(o);
+            List<Event> l = out.get(e.channelUuid);
+            if (l == null) out.put(e.channelUuid, l = new ArrayList<>());
+            l.add(e);
+        }
+        for (List<Event> l : out.values()) Collections.sort(l, (a, b) -> Long.compare(a.start, b.start));
+        return out;
+    }
+
+    // ---------------------------------------------------------------- recordings
+
+    /** All DVR entries: recording now, scheduled, finished and failed. */
+    List<Recording> recordings() throws IOException {
+        JSONArray rows = json("/api/dvr/entry/grid?limit=2000").optJSONArray("entries");
+        List<Recording> out = new ArrayList<>();
+        if (rows != null) for (int i = 0; i < rows.length(); i++) {
+            JSONObject o = rows.optJSONObject(i);
+            if (o == null) continue;
+            Recording r = new Recording();
+            r.uuid = o.optString("uuid");
+            r.title = o.optString("disp_title", "");
+            String sub = o.optString("disp_subtitle", "").trim();
+            r.subtitle = sub.isEmpty() ? null : sub;
+            r.channel = o.optString("channelname", "");
+            r.schedStatus = o.optString("sched_status", "");
+            r.status = o.optString("status", "");
+            r.start = o.optLong("start");
+            r.stop = o.optLong("stop");
+            r.size = o.optLong("filesize");
+            out.add(r);
+        }
+        return out;
+    }
+
+    /** Record a programme from the guide; Tvheadend's default recording profile applies. */
+    void record(long eventId) throws IOException {
+        get("/api/dvr/entry/create_by_event?event_id=" + eventId + "&config_uuid=");
+    }
+
+    /** Scheduled: cancel it. Recording now: stop it (keeps what's recorded). */
+    void stopOrCancel(String dvrUuid, boolean running) throws IOException {
+        get("/api/dvr/entry/" + (running ? "stop" : "cancel") + "?uuid=" + enc(dvrUuid));
+    }
+
+    /** Delete a recording and its file from the server. */
+    void deleteRecording(String uuid) throws IOException {
+        get("/api/dvr/entry/remove?uuid=" + enc(uuid));
+    }
+
+    String recordingUrl(String uuid) { return base + "/dvrfile/" + uuid; }
+
+    /**
+     * Authorization header for a request the player makes itself (recordings, which need seeking).
+     * Primes a Digest nonce first if we haven't talked to the server yet.
+     */
+    String authHeader(String url) throws IOException {
+        synchronized (this) {
+            if (scheme == null) get("/api/serverinfo");
+            return authorization(url.startsWith(base) ? url.substring(base.length()) : url);
+        }
+    }
+
+    /** The nonce expired (player got a 401): fetch a fresh one. */
+    synchronized void refreshAuth() throws IOException {
+        nonce = null;
+        scheme = null;
+        get("/api/serverinfo");
+    }
+
     /**
      * A playable URL for the channel. Tvheadend's per-channel playlist hands back a stream link
      * carrying a short-lived ticket, so the player itself never needs the password.
@@ -169,10 +299,19 @@ final class Tvh {
         throw new IOException("Tvheadend returned no stream for this channel");
     }
 
-    /** Channel logo, scaled to at most maxW wide; memory cache, then disk cache, then network. */
+    /** Logo at this width if it's already in memory; never blocks (for drawing). */
+    static Bitmap cachedLogo(String icon, int maxW) {
+        return icon == null ? null : logos.get(icon + "@" + maxW);
+    }
+
+    /**
+     * Channel logo scaled to maxW wide; memory cache (per size, so the guide's small logos don't
+     * push out the home row's), then disk cache, then network.
+     */
     Bitmap logo(Context c, Channel ch, int maxW) {
         if (ch.icon == null) return null;
-        Bitmap bm = logos.get(ch.icon);
+        String key = ch.icon + "@" + maxW;
+        Bitmap bm = logos.get(key);
         if (bm != null) return bm;
         File f = new File(new File(c.getCacheDir(), "logos"), Integer.toHexString(ch.icon.hashCode()) + ".img");
         byte[] data = null;
@@ -193,7 +332,14 @@ final class Tvh {
         while (o.outWidth / (o.inSampleSize * 2) >= maxW) o.inSampleSize *= 2;
         o.inJustDecodeBounds = false;
         bm = BitmapFactory.decodeByteArray(data, 0, data.length, o);
-        if (bm != null) logos.put(ch.icon, bm);
+        if (bm == null) return null;
+        // inSampleSize only halves; finish with an exact scale so no logo is kept larger than drawn.
+        if (bm.getWidth() > maxW) {
+            Bitmap s = Bitmap.createScaledBitmap(bm, maxW, Math.max(1, bm.getHeight() * maxW / bm.getWidth()), true);
+            if (s != bm) bm.recycle();
+            bm = s;
+        }
+        logos.put(key, bm);
         return bm;
     }
 
@@ -326,9 +472,17 @@ final class Tvh {
 
     private static Event event(JSONObject o) {
         Event e = new Event();
+        e.id = o.optLong("eventId");
+        e.channelUuid = o.optString("channelUuid");
         e.title = o.optString("title", "");
-        String sub = o.optString("subtitle", "");
+        String sub = o.optString("subtitle", "").trim();
         e.subtitle = sub.isEmpty() ? null : sub;
+        String desc = o.optString("description", "");
+        e.description = desc.isEmpty() ? null : desc;
+        String dvr = o.optString("dvrUuid", "");
+        e.dvrUuid = dvr.isEmpty() ? null : dvr;
+        String state = o.optString("dvrState", "");
+        e.dvrState = state.isEmpty() ? null : state;
         e.start = o.optLong("start");
         e.stop = o.optLong("stop");
         return e;
