@@ -103,6 +103,13 @@ public class MainActivity extends Activity {
     static final long WALLPAPER_INTERVAL_MS = 10 * 60 * 1000;
     private TextView greeting, clock, ampm, date, weather, title, wifiPill, appsLabel, liveLabel;
     private String diskWarning; // recordings disk nearly full, shown next to LIVE TV
+    private LinearLayout titleBox;
+    private TextView watchedLine;
+    private ProgressBar watchedBar;
+    private ImageView artLayer;
+    private String artPkg;  // whose artwork artLayer holds
+    private App dockFocus;  // the focused dock app, to refresh its line on returning home
+    private Map<String, Long> lastUsed = Collections.emptyMap();
     private int glowColor = 0xFF3A3A3A;
     private ValueAnimator glowAnim;
     private int lastFocusedId = View.NO_ID;
@@ -177,6 +184,12 @@ public class MainActivity extends Activity {
         updateWifi();
         updateWeather();
         BoxHealth.dailyTidy(this);
+        // Back from an app: its "last watched" line may have changed.
+        if (dockFocus != null) showWatched(dockFocus);
+        Tvh.IO.execute(() -> {
+            Map<String, Long> used = Watched.lastUsed(this);
+            runOnUiThread(() -> { lastUsed = used; if (dockFocus != null && !isDestroyed()) showWatched(dockFocus); });
+        });
         isResumed = true;
         if (!shownChannels.isEmpty()) showChannels(Tvh.channels); // e.g. a new "continue watching" tile
         refreshLive(false);
@@ -233,6 +246,11 @@ public class MainActivity extends Activity {
         wallFront = wallpaperLayer();
         root.addView(wallBack, new FrameLayout.LayoutParams(-1, -1));
         root.addView(wallFront, new FrameLayout.LayoutParams(-1, -1));
+        // Artwork of what was last watched in the focused dock app, faded in over the wallpaper.
+        artLayer = new ImageView(this);
+        artLayer.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        artLayer.setAlpha(0f);
+        root.addView(artLayer, new FrameLayout.LayoutParams(-1, -1));
         // Scrim: darker at the top (clock, pills) and bottom (dock) so text stays readable.
         View scrim = new View(this);
         scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -276,11 +294,26 @@ public class MainActivity extends Activity {
         bottom.setClipToPadding(false);
         hero.addView(bottom, lp(-1, -2, Gravity.BOTTOM, dp(48), 0, dp(48), dp(30)));
 
+        // App name, and under it what was last watched there (see Watched); they fade as one.
+        titleBox = new LinearLayout(this);
+        titleBox.setOrientation(LinearLayout.VERTICAL);
+        bottom.addView(titleBox, llp(-1, -2, dp(8), 0, 0, dp(14)));
         title = text(34, "sans-serif-light", Color.WHITE);
         title.setShadowLayer(dp(18), 0, 0, 0x66000000);
         title.setSingleLine(true);
-        bottom.addView(title, new LinearLayout.LayoutParams(-2, -2));
-        ((LinearLayout.LayoutParams) title.getLayoutParams()).setMargins(dp(8), 0, 0, dp(14));
+        titleBox.addView(title, new LinearLayout.LayoutParams(-2, -2));
+        watchedLine = text(15, "sans-serif", 0xE6FFFFFF);
+        watchedLine.setShadowLayer(dp(10), 0, 0, 0x99000000);
+        watchedLine.setSingleLine(true);
+        watchedLine.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        watchedLine.setVisibility(View.GONE);
+        titleBox.addView(watchedLine, llp(-1, -2, dp(2), dp(2), dp(120), 0));
+        watchedBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        watchedBar.setMax(1000);
+        watchedBar.setProgressTintList(android.content.res.ColorStateList.valueOf(0xE6FFFFFF));
+        watchedBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x40FFFFFF));
+        watchedBar.setVisibility(View.GONE);
+        titleBox.addView(watchedBar, llp(dp(260), dp(3), dp(2), dp(8), 0, 0));
 
         dockRow = new LinearLayout(this);
         dockRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -557,13 +590,16 @@ public class MainActivity extends Activity {
             lastFocusedId = v.getId();
             if (inDock) {
                 title.setText(app.label);
-                title.animate().alpha(1f).setDuration(200).start();
+                showWatched(app);
+                titleBox.animate().alpha(1f).setDuration(200).start();
                 animateGlow(app.color);
                 fadeGlow(1f);
                 scroll.smoothScrollTo(0, 0);
             } else {
+                dockFocus = null;
+                showArt(null);
                 fadeGlow(0.35f);
-                title.animate().alpha(0f).setDuration(200).start();
+                titleBox.animate().alpha(0f).setDuration(200).start();
                 scrollToRow(box);
             }
         });
@@ -1112,6 +1148,39 @@ public class MainActivity extends Activity {
         return box;
     }
 
+    /** Under the focused dock app's name: what was last watched there, a progress bar, its artwork. */
+    private void showWatched(App app) {
+        dockFocus = app;
+        Watched.Line l = Watched.line(this, app.pkg, lastUsed);
+        watchedLine.setText(l == null ? "" : l.text);
+        watchedLine.setVisibility(l == null ? View.GONE : View.VISIBLE);
+        watchedBar.setVisibility(l != null && l.progress >= 0 ? View.VISIBLE : View.GONE);
+        if (l != null && l.progress >= 0) watchedBar.setProgress(Math.round(l.progress * 1000));
+        java.io.File art = l == null ? null : Watched.artFile(this, app.pkg);
+        showArt(art != null && art.exists() ? app.pkg : null);
+    }
+
+    /** Fade the app's artwork in over the wallpaper (dimmed by the scrim), or back out. */
+    private void showArt(String pkg) {
+        if (pkg == null) {
+            artPkg = null;
+            artLayer.animate().alpha(0f).setDuration(400).start();
+            return;
+        }
+        if (pkg.equals(artPkg)) { artLayer.animate().alpha(1f).setDuration(600).start(); return; }
+        artPkg = pkg;
+        java.io.File f = Watched.artFile(this, pkg);
+        Tvh.IO.execute(() -> {
+            Bitmap b = BitmapFactory.decodeFile(f.getAbsolutePath());
+            runOnUiThread(() -> {
+                if (!pkg.equals(artPkg)) return; // focus moved on meanwhile
+                if (b == null) { showArt(null); return; }
+                artLayer.setImageBitmap(b);
+                artLayer.animate().alpha(1f).setDuration(600).start();
+            });
+        });
+    }
+
     /** What's on now under a channel card; a red dot when it's being recorded. */
     private static CharSequence nowText(Tvh.Channel ch) {
         if (ch.now == null) return " ";
@@ -1124,7 +1193,9 @@ public class MainActivity extends Activity {
     private void onChannelFocus(View card) {
         lastFocusedId = card.getId();
         fadeGlow(0.35f);
-        title.animate().alpha(0f).setDuration(200).start();
+        titleBox.animate().alpha(0f).setDuration(200).start();
+        dockFocus = null;
+        showArt(null);
         boolean inRadio = radioCards.contains(card);
         // TV row: the dock band slides to the top edge (the original's first-app-row spot).
         // Radio row: sits a third of the way down, with the TV row still peeking above.
@@ -1426,8 +1497,8 @@ public class MainActivity extends Activity {
         header.setAlpha(0f);
         header.setTranslationY(-dp(12));
         header.animate().alpha(1f).translationY(0).setDuration(500).setStartDelay(80).start();
-        title.setAlpha(0f);
-        title.animate().alpha(1f).setDuration(500).setStartDelay(200).start();
+        titleBox.setAlpha(0f);
+        titleBox.animate().alpha(1f).setDuration(500).setStartDelay(200).start();
         for (int i = 0; i < dockRow.getChildCount(); i++) {
             View t = dockRow.getChildAt(i);
             t.setAlpha(0f);

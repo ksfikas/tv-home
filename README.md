@@ -54,6 +54,10 @@ separate TV client.
 - **Radio screensaver**: after three idle minutes the radio screen dims and drifts slowly.
 - **Weather** under the clock (Open-Meteo, no account), and **Box status**: free memory and
   storage, uptime, the recordings disk; the launcher tidies its own cache once a day.
+- **Last watched, under each dock app**: focus an app and its name gets what you last watched there
+  ("▶ title · show · 12 min left", with a progress bar and the artwork faded in behind), or "Paused
+  at 14:49", or "Last opened 20 min ago" for apps that don't say what they play. Only what was played on
+  this box, kept on the box.
 - **Hide apps** from the grid by holding OK on them.
 - Optional: start the last channel when the box boots.
 
@@ -124,6 +128,8 @@ video on its own layer, which screenshots don't capture.</sub>
    ```bash
    adb shell appops set com.mihir.tvhome SYSTEM_ALERT_WINDOW allow     # reminders pop up over other apps
    adb shell dpm set-active-admin com.mihir.tvhome/.SleepAdmin         # sleep timer can put the box to standby
+   adb shell cmd notification allow_listener com.mihir.tvhome/com.mihir.tvhome.MediaWatcher   # last watched
+   adb shell appops set com.mihir.tvhome GET_USAGE_STATS allow        # "last opened" for the rest
    ```
 
    The second makes the launcher a device admin with one power, turning the screen off. Android

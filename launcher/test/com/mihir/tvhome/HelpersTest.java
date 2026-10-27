@@ -30,6 +30,19 @@ public class HelpersTest {
     }
 
     @Test
+    public void lastWatchedWording() {
+        assertEquals("just now", Watched.ago(30_000));
+        assertEquals("20 min ago", Watched.ago(20 * 60_000));
+        assertEquals("1 hour ago", Watched.ago(61 * 60_000));
+        assertEquals("5 hours ago", Watched.ago(5 * 3600_000L));
+        assertEquals("yesterday", Watched.ago(30 * 3600_000L));
+        assertEquals("3 days ago", Watched.ago(3 * 24 * 3600_000L));
+        assertEquals("1 min left", Watched.left(10_000));
+        assertEquals("12 min left", Watched.left(12 * 60_000));
+        assertEquals("1 h 5 min left", Watched.left(65 * 60_000));
+    }
+
+    @Test
     public void weatherCodesInWords() {
         assertEquals("Sunny", Weather.describe(0, true));
         assertEquals("Clear", Weather.describe(0, false));
