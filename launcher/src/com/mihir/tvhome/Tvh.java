@@ -182,8 +182,7 @@ final class Tvh {
             ch.uuid = o.optString("uuid");
             ch.name = o.optString("name");
             ch.number = o.optDouble("number", 0);
-            String icon = o.optString("icon_public_url", "");
-            ch.icon = icon.isEmpty() ? null : icon;
+            ch.icon = usableIcon(o.optString("icon_public_url", ""));
             JSONArray ct = o.optJSONArray("tags");
             if (ct != null) for (int j = 0; j < ct.length(); j++) if (radioTags.contains(ct.optString(j))) ch.radio = true;
             out.add(ch);
@@ -197,6 +196,16 @@ final class Tvh {
         fillNow(out);
         channels = out;
         return out;
+    }
+
+    /**
+     * A channel's logo link, or null. Tvheadend serves logos as a full URL, "imagecache/…" or
+     * "picon/…"; a bare "/1_0_…png" is a picon name with no picon path set, which can't load.
+     */
+    static String usableIcon(String publicUrl) {
+        if (publicUrl == null || publicUrl.isEmpty()) return null;
+        if (publicUrl.matches("/?\\d+_\\d+_[0-9A-Fa-f_]+\\.png")) return null;
+        return publicUrl;
     }
 
     /** Refresh the "now" programme of every channel in one request. */

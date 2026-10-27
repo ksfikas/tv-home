@@ -91,6 +91,15 @@ public class TvhTest {
     }
 
     @Test
+    public void iconsWithoutAPiconPathAreSkipped() {
+        assertNull(Tvh.usableIcon(""));
+        assertNull(Tvh.usableIcon("/1_0_2_15_2_212C_EEEE0000_0_0_0.png"));
+        assertEquals("imagecache/12", Tvh.usableIcon("imagecache/12"));
+        assertEquals("picon/1_0_1_4_1_212C_EEEE0000_0_0_0.png", Tvh.usableIcon("picon/1_0_1_4_1_212C_EEEE0000_0_0_0.png"));
+        assertEquals("https://example.org/ert1.png", Tvh.usableIcon("https://example.org/ert1.png"));
+    }
+
+    @Test
     public void channelNumberLabels() {
         Tvh.Channel c = new Tvh.Channel();
         c.number = 5;
