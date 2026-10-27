@@ -151,7 +151,7 @@ public class MainActivity extends Activity {
         buildApps();
         showLiveState(null);
         // Just booted and Live TV is set to resume: go straight back to the last channel.
-        if (b == null && SystemClock.elapsedRealtime() < 4 * 60 * 1000 && Tvh.get(this) != null
+        if (b == null && SystemClock.elapsedRealtime() < 4 * 60 * 1000 && Sources.configured(this)
                 && Tvh.prefs(this).getBoolean("autoplay", false)
                 && Tvh.prefs(this).getString("last_channel", null) != null) {
             launch(new Intent(this, PlayerActivity.class));
@@ -744,8 +744,8 @@ public class MainActivity extends Activity {
 
     /** Reload channels (every 15 min) or just what's on now (every minute) while home is showing. */
     private void refreshLive(boolean force) {
-        Tvh tvh = Tvh.get(this);
-        if (tvh == null) { showLiveState(null); return; }
+        Tvh tvh = Tvh.get(this); // null when only tuners are set up
+        if (!Sources.configured(this)) { showLiveState(null); return; }
         if (liveLoading) return;
         long now = SystemClock.elapsedRealtime();
         // shownChannels, not channelCards: a placeholder card ("Loading…", an error) is not a channel list.
@@ -760,13 +760,13 @@ public class MainActivity extends Activity {
             List<Tvh.Channel> list = null;
             try {
                 if (needChannels) {
-                    list = tvh.loadChannels();
+                    list = Sources.load(this);
                     // With the channel list (every 15 min): is the recordings disk getting full?
                     long[] disk = null;
-                    try { disk = tvh.diskSpace(); } catch (java.io.IOException ignored) { }
+                    if (tvh != null) try { disk = tvh.diskSpace(); } catch (java.io.IOException ignored) { }
                     diskWarning = BoxHealth.diskWarning(disk);
                 }
-                else { list = new ArrayList<>(Tvh.channels); tvh.fillNow(list); }
+                else { list = new ArrayList<>(Tvh.channels); if (tvh != null) tvh.fillNow(list); }
             } catch (java.io.IOException e) {
                 error = e.getMessage();
             }
@@ -840,12 +840,14 @@ public class MainActivity extends Activity {
             channelProgress.clear();
             List<String[]> labels = new ArrayList<>();
             List<View.OnClickListener> clicks = new ArrayList<>();
-            labels.add(new String[]{"☰", "Guide"});
-            clicks.add(v -> launch(new Intent(this, GuideActivity.class)));
-            labels.add(new String[]{"⌕", "Search"});
-            clicks.add(v -> launch(new Intent(this, SearchActivity.class)));
-            labels.add(new String[]{"●", "Recordings"});
-            clicks.add(v -> launch(new Intent(this, RecordingsActivity.class)));
+            if (Tvh.get(this) != null) { // guide, search and recordings come from Tvheadend
+                labels.add(new String[]{"☰", "Guide"});
+                clicks.add(v -> launch(new Intent(this, GuideActivity.class)));
+                labels.add(new String[]{"⌕", "Search"});
+                clicks.add(v -> launch(new Intent(this, SearchActivity.class)));
+                labels.add(new String[]{"●", "Recordings"});
+                clicks.add(v -> launch(new Intent(this, RecordingsActivity.class)));
+            }
             if (cont != null) {
                 // Continue watching: the recording last stopped part-way.
                 String t = resume.getString("last_title", "Recording");
@@ -853,10 +855,12 @@ public class MainActivity extends Activity {
                 clicks.add(v -> launch(new Intent(this, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_RECORDING, cont)
                         .putExtra(PlayerActivity.EXTRA_TITLE, t)));
             }
-            View block = actionBlock(labels, clicks);
-            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(Math.round(tileWidth() * 9f / 16f), -2);
-            bp.setMargins(0, 0, dp(10), 0);
-            channelRow.addView(block, bp);
+            if (!labels.isEmpty()) {
+                View block = actionBlock(labels, clicks);
+                LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(Math.round(tileWidth() * 9f / 16f), -2);
+                bp.setMargins(0, 0, dp(10), 0);
+                channelRow.addView(block, bp);
+            }
             for (int i = 0; i < tv.size(); i++) addTile(channelRow, channelTile(tv.get(i), channelCards), false, i == tv.size() - 1);
             for (int i = 0; i < radio.size(); i++) addTile(radioRow, channelTile(radio.get(i), radioCards), i == 0, i == radio.size() - 1);
             radioSection.setVisibility(radio.isEmpty() ? View.GONE : View.VISIBLE);
@@ -878,9 +882,12 @@ public class MainActivity extends Activity {
 
     /** One placeholder card for "not set up", "loading" or an error; selecting it opens setup or retries. */
     private void showLiveState(String message) {
-        boolean configured = Tvh.get(this) != null;
-        String key = configured + "|" + message;
-        if (key.equals(liveStateKey) && shownChannels.isEmpty() && !channelCards.isEmpty()) return;
+        boolean configured = Sources.configured(this);
+        // No sources and the user said they don't want Live TV: no row at all.
+        boolean hidden = !configured && Tvh.prefs(this).getBoolean("live_hidden", false);
+        liveSection.setVisibility(hidden ? View.GONE : View.VISIBLE);
+        String key = configured + "|" + message + "|" + hidden;
+        if (key.equals(liveStateKey) && shownChannels.isEmpty() && (hidden || !channelCards.isEmpty())) return;
         liveStateKey = key;
         channelRow.removeAllViews();
         radioRow.removeAllViews();
@@ -891,6 +898,7 @@ public class MainActivity extends Activity {
         channelNow.clear();
         channelProgress.clear();
         shownChannels = Collections.emptyList();
+        if (hidden) { wireFocus(); return; }
 
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
@@ -909,7 +917,14 @@ public class MainActivity extends Activity {
         t.setText(!configured ? "▶  Set up Live TV" : message != null ? message : "Loading channels…");
         card.addView(t, new FrameLayout.LayoutParams(-1, -1));
         card.setOnClickListener(v -> { if (configured) refreshLive(true); else showLiveSetup(); });
-        card.setOnLongClickListener(v -> { showLiveSetup(); return true; });
+        card.setOnLongClickListener(v -> {
+            if (configured) { showLiveSetup(); return true; }
+            Ui.menu(this, "Live TV", new String[]{"Set up Live TV…", "Hide Live TV (bring back in Inputs → Live TV setup…)"}, i -> {
+                if (i == 0) showLiveSetup();
+                else { Tvh.prefs(this).edit().putBoolean("live_hidden", true).apply(); showLiveState(null); }
+            });
+            return true;
+        });
         card.setOnFocusChangeListener((v, has) -> {
             bg.setStroke(dp(2), has ? 0xE6FFFFFF : 0x00FFFFFF);
             v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(200).start();
@@ -1089,8 +1104,8 @@ public class MainActivity extends Activity {
         });
 
         Tvh tvh = Tvh.get(this);
-        if (tvh != null && ch.icon != null) Tvh.IO.execute(() -> {
-            android.graphics.Bitmap bm = tvh.logo(this, ch, tileWidth());
+        if (ch.icon != null) Tvh.IO.execute(() -> {
+            android.graphics.Bitmap bm = Tvh.logo(this, tvh, ch, tileWidth());
             if (bm != null) runOnUiThread(() -> { logo.setImageBitmap(bm); fallback.setVisibility(View.GONE); });
         });
         into.add(card);
@@ -1129,31 +1144,42 @@ public class MainActivity extends Activity {
         return (w - (cols - 1) * dp(20)) / cols;
     }
 
-    /** Server address, login, and the restart option. Credentials stay in this app's private storage. */
+    /**
+     * Sources (Tvheadend, a network tuner, tuner apps on the box) and the restart option.
+     * Credentials stay in this app's private storage. Any one source is enough.
+     */
     private void showLiveSetup() {
         android.content.SharedPreferences prefs = Tvh.prefs(this);
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
-        form.setPadding(dp(24), dp(8), dp(24), 0);
-        EditText url = field(form, "Tvheadend address", prefs.getString("url", "http://192.168.1.10:9981"),
+        form.setPadding(dp(24), dp(8), dp(24), dp(8));
+        EditText url = field(form, "Tvheadend address (empty for none)", prefs.getString("url", "http://192.168.1.10:9981"),
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         EditText user = field(form, "Username", prefs.getString("user", ""), InputType.TYPE_CLASS_TEXT);
         EditText pass = field(form, "Password", prefs.getString("pass", ""),
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        EditText hdhr = field(form, "Network tuner (HDHomeRun): auto, an address, or empty for none",
+                prefs.getString("hdhr", ""), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        CheckBox tif = new CheckBox(this);
+        tif.setText("Channels from tuner apps on this box (e.g. a USB tuner)");
+        tif.setChecked(prefs.getBoolean("tif", false));
+        form.addView(tif, llp(-1, -2, 0, dp(8), 0, 0));
         CheckBox autoplay = new CheckBox(this);
         autoplay.setText("Start the last channel after the box restarts");
         autoplay.setChecked(prefs.getBoolean("autoplay", false));
-        form.addView(autoplay, llp(-1, -2, 0, dp(8), 0, 0));
+        form.addView(autoplay, llp(-1, -2, 0, dp(4), 0, 0));
         TextView result = text(13, "sans-serif", 0xFFFF8A80);
         form.addView(result, llp(-1, -2, 0, dp(6), 0, 0));
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.addView(form);
 
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("Live TV")
-                .setView(form)
+                .setView(sv)
                 .setPositiveButton("Save", null)
                 .setNegativeButton("Cancel", null)
-                .setNeutralButton("Remove", (d, w) -> {
-                    prefs.edit().remove("url").remove("user").remove("pass").apply();
+                .setNeutralButton("Remove all", (d, w) -> {
+                    prefs.edit().remove("url").remove("user").remove("pass").remove("hdhr").remove("tif").apply();
                     Tvh.channels = Collections.emptyList();
                     showLiveState(null);
                 })
@@ -1162,22 +1188,39 @@ public class MainActivity extends Activity {
             Button save = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             save.setOnClickListener(v -> {
                 String u = url.getText().toString().trim();
-                if (!u.startsWith("http")) u = "http://" + u;
+                if (!u.isEmpty() && !u.startsWith("http")) u = "http://" + u;
                 String address = u;
                 result.setTextColor(0xB3FFFFFF);
                 result.setText("Checking…");
                 save.setEnabled(false);
-                prefs.edit().putString("url", address)
+                android.content.SharedPreferences.Editor e = prefs.edit()
+                        .remove("live_hidden") // saving setup brings a hidden Live TV row back
+                        .putString("hdhr", hdhr.getText().toString().trim())
+                        .putBoolean("tif", tif.isChecked())
+                        .putBoolean("autoplay", autoplay.isChecked());
+                if (address.isEmpty()) e.remove("url").remove("user").remove("pass");
+                else e.putString("url", address)
                         .putString("user", user.getText().toString().trim())
-                        .putString("pass", pass.getText().toString())
-                        .putBoolean("autoplay", autoplay.isChecked())
-                        .apply();
-                Tvh tvh = Tvh.get(this);
+                        .putString("pass", pass.getText().toString());
+                e.apply();
                 Tvh.IO.execute(() -> {
-                    String err = tvh.test();
+                    // Load every source once: that's the real test, and it fills the rows straight away.
+                    String err = null;
+                    int count = 0;
+                    try {
+                        Tvh tvh = Tvh.get(this);
+                        if (tvh != null) err = tvh.test();
+                        if (err == null && Sources.configured(this)) count = Sources.load(this).size();
+                    } catch (java.io.IOException ex) { err = ex.getMessage(); }
+                    String er = err;
+                    boolean none = er == null && count == 0 && Sources.configured(this);
                     runOnUiThread(() -> {
                         save.setEnabled(true);
-                        if (err != null) { result.setTextColor(0xFFFF8A80); result.setText(err); return; }
+                        if (er != null || none) {
+                            result.setTextColor(0xFFFF8A80);
+                            result.setText(er != null ? er : "No channels found from these sources");
+                            return;
+                        }
                         dialog.dismiss();
                         refreshLive(true);
                     });

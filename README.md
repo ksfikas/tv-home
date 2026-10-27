@@ -22,6 +22,15 @@ separate TV client.
 **Live TV** (this fork)
 - A **LIVE TV** row with every channel (Guide, Search, Recordings and Continue sit in a small block at its start: press Left): logo, number, what's on now and a progress bar. Pick one
   and it plays full screen on the box's **hardware decoders** (MPEG-2, H.264, HEVC, MP2, AAC, AC3).
+- **Three kinds of source**, alone or together, merged into the same rows:
+  - a **Tvheadend** server (everything below: guide, recordings, series, search, reminders);
+  - a **network tuner** (HDHomeRun and compatibles), found on the network ("auto") or by address;
+    its channels play in the same player, with pause, mini guide and stream info;
+  - **tuner apps on the box itself** (e.g. a USB stick's driver app that publishes Android TV
+    channels), played through Android's TV view.
+
+  A channel Tvheadend already has stays the Tvheadend one. No source at all? The row offers setup,
+  or hold OK on it to hide Live TV completely.
 - **Guide**: a full-screen programme grid with channel logos, a "now" line and the selected
   programme's description. OK watches what's on or records what's coming.
 - **Recordings**: what's recording, scheduled, recorded or failed. Play with seeking, cancel,
@@ -137,6 +146,17 @@ commands on the TV.
   channels, logos won't load; set each channel's *icon* to a URL instead. The community
   [tv-logo/tv-logos](https://github.com/tv-logo/tv-logos) set covers many countries.
 - Radio stations are recognised by Tvheadend's own *Radio channels* tag.
+
+### Other tuners
+
+- **Network tuner**: in *Live TV setup*, enter `auto` (finds HDHomeRun-compatible tuners on the
+  network) or the tuner's address. Channels come from its lineup; DRM-protected ones are skipped.
+  There's no guide from the tuner itself, so recording and the guide stay Tvheadend features.
+- **Tuner in the box**: install the tuner's driver app, scan channels there, then tick *Channels
+  from tuner apps on this box*. Android only lets the launcher see channels marked as visible.
+  These play through the driver app, so pause, track menus and stream info aren't available.
+- Both are covered by unit tests. The network tuner was also checked end to end against a test
+  tuner; the box tuner path has no hardware to test on yet.
 - Stream info's signal figures and the disk warning come from Tvheadend's status pages, which
   need an admin user; without one they're simply left out.
 - "Record every episode" is a Tvheadend autorec rule matching the title on that channel; if an
@@ -207,6 +227,9 @@ open Claude Code in it, and describe your TV. The original prompt is in [PROMPT.
 ## Gotchas
 
 From this fork:
+- **Tvheadend looks for HDHomeRuns too.** It sends the same network discovery the launcher does.
+  Anything answering it should be a real tuner; a half-implemented test device made Tvheadend
+  restart here.
 - **Netflix doesn't exit on Back.** Netflix's TV app consumes Back on its own home screen; use
   Home (or Netflix's *Exit* item). A launcher can't change this.
 - **Back from an app opened outside the launcher** (from a cast, say) returns to the previous app,

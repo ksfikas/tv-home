@@ -10,6 +10,8 @@
     <!-- Reminders: re-armed after a restart, and allowed to pop up over other apps (granted over ADB). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Channels from tuner apps on the box (Android TV inputs); a normal permission, no prompt. -->
+    <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

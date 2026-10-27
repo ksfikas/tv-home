@@ -80,6 +80,7 @@ public class PlayerActivity extends Activity {
     private Tvh.Event current, next; // live: what's on now/next on this channel, with DVR state
 
     private ExoPlayer player;
+    private android.media.tv.TvView tvView; // only created for channels from tuner apps on the box
     private AspectFrame videoFrame;
     private SurfaceView surface;
     private CueView cues;
@@ -127,7 +128,7 @@ public class PlayerActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setContentView(buildUi());
         tvh = Tvh.get(this);
-        if (tvh == null) { finish(); return; }
+        if (!Sources.configured(this)) { finish(); return; } // tvh may be null: tuner-only setups
         handleIntent(getIntent());
     }
 
@@ -161,7 +162,7 @@ public class PlayerActivity extends Activity {
         status("Loading channels…");
         Tvh.IO.execute(() -> {
             try {
-                tvh.loadChannels();
+                Sources.load(this);
                 runOnUiThread(() -> { if (!isDestroyed()) useChannels(target); });
             } catch (IOException e) {
                 runOnUiThread(() -> status(e.getMessage()));
@@ -197,6 +198,7 @@ public class PlayerActivity extends Activity {
         playing = null;
         handler.removeCallbacksAndMessages(null);
         releasePlayer();
+        if (tvView != null) { tvView.reset(); tvView.setVisibility(View.GONE); }
     }
 
     @Override
@@ -242,9 +244,12 @@ public class PlayerActivity extends Activity {
         updatePauseBadge();
         status("");
         if (player != null) player.stop();
+        stopTvInput();
         if (isRecording()) { play(tvh.recordingUrl(recordingUuid)); return; }
         Tvh.Channel ch = list.get(index);
         playing = ch.uuid;
+        if (ch.inputId != null) { playTvInput(ch); return; }
+        if (ch.url != null) { play(ch.url); return; } // network tuner: a plain HTTP stream, no ticket needed
         Tvh.IO.execute(() -> {
             String url;
             try {
@@ -340,6 +345,48 @@ public class PlayerActivity extends Activity {
         });
         return p;
     }
+
+    /**
+     * A channel from a tuner app on the box: Android's TvView asks that app to tune and draw the
+     * picture; our ExoPlayer isn't involved (so no pause, track menu or stream info for these).
+     */
+    private void playTvInput(Tvh.Channel ch) {
+        releasePlayer();
+        infoShown = false;
+        refreshInfo();
+        videoFrame.setVisibility(View.GONE);
+        radioPanel.setVisibility(View.GONE);
+        if (tvView == null) {
+            tvView = new android.media.tv.TvView(this);
+            tvView.setCallback(new android.media.tv.TvView.TvInputCallback() {
+                @Override public void onVideoAvailable(String inputId) { status(""); }
+                @Override public void onVideoUnavailable(String inputId, int reason) {
+                    status(reason == android.media.tv.TvInputManager.VIDEO_UNAVAILABLE_REASON_WEAK_SIGNAL ? "Weak signal"
+                            : reason == android.media.tv.TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY ? ""
+                            : reason == android.media.tv.TvInputManager.VIDEO_UNAVAILABLE_REASON_TUNING
+                              || reason == android.media.tv.TvInputManager.VIDEO_UNAVAILABLE_REASON_BUFFERING ? "…"
+                            : "No picture from the tuner");
+                }
+                @Override public void onConnectionFailed(String inputId) { status("The tuner app isn't responding"); }
+                @Override public void onDisconnected(String inputId) { status("The tuner app stopped"); }
+            });
+            ((FrameLayout) videoFrame.getParent()).addView(tvView, 1, new FrameLayout.LayoutParams(-1, -1));
+        }
+        tvView.setVisibility(View.VISIBLE);
+        tvView.tune(ch.inputId, android.media.tv.TvContract.buildChannelUri(ch.tifId));
+    }
+
+    private void stopTvInput() {
+        if (tvView != null && tvView.getVisibility() == View.VISIBLE) {
+            tvView.reset();
+            tvView.setVisibility(View.GONE);
+            boolean radio = !isRecording() && index >= 0 && list.get(index).radio;
+            radioPanel.setVisibility(radio ? View.VISIBLE : View.GONE);
+            videoFrame.setVisibility(radio ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private boolean isTvInput() { return !isRecording() && index >= 0 && list.get(index).inputId != null; }
 
     /** Retry a few times (tickets expire, tuners get busy), then say what went wrong. */
     private void failed(String why) {
@@ -531,7 +578,10 @@ public class PlayerActivity extends Activity {
     private void options() {
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
-        if (!isRadio() || isRecording()) {
+        // A tuner app's channel plays in TvView, outside our player: no pause, tracks or stream info.
+        boolean ownPlayer = !isTvInput();
+        boolean fromTvh = !isRecording() && tvh != null && list.get(index).fromTvh();
+        if (ownPlayer && (!isRadio() || isRecording())) {
             labels.add(player != null && !player.getPlayWhenReady() ? "Resume" : "Pause");
             actions.add(this::togglePause);
         }
@@ -540,13 +590,15 @@ public class PlayerActivity extends Activity {
             labels.add("Start from the beginning");
             actions.add(() -> { player.seekTo(0); showBanner(); });
         }
-        labels.add("Audio: " + selectedTrack(C.TRACK_TYPE_AUDIO, "Default"));
-        actions.add(() -> pickTrack(C.TRACK_TYPE_AUDIO));
-        if (!isRadio()) {
+        if (ownPlayer) {
+            labels.add("Audio: " + selectedTrack(C.TRACK_TYPE_AUDIO, "Default"));
+            actions.add(() -> pickTrack(C.TRACK_TYPE_AUDIO));
+        }
+        if (ownPlayer && !isRadio()) {
             labels.add("Subtitles: " + selectedTrack(C.TRACK_TYPE_TEXT, "Off"));
             actions.add(() -> pickTrack(C.TRACK_TYPE_TEXT));
         }
-        if (!isRecording()) {
+        if (fromTvh) {
             Tvh.Event ev = current;
             if (ev != null && ev.recordingSet()) {
                 labels.add("Stop recording “" + ev.title + "”");
@@ -559,6 +611,8 @@ public class PlayerActivity extends Activity {
                 labels.add("Record every episode");
                 actions.add(() -> recordSeries(this, tvh, ev, this::showBanner));
             }
+        }
+        if (!isRecording() && tvh != null) {
             labels.add("TV guide");
             actions.add(this::openGuide);
             labels.add("Recordings");
@@ -566,8 +620,10 @@ public class PlayerActivity extends Activity {
         }
         labels.add(sleepAt > 0 ? "Sleep timer: " + Math.max(1, (sleepAt - android.os.SystemClock.elapsedRealtime()) / 60_000) + " min left" : "Sleep timer: Off");
         actions.add(this::pickSleep);
-        labels.add(infoShown ? "Hide stream info" : "Stream info");
-        actions.add(() -> { infoShown = !infoShown; refreshInfo(); });
+        if (ownPlayer) {
+            labels.add(infoShown ? "Hide stream info" : "Stream info");
+            actions.add(() -> { infoShown = !infoShown; refreshInfo(); });
+        }
         Ui.menu(this, isRecording() ? recordingTitle : list.get(index).name, labels.toArray(new String[0]),
                 i -> actions.get(i).run());
     }
@@ -686,7 +742,7 @@ public class PlayerActivity extends Activity {
         String base = s.toString();
         infoPanel.setText(base.trim());
         infoPanel.setVisibility(View.VISIBLE);
-        if (!isRecording() && index >= 0) {
+        if (!isRecording() && index >= 0 && tvh != null && list.get(index).fromTvh()) { // tuner figures come from Tvheadend
             String name = list.get(index).name;
             Tvh.IO.execute(() -> {
                 Tvh.Status st;
@@ -856,9 +912,9 @@ public class PlayerActivity extends Activity {
         setRadioLogo(cached);
         setNow(current != null ? current : ch.now, next);
         Tvh.IO.execute(() -> {
-            Bitmap logo = tvh.logo(this, ch, Ui.dp(this, 240));
+            Bitmap logo = Tvh.logo(this, tvh, ch, Ui.dp(this, 240));
             List<Tvh.Event> events = null;
-            try { events = tvh.upcoming(ch.uuid, 3); } catch (IOException ignored) { }
+            if (tvh != null && ch.fromTvh()) try { events = tvh.upcoming(ch.uuid, 3); } catch (IOException ignored) { }
             List<Tvh.Event> ev = events;
             runOnUiThread(() -> {
                 if (isDestroyed() || index < 0 || list.get(index) != ch) return;
@@ -943,7 +999,7 @@ public class PlayerActivity extends Activity {
         boolean stale = nowNext == null || android.os.SystemClock.elapsedRealtime() - nowNextAt > 60_000;
         Tvh.IO.execute(() -> {
             java.util.Map<String, Tvh.Event[]> nn = null;
-            if (stale) try { nn = tvh.nowNext(); } catch (IOException ignored) { }
+            if (stale && tvh != null) try { nn = tvh.nowNext(); } catch (IOException ignored) { }
             java.util.Map<String, Tvh.Event[]> got = nn;
             runOnUiThread(() -> {
                 if (got != null) { nowNext = got; nowNextAt = android.os.SystemClock.elapsedRealtime(); }
@@ -953,7 +1009,7 @@ public class PlayerActivity extends Activity {
             // Logos: usually on disk already; small, shared with the guide's cache.
             for (Tvh.Channel ch : chs) {
                 if (ch.icon == null || Tvh.cachedLogo(ch.icon, GuideActivity.LOGO_W) != null) continue;
-                Bitmap b = tvh.logo(this, ch, GuideActivity.LOGO_W);
+                Bitmap b = Tvh.logo(this, tvh, ch, GuideActivity.LOGO_W);
                 if (b != null) runOnUiThread(() -> { TextView r = listLabels.get(ch.uuid); if (r != null) setRowLogo(r, b, logoW, logoH); });
             }
         });

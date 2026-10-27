@@ -45,6 +45,13 @@ final class Tvh {
         double number;
         boolean radio;
         Event now;
+        // Channels from other sources (see Sources): a network tuner's direct stream URL, or an
+        // Android TV input (a tuner app on the box) played through TvView.
+        String url, inputId;
+        long tifId;
+
+        /** From Tvheadend: has a guide, recordings, stream status. */
+        boolean fromTvh() { return url == null && inputId == null; }
 
         String numberLabel() {
             if (number <= 0) return "";
@@ -216,7 +223,7 @@ final class Tvh {
             JSONObject o = rows.optJSONObject(i);
             if (o != null) now.put(o.optString("channelUuid"), event(o));
         }
-        for (Channel ch : list) ch.now = now.get(ch.uuid);
+        for (Channel ch : list) if (ch.fromTvh()) ch.now = now.get(ch.uuid);
     }
 
     /** The current and next few programmes on one channel. */
@@ -453,6 +460,11 @@ final class Tvh {
      * push out the home row's), then disk cache, then network.
      */
     Bitmap logo(Context c, Channel ch, int maxW) {
+        return logo(c, this, ch, maxW);
+    }
+
+    /** Same, for any source: a web link, a TV input's logo (content://), or a path on Tvheadend (needs tvh). */
+    static Bitmap logo(Context c, Tvh tvh, Channel ch, int maxW) {
         if (ch.icon == null) return null;
         String key = ch.icon + "@" + maxW;
         Bitmap bm = logos.get(key);
@@ -462,7 +474,13 @@ final class Tvh {
         try {
             if (f.exists()) data = readAll(new java.io.FileInputStream(f));
             else {
-                data = ch.icon.startsWith("http") ? download(ch.icon) : get("/" + ch.icon.replaceFirst("^/", ""));
+                if (ch.icon.startsWith("content://")) {
+                    InputStream in = c.getContentResolver().openInputStream(android.net.Uri.parse(ch.icon));
+                    if (in == null) return null;
+                    data = readAll(in);
+                } else if (ch.icon.startsWith("http")) data = download(ch.icon);
+                else if (tvh != null) data = tvh.get("/" + ch.icon.replaceFirst("^/", ""));
+                else return null;
                 f.getParentFile().mkdirs();
                 try (FileOutputStream out = new FileOutputStream(f)) { out.write(data); }
             }
@@ -507,9 +525,9 @@ final class Tvh {
         }
     }
 
-    /** GET with auth; answers a fresh challenge once (new or stale nonce) before giving up. */
+    /** GET with auth; answers a fresh challenge (new or stale nonce) up to twice before giving up. */
     synchronized byte[] get(String path) throws IOException {
-        for (int attempt = 0; attempt < 2; attempt++) {
+        for (int attempt = 0; attempt < 3; attempt++) {
             HttpURLConnection con = (HttpURLConnection) new URL(base + path).openConnection();
             con.setConnectTimeout(6000);
             con.setReadTimeout(15000);
@@ -519,10 +537,11 @@ final class Tvh {
             try {
                 int code = con.getResponseCode();
                 if (code == 401) {
-                    // First 401: no nonce yet, or ours expired. Take the fresh one and retry once.
+                    // 401: no nonce yet, or ours expired. Take the fresh one and retry; twice, since right after
+                    // a server restart the first fresh nonce can be refused too.
                     parseChallenge(con.getHeaderField("WWW-Authenticate"));
                     if (user.isEmpty()) throw new IOException("Tvheadend needs a username and password");
-                    if (attempt == 0) continue;
+                    if (attempt < 2) continue;
                     throw new IOException("Tvheadend rejected the username or password");
                 }
                 if (code == 403) throw new IOException("This Tvheadend user isn't allowed to do that");
