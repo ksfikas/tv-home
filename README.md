@@ -1,5 +1,8 @@
 # tv-home
 
+> Forked from [mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home). The launcher,
+> debloat tools and wallpapers are the original author's work (MIT).
+>
 > **This fork adds Live TV from a [Tvheadend](https://tvheadend.org) server**, built into the
 > launcher. See [Live TV (Tvheadend)](#live-tv-tvheadend) below. The launcher now builds with
 > Gradle (`./gradlew :launcher:assembleRelease`) because playback uses AndroidX Media3, so
