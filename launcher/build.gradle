@@ -69,6 +69,8 @@ android {
 dependencies {
     // Live TV playback (hardware decoding through MediaCodec). No UI module: the player draws on a plain SurfaceView.
     implementation "androidx.media3:media3-exoplayer:1.4.1"
+    // QR code for pairing the phone remote (only the encoder survives shrinking).
+    implementation "com.google.zxing:core:3.5.3"
 
     // Unit tests (JVM, run in CI). Android's org.json is a stub off-device, so tests use the real one.
     testImplementation "junit:junit:4.13.2"

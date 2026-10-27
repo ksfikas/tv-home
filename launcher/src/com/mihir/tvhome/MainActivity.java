@@ -1303,23 +1303,49 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
-    /** Phone remote: on/off, and the address and PIN to pair a phone. */
+    /** Phone remote: on/off, and a QR code (address + PIN) or the address and PIN to pair a phone. */
     private void showRemoteSetup() {
         boolean on = RemoteServer.enabled(this);
         String addr = RemoteServer.address();
-        String msg = on
-                ? "On your phone (same Wi-Fi), open\n\n" + (addr == null ? "(no network)" : addr) + "\n\nand enter the PIN  " + RemoteServer.pin(this)
-                  + "\n\nAdd it to your home screen for one-tap access. Turning it off forgets paired phones."
-                : "Control Live TV, the guide, recordings, apps and volume from your phone's browser, on your home network only.";
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Phone remote")
-                .setMessage(msg)
-                .setPositiveButton(on ? "Turn off" : "Turn on", (d, w) -> {
-                    RemoteServer.setEnabled(this, !on);
-                    if (!on) showRemoteSetup();
-                })
-                .setNegativeButton("Close", null)
-                .show();
+        AlertDialog.Builder b = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Phone remote");
+        if (on && addr != null) {
+            String pin = RemoteServer.pin(this);
+            LinearLayout box = new LinearLayout(this);
+            box.setGravity(Gravity.CENTER_VERTICAL);
+            box.setPadding(dp(24), dp(8), dp(24), 0);
+            ImageView qr = new ImageView(this);
+            // The QR carries the PIN too, so scanning it pairs the phone straight away.
+            qr.setImageBitmap(qrCode(addr + "/#pin=" + pin, dp(200)));
+            box.addView(qr, new LinearLayout.LayoutParams(dp(200), dp(200)));
+            TextView t = text(15, "sans-serif", 0xE6FFFFFF);
+            t.setLineSpacing(dp(4), 1f);
+            t.setText("Point your phone's camera at the code (same Wi-Fi).\n\nOr open\n" + addr + "\nand enter the PIN  " + pin
+                    + "\n\nAdd it to your home screen for one-tap access. Turning it off forgets paired phones.");
+            box.addView(t, llp(0, -2, dp(24), 0, 0, 0));
+            ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
+            b.setView(box);
+        } else {
+            b.setMessage(on ? "No network: connect the box to Wi-Fi first."
+                    : "Control Live TV, the guide, recordings, apps and volume from your phone's browser, on your home network only.");
+        }
+        b.setPositiveButton(on ? "Turn off" : "Turn on", (d, w) -> {
+            RemoteServer.setEnabled(this, !on);
+            if (!on) showRemoteSetup();
+        }).setNegativeButton("Close", null).show();
+    }
+
+    /** Black-on-white QR code, size × size pixels, with the standard quiet zone. */
+    private static Bitmap qrCode(String text, int size) {
+        try {
+            com.google.zxing.common.BitMatrix m = new com.google.zxing.qrcode.QRCodeWriter()
+                    .encode(text, com.google.zxing.BarcodeFormat.QR_CODE, size, size);
+            int[] px = new int[size * size];
+            for (int y = 0; y < size; y++) for (int x = 0; x < size; x++) px[y * size + x] = m.get(x, y) ? Color.BLACK : Color.WHITE;
+            return Bitmap.createBitmap(px, size, size, Bitmap.Config.RGB_565);
+        } catch (com.google.zxing.WriterException e) {
+            return null;
+        }
     }
 
     /** City for the weather under the clock; empty turns it off. */

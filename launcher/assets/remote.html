@@ -202,7 +202,12 @@ async function search() {
 }
 
 function start() { $('nav').classList.remove('hide'); tab('remote'); }
-if (token) start(); else showPair();
+// Opened from the TV's QR code: the PIN rides along after the #, so pairing needs no typing.
+const qrPin = (location.hash.match(/pin=(\d{4})/) || [])[1];
+if (qrPin) history.replaceState(null, '', location.pathname);
+if (token) start();
+else if (qrPin) { $('pin').value = qrPin; pair(); }
+else showPair();
 setInterval(() => { if (!document.hidden && !$('tab-remote').classList.contains('hide')) state().catch(() => {}); }, 10000);
 </script>
 </body>
