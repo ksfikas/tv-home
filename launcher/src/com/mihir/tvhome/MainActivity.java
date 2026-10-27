@@ -117,8 +117,10 @@ public class MainActivity extends Activity {
     private final Map<String, ProgressBar> channelProgress = new HashMap<>();
     private List<String> shownChannels = Collections.emptyList();
     private long channelsLoadedAt, nowLoadedAt;
-    private boolean liveLoading;
+    private boolean liveLoading, isResumed;
     private String liveStateKey;
+    private final Runnable retryLive = () -> refreshLive(false);
+    static final long LIVE_RETRY_MS = 15 * 1000;
     static final long CHANNELS_TTL_MS = 15 * 60 * 1000, NOW_TTL_MS = 60 * 1000;
 
     private final BroadcastReceiver tick = new BroadcastReceiver() {
@@ -170,6 +172,7 @@ public class MainActivity extends Activity {
         registerReceiver(tick, tf);
         updateClock();
         updateWifi();
+        isResumed = true;
         refreshLive(false);
         View last = lastFocusedId == View.NO_ID ? null : findViewById(lastFocusedId);
         if (last == null && !dockCards.isEmpty()) last = dockCards.get(0);
@@ -186,6 +189,8 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(rotateWallpaper);
+        handler.removeCallbacks(retryLive);
+        isResumed = false;
         unregisterReceiver(tick);
         if (inputsPopup != null) inputsPopup.dismiss();
     }
@@ -677,10 +682,13 @@ public class MainActivity extends Activity {
         if (tvh == null) { showLiveState(null); return; }
         if (liveLoading) return;
         long now = SystemClock.elapsedRealtime();
-        boolean needChannels = force || channelCards.isEmpty() || now - channelsLoadedAt > CHANNELS_TTL_MS;
+        // shownChannels, not channelCards: a placeholder card ("Loading…", an error) is not a channel list.
+        boolean noChannels = shownChannels.isEmpty();
+        boolean needChannels = force || noChannels || now - channelsLoadedAt > CHANNELS_TTL_MS;
         if (!needChannels && now - nowLoadedAt < NOW_TTL_MS) return;
+        handler.removeCallbacks(retryLive);
         liveLoading = true;
-        if (channelCards.isEmpty()) showLiveState("Loading channels…");
+        if (noChannels) showLiveState("Loading channels…");
         Tvh.IO.execute(() -> {
             String error = null;
             List<Tvh.Channel> list = null;
@@ -695,7 +703,14 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 liveLoading = false;
                 if (isDestroyed()) return;
-                if (result == null) { if (channelCards.isEmpty()) showLiveState(err); return; }
+                if (result == null) {
+                    // Nothing to show yet (e.g. Wi-Fi still connecting after boot): keep trying while home is up.
+                    if (shownChannels.isEmpty()) {
+                        showLiveState(err);
+                        if (isResumed) handler.postDelayed(retryLive, LIVE_RETRY_MS);
+                    }
+                    return;
+                }
                 long t = SystemClock.elapsedRealtime();
                 nowLoadedAt = t;
                 if (needChannels) channelsLoadedAt = t;
