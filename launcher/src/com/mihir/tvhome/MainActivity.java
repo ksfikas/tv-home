@@ -113,7 +113,8 @@ public class MainActivity extends Activity {
     // Live TV row (Tvheadend).
     private LinearLayout liveSection, channelRow, radioSection, radioRow;
     private RowScroller channelScroll, radioScroll;
-    private final List<View> channelCards = new ArrayList<>(); // Guide, Recordings, then TV channels
+    private final List<View> channelCards = new ArrayList<>(); // TV channels (or the placeholder card)
+    private final List<View> actionCards = new ArrayList<>();  // Guide, Search, Recordings, Continue: the small 2×2 block before them
     private final List<View> radioCards = new ArrayList<>();
     private final Map<String, TextView> channelNow = new HashMap<>();
     private final Map<String, ProgressBar> channelProgress = new HashMap<>();
@@ -602,12 +603,30 @@ public class MainActivity extends Activity {
             int above = r == 0 ? (d > 0 ? dockCards.get(0).getId() : topId) : live.get(r - 1).get(0).getId();
             for (int i = 0; i < row.size(); i++) {
                 View c = row.get(i);
-                c.setNextFocusLeftId(i == 0 ? c.getId() : row.get(i - 1).getId());
+                // Left from the first TV channel reaches the small Guide/Search/… block.
+                int leftOfFirst = row == channelCards && !actionCards.isEmpty() ? actionCards.get(Math.min(1, actionCards.size() - 1)).getId() : c.getId();
+                c.setNextFocusLeftId(i == 0 ? leftOfFirst : row.get(i - 1).getId());
                 c.setNextFocusRightId(i == row.size() - 1 ? c.getId() : row.get(i + 1).getId());
                 c.setNextFocusUpId(above);
                 c.setNextFocusDownId(r + 1 < live.size() ? live.get(r + 1).get(0).getId()
                         : g > 0 ? gridCards.get(0).getId() : c.getId());
             }
+        }
+        // The 2×2 block: arrows move inside it; Right from its right column goes to the channels,
+        // Up from its top row to the dock, Down from its bottom row to the next row.
+        int a = actionCards.size();
+        View firstChannel = channelCards.isEmpty() ? null : channelCards.get(0);
+        View below = !radioCards.isEmpty() ? radioCards.get(0) : g > 0 ? gridCards.get(0) : null;
+        for (int i = 0; i < a; i++) {
+            View c = actionCards.get(i);
+            boolean leftCol = i % 2 == 0, topRow = i < 2;
+            c.setNextFocusLeftId(leftCol ? c.getId() : actionCards.get(i - 1).getId());
+            c.setNextFocusRightId(!leftCol || i + 1 >= a
+                    ? (firstChannel != null ? firstChannel.getId() : c.getId()) : actionCards.get(i + 1).getId());
+            c.setNextFocusUpId(topRow ? (d > 0 ? dockCards.get(0).getId() : topId) : actionCards.get(i - 2).getId());
+            c.setNextFocusDownId(i + 2 < a ? actionCards.get(i + 2).getId()
+                    : !topRow || a <= 2 ? (below != null ? below.getId() : c.getId())
+                    : actionCards.get(a - 1).getId());
         }
         int lastRow = (g - 1) / cols;
         for (int j = 0; j < g; j++) {
@@ -815,19 +834,29 @@ public class MainActivity extends Activity {
             channelRow.removeAllViews();
             radioRow.removeAllViews();
             channelCards.clear();
+            actionCards.clear();
             radioCards.clear();
             channelNow.clear();
             channelProgress.clear();
-            addTile(channelRow, actionTile("Guide", "☰", v -> launch(new Intent(this, GuideActivity.class)), channelCards), true, false);
+            List<String[]> labels = new ArrayList<>();
+            List<View.OnClickListener> clicks = new ArrayList<>();
+            labels.add(new String[]{"☰", "Guide"});
+            clicks.add(v -> launch(new Intent(this, GuideActivity.class)));
+            labels.add(new String[]{"⌕", "Search"});
+            clicks.add(v -> launch(new Intent(this, SearchActivity.class)));
+            labels.add(new String[]{"●", "Recordings"});
+            clicks.add(v -> launch(new Intent(this, RecordingsActivity.class)));
             if (cont != null) {
                 // Continue watching: the recording last stopped part-way.
                 String t = resume.getString("last_title", "Recording");
-                addTile(channelRow, actionTile(t + "  ·  " + resume.getInt("last_pct", 0) + "%", "▶",
-                        v -> launch(new Intent(this, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_RECORDING, cont)
-                                .putExtra(PlayerActivity.EXTRA_TITLE, t)), channelCards), false, false);
+                labels.add(new String[]{"▶", "Continue  " + t + "  ·  " + resume.getInt("last_pct", 0) + "%"});
+                clicks.add(v -> launch(new Intent(this, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_RECORDING, cont)
+                        .putExtra(PlayerActivity.EXTRA_TITLE, t)));
             }
-            addTile(channelRow, actionTile("Search", "⌕", v -> launch(new Intent(this, SearchActivity.class)), channelCards), false, false);
-            addTile(channelRow, actionTile("Recordings", "●", v -> launch(new Intent(this, RecordingsActivity.class)), channelCards), false, tv.isEmpty());
+            View block = actionBlock(labels, clicks);
+            LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(Math.round(tileWidth() * 9f / 16f), -2);
+            bp.setMargins(0, 0, dp(10), 0);
+            channelRow.addView(block, bp);
             for (int i = 0; i < tv.size(); i++) addTile(channelRow, channelTile(tv.get(i), channelCards), false, i == tv.size() - 1);
             for (int i = 0; i < radio.size(); i++) addTile(radioRow, channelTile(radio.get(i), radioCards), i == 0, i == radio.size() - 1);
             radioSection.setVisibility(radio.isEmpty() ? View.GONE : View.VISIBLE);
@@ -856,6 +885,7 @@ public class MainActivity extends Activity {
         channelRow.removeAllViews();
         radioRow.removeAllViews();
         channelCards.clear();
+        actionCards.clear();
         radioCards.clear();
         radioSection.setVisibility(View.GONE);
         channelNow.clear();
@@ -903,41 +933,50 @@ public class MainActivity extends Activity {
         row.addView(tile, p);
     }
 
-    /** Guide / Recordings: same card shape as a channel, with a glyph and a label. */
-    private View actionTile(String label, String glyph, View.OnClickListener onClick, List<View> into) {
+    /**
+     * Guide, Search, Recordings (and Continue) as small glyph buttons in a 2×2 block, as tall as a
+     * channel card, so the channels lead the row. The focused button's name shows underneath.
+     */
+    private View actionBlock(List<String[]> items, List<View.OnClickListener> clicks) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setClipChildren(false);
         box.setClipToPadding(false);
-        FrameLayout card = new AspectFrame(this);
-        card.setId(View.generateViewId());
-        card.setFocusable(true);
-        card.setClickable(true);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(10));
-        bg.setColor(0x33FFFFFF);
-        bg.setStroke(dp(2), 0x00FFFFFF);
-        card.setBackground(bg);
-        TextView g = text(30, "sans-serif-light", Color.WHITE);
-        g.setText(glyph);
-        g.setGravity(Gravity.CENTER);
-        card.addView(g, new FrameLayout.LayoutParams(-1, -1));
-        box.addView(card, new LinearLayout.LayoutParams(-1, -2));
-        TextView l = text(11, "sans-serif-medium", 0xE6FFFFFF);
-        l.setText(label);
-        l.setGravity(Gravity.CENTER);
-        l.setSingleLine(true);
-        l.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
-        box.addView(l, llp(-1, -2, 0, dp(10), 0, 0));
-        card.setOnClickListener(onClick);
-        card.setOnFocusChangeListener((v, has) -> {
-            bg.setStroke(dp(2), has ? 0xE6FFFFFF : 0x00FFFFFF);
-            v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).translationZ(has ? dp(14) : 0)
-                    .setInterpolator(has ? new OvershootInterpolator(1.8f) : new DecelerateInterpolator())
-                    .setDuration(has ? 320 : 200).start();
-            if (has) onChannelFocus(v);
-        });
-        into.add(card);
+        int side = Math.round(tileWidth() * 9f / 16f), gap = dp(6), cell = (side - gap) / 2;
+        TextView caption = text(11, "sans-serif-medium", 0xE6FFFFFF);
+        caption.setText(" ");
+        caption.setSingleLine(true);
+        caption.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout line = null;
+        for (int i = 0; i < items.size(); i++) {
+            if (i % 2 == 0) {
+                line = new LinearLayout(this);
+                line.setClipChildren(false);
+                box.addView(line, llp(-1, -2, 0, i == 0 ? 0 : gap, 0, 0));
+            }
+            String[] it = items.get(i);
+            TextView b = text(17, "sans-serif-light", 0xCCFFFFFF);
+            b.setText(it[0]);
+            b.setGravity(Gravity.CENTER);
+            b.setId(View.generateViewId());
+            b.setFocusable(true);
+            b.setClickable(true);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(dp(8));
+            bg.setColor(0x1FFFFFFF);
+            b.setBackground(bg);
+            b.setOnClickListener(clicks.get(i));
+            b.setOnFocusChangeListener((v, has) -> {
+                bg.setColor(has ? 0xF2FFFFFF : 0x1FFFFFFF);
+                b.setTextColor(has ? 0xFF111111 : 0xCCFFFFFF);
+                v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(160).start();
+                caption.setText(has ? it[1] : " ");
+                if (has) onChannelFocus(v);
+            });
+            line.addView(b, llp(cell, cell, i % 2 == 0 ? 0 : gap, 0, 0, 0));
+            actionCards.add(b);
+        }
+        box.addView(caption, llp(-1, -2, dp(2), dp(10), 0, 0));
         return box;
     }
 
@@ -1080,7 +1119,8 @@ public class MainActivity extends Activity {
                 : hero.getTop() + band.getTop() + dockRow.getTop() - dp(22);
         int max = Math.max(0, content.getHeight() - scroll.getHeight());
         scroll.smoothScrollTo(0, Math.max(0, Math.min(target, max)));
-        (inRadio ? radioScroll : channelScroll).reveal(card);
+        if (actionCards.contains(card)) channelScroll.smoothScrollTo(0, 0); // the small buttons start the row
+        else (inRadio ? radioScroll : channelScroll).reveal(card);
     }
 
     /** Same width as an app tile in the grid, so the channel row lines up with it. */

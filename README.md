@@ -20,7 +20,7 @@ separate TV client.
   it wallpapers.
 
 **Live TV** (this fork)
-- A **LIVE TV** row with every channel: logo, number, what's on now and a progress bar. Pick one
+- A **LIVE TV** row with every channel (Guide, Search, Recordings and Continue sit in a small block at its start: press Left): logo, number, what's on now and a progress bar. Pick one
   and it plays full screen on the box's **hardware decoders** (MPEG-2, H.264, HEVC, MP2, AAC, AC3).
 - **Guide**: a full-screen programme grid with channel logos, a "now" line and the selected
   programme's description. OK watches what's on or records what's coming.
