@@ -87,6 +87,7 @@ public class PlayerActivity extends Activity {
     private TextView bannerNumber, bannerName, bannerNow, bannerTimes, bannerNext;
     private ProgressBar bannerProgress;
     private LinearLayout radioPanel;
+    private final Spectrum.Tap spectrumTap = new Spectrum.Tap();
     private ImageView radioLogo;
     private TextView radioName, radioNow, radioNext;
     private FrameLayout listPanel;
@@ -247,7 +248,18 @@ public class PlayerActivity extends Activity {
     }
 
     private ExoPlayer buildPlayer() {
-        DefaultRenderersFactory renderers = new DefaultRenderersFactory(this).setEnableDecoderFallback(true);
+        // Decoded audio also flows past the radio spectrum tap (a no-op unless the radio screen is up).
+        DefaultRenderersFactory renderers = new DefaultRenderersFactory(this) {
+            @Override
+            protected androidx.media3.exoplayer.audio.AudioSink buildAudioSink(Context c, boolean floatOut, boolean trackParams) {
+                return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(c)
+                        .setEnableFloatOutput(floatOut)
+                        .setEnableAudioTrackPlaybackParams(trackParams)
+                        .setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{
+                                new androidx.media3.exoplayer.audio.TeeAudioProcessor(spectrumTap)})
+                        .build();
+            }
+        }.setEnableDecoderFallback(true);
         DefaultTrackSelector tracks = new DefaultTrackSelector(this);
         android.content.SharedPreferences prefs = Tvh.prefs(this);
         // Tunneled playback lets the Amlogic video pipeline handle A/V sync and deinterlacing itself.
@@ -713,6 +725,8 @@ public class PlayerActivity extends Activity {
         radioLogo = new ImageView(this);
         radioLogo.setScaleType(ImageView.ScaleType.FIT_CENTER);
         radioPanel.addView(radioLogo, new LinearLayout.LayoutParams(Ui.dp(this, 320), Ui.dp(this, 180)));
+        radioPanel.addView(new Spectrum.Bars(this, spectrumTap),
+                lp(Ui.dp(this, 680), Ui.dp(this, 150), 0, Ui.dp(this, 12), 0, Ui.dp(this, 22)));
         radioName = Ui.text(this, 30, "sans-serif-light", Color.WHITE);
         radioName.setGravity(Gravity.CENTER);
         radioPanel.addView(radioName);

@@ -1,132 +1,208 @@
-# tv-home
+# tv-home · Live TV edition
+
+**A fast, clean Apple TV-style home screen for Android TV, with live TV from your own
+[Tvheadend](https://tvheadend.org) server built right in:** channels on the home screen, a TV
+guide, recordings, radio with a live spectrum, and pausing live TV. One small app, no ads, no
+separate TV client.
 
 > Forked from [mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home). The launcher,
-> debloat tools and wallpapers are the original author's work (MIT).
->
-> **This fork adds Live TV from a [Tvheadend](https://tvheadend.org) server**, built into the
-> launcher. See [Live TV (Tvheadend)](#live-tv-tvheadend) below. The launcher now builds with
-> Gradle (`./gradlew :launcher:assembleRelease`) because playback uses AndroidX Media3, so
-> `launcher/build-and-install.sh` no longer works for this version.
+> the debloat tools and the wallpapers are the original author's work (MIT). This fork adds
+> everything Live TV, a Xiaomi TV Box S profile and Windows scripts.
 
-**Make a slow, ad-filled Android TV fast and clean again.** Debloat it over Wi-Fi and give it a
-tiny Apple TV-style home screen with rotating nature wallpapers. You can hand the whole thing to
-Claude Code with one prompt, or do it by hand with the scripts here.
+![Home screen: a dock of streaming apps, a Live TV row with Guide, Recordings and channel logos showing what's on, and a Radio row](docs/screenshots/home-live-tv.jpg)
 
-![Before: Google TV home with a sponsored hero. After: clean dock over a Lake Louise wallpaper](before-after.png)
+## What it does
 
-On a 2 GB TCL Google TV this disabled 25 bloat apps and cut the home screen's memory use from
-192 MB to 83 MB. Everything is reversible: packages are disabled, never uninstalled.
+**Home screen** (from the original)
+- A dock of your favourite apps under the clock, over rotating nature wallpapers, with a glow
+  coloured from the focused app. Every other app in a grid below.
+- Plain Android views, nothing running in the background. The whole APK is about 5.7 MB, most of
+  it wallpapers.
 
-## Do it with Claude Code (easiest)
+**Live TV** (this fork)
+- A **LIVE TV** row with every channel: logo, number, what's on now and a progress bar. Pick one
+  and it plays full screen on the box's **hardware decoders** (MPEG-2, H.264, HEVC, MP2, AAC, AC3).
+- **Guide**: a full-screen programme grid with channel logos, a "now" line and the selected
+  programme's description. OK watches what's on or records what's coming.
+- **Recordings**: what's recording, scheduled, recorded or failed. Play with seeking, cancel,
+  delete. Record from the guide or from the player.
+- **Radio**: stations get their own row and a calm now-playing screen with a **live spectrum**.
+- **Pause live TV**, then carry on from where you paused, or jump back to live.
+- **Audio and subtitle tracks**, with the language remembered from channel to channel.
+- **Favourites**: hold OK on a channel to pin it; the row then shows only your favourites, in your order.
+- **Hide apps** from the grid by holding OK on them.
+- Optional: start the last channel when the box boots.
 
-1. On the TV: Settings → System → About → press OK on **Build** 7 times → back → Developer options
-   → turn on **USB debugging**. Keep the TV on, on the same Wi-Fi as your computer.
-2. Clone this repo, open Claude Code inside it (so it can reuse the launcher and scripts), and paste:
+<table>
+<tr>
+<td><img src="docs/screenshots/guide.jpg" alt="TV guide grid with channel logos, programmes over two hours, a red now line and the selected programme's description"></td>
+<td><img src="docs/screenshots/radio.jpg" alt="Radio now-playing screen with a mirrored white spectrum above the station name, current show and next show"></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/record-from-guide.jpg" alt="Guide with a red dot on a programme set to record"></td>
+<td><img src="docs/screenshots/player-options.jpg" alt="Player options: Pause, Audio, Subtitles, Record this programme, TV guide, Recordings"></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/player-banner.jpg" alt="Info banner while watching: channel logo, number and name, programme, progress, what's next"></td>
+<td><img src="docs/screenshots/recordings.jpg" alt="Recordings screen with a scheduled recording"></td>
+</tr>
+</table>
 
-   ```text
-   My Android TV is slow and full of ads. Find it on my Wi-Fi, connect over ADB, and debloat it:
-   disable the manufacturer's ads, telemetry and junk (reversibly, never uninstall), asking me first
-   about apps and features I might use. Then build and install a fast, minimal Apple TV-style home
-   screen with a dock of my favourite apps and rotating nature wallpapers. Back up before changing
-   anything, check every step with screenshots from the TV, and give me a restore script.
+<sub>The video picture is missing from the screenshots on purpose: the box draws hardware-decoded
+video on its own layer, which screenshots don't capture.</sub>
 
-   Heads-up from people who've done this: use the adb-shell Python package if macOS blocks adb; on
-   Google TV also disable com.google.android.tungsten.setupwraith or it hijacks the Home button; and
-   test the Home button from inside an app.
+## Remote control
+
+| Where | Button | Does |
+|---|---|---|
+| Home | OK on a channel | Watch it |
+| | Hold OK on a channel | Favourites (add, remove, reorder), Live TV setup |
+| | Hold OK on an app in the grid | Hide it (bring back: *Inputs → Show hidden apps*) |
+| Watching TV | Up / Down, Channel ± | Next / previous channel |
+| | Left | Back to the previous channel |
+| | Right, Info | Now/next banner |
+| | OK | Channel list |
+| | Hold OK, Menu | Options: pause, back to live, audio, subtitles, record, guide, recordings |
+| | Play/Pause | Pause or resume live TV |
+| | 0–9 | Tune by number |
+| Guide | Arrows | Move around; more of the schedule loads as you go right |
+| | OK | Watch (on now) or record / cancel (later) |
+| | Hold OK | Record what's on now |
+| Recordings | OK, hold OK | Play (or cancel if scheduled), delete |
+| Playing a recording | Left / Right, Up / Down | Back / forward 30 s, 5 min |
+| | OK | Pause |
+
+## Install
+
+1. **Turn on debugging on the TV**: Settings → System → About → press OK on **Build** 7 times,
+   then Developer options → **USB debugging** (and **Network debugging** if your box has it).
+2. **Get the APK**: download `tv-home.apk` from [Releases](../../releases), or build it:
+
+   ```bash
+   ./gradlew :launcher:assembleRelease     # JDK 17 + Android SDK (platform 34)
    ```
 
-3. Accept "Allow USB debugging?" on the TV when asked, then answer a few questions: which apps you
-   use, which go in the dock, whether you want wallpapers.
+3. **Install it and make it the home screen** (Google TV):
 
-The prompt is short on purpose; Claude works out the details. The gotchas below are there in case it gets stuck.
+   ```bash
+   adb connect <tv-ip>:5555                                   # accept the prompt on the TV
+   adb install -r tv-home.apk
+   adb shell pm grant com.mihir.tvhome android.permission.ACCESS_FINE_LOCATION   # Wi-Fi name only
+   adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx       # stock launcher
+   adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith    # else it grabs Home
+   adb shell cmd package set-home-activity --user 0 com.mihir.tvhome/.MainActivity
+   ```
 
-## Do it by hand (macOS)
+   Undo with `tools/restore.sh` (macOS/Linux) or `tools/windows/restore.ps1` (Windows).
+
+4. **Connect Live TV**: on the home screen, select **Set up Live TV** (or *Inputs → Live TV
+   setup…*), enter `http://<server>:9981` and your Tvheadend username and password, and Save. It
+   checks the login right away.
+
+Then turn debugging off again when you're done: while it's on, anyone you've approved can run
+commands on the TV.
+
+### Tvheadend tips
+
+- Your Tvheadend user needs **streaming** rights, plus **video recorder** rights for recordings.
+- Channel logos come from Tvheadend. If the server's picon path points somewhere without your
+  channels, logos won't load; set each channel's *icon* to a URL instead. The community
+  [tv-logo/tv-logos](https://github.com/tv-logo/tv-logos) set covers many countries.
+- Radio stations are recognised by Tvheadend's own *Radio channels* tag.
+
+## How it stays light
+
+The box this was built on has 2 GB of RAM, so every feature had to earn its place.
+
+- **No extra UI libraries.** Everything is drawn with plain Android views. The guide is one
+  custom-drawn view, not hundreds of widgets, and the only dependency is Media3 ExoPlayer for playback.
+- **Nothing in the background.** The player is released the moment you leave it. The home row
+  refreshes what's on only while it's on screen.
+- **Streams go untouched.** Tvheadend's `pass` profile sends the broadcast as-is, so the server
+  doesn't transcode and the box decodes in hardware.
+- **Pause costs nothing until you pause.** The stream runs through a small in-memory buffer.
+  Only while paused does it spill to a temp file, capped at 700 MB (or the free space minus
+  400 MB), and the file is deleted when you go back to live or leave.
+- **The spectrum** taps the decoded audio the player already has (no microphone permission) and
+  runs only while the radio screen is visible.
+- **Logos** are cached on disk, and in memory at exactly the size they're drawn.
+- **Logins** use Digest auth. Live streams use Tvheadend's short-lived ticket links, so the player
+  never holds your password. The login is stored only in the app's private storage on the TV.
+
+Measured on a Xiaomi TV Box S (2nd Gen): about 98 MB for the whole launcher on the home screen
+with both rows of logos, and about 86 MB while playing HD.
+
+## Debloating
+
+The original project's tools work as before. Lists are per model in [examples/](examples/); see
+[examples/xiaomi-tv-box-s-gen2](examples/xiaomi-tv-box-s-gen2/debloat.txt) for the box this fork
+was built on (telemetry, Google TV's ambient ads, optional Xiaomi extras).
 
 ```bash
-./setup.sh                                                  # Python ADB client, JDK 17, Android SDK
-tools/find-tv.sh                                            # finds the TV, saves its IP
-tools/venv/bin/python -I tools/tv.py --probe                # model, Android version
-tools/disable.sh examples/tcl-google-tv-g07/debloat.txt     # or your own list, see examples/
-launcher/build-and-install.sh                               # build + install the launcher
+tools/disable.sh examples/xiaomi-tv-box-s-gen2/debloat.txt          # macOS / Linux
+.\tools\windows\debloat.ps1 examples\xiaomi-tv-box-s-gen2\debloat.txt   # Windows (adb on PATH)
 ```
 
-Undo everything with `tools/restore.sh <the same list>`.
+Undo with `tools/restore.sh` or `tools/windows/restore.ps1` and the same list. Everything is
+disabled for user 0, never uninstalled, and a factory reset brings it all back.
+
+On that box, the whole clean-up (debloat, launcher swap, 0.5× animations, cleared caches, unused
+apps removed) took free memory from about **535 MB to 940 MB** after a restart, and free storage
+from 1.1 GB to 1.9 GB.
+
+### With Claude Code
+
+This fork was built in a Claude Code session, the same way the original suggests. Clone the repo,
+open Claude Code in it, and describe your TV. The original prompt is in [PROMPT.md](PROMPT.md).
 
 ## What's here
 
 | Path | What it is |
 |---|---|
-| [PROMPT.md](PROMPT.md) | The prompt for Claude Code / any coding agent |
-| [launcher/](launcher/) | The home screen. 4.7 MB including the wallpapers; plain Android, no network, no background services |
-| [launcher/res/values/config.xml](launcher/res/values/config.xml) | Dock apps, hidden apps, Live TV app, grid columns |
-| [tools/tv.py](tools/tv.py) | Pure-Python ADB client: shell, batch, screenshots, chunked APK push |
-| [tools/find-tv.sh](tools/find-tv.sh) | Finds Android TVs on your Wi-Fi |
-| [tools/type.sh](tools/type.sh) | Type into the TV's on-screen keyboard from your laptop (`tools/type.sh` alone prompts hidden, for passwords) |
-| [tools/disable.sh](tools/disable.sh), [tools/restore.sh](tools/restore.sh) | Apply / undo a debloat list |
+| [launcher/](launcher/) | The app: home screen, Live TV, guide, recordings, player |
+| [launcher/res/values/config.xml](launcher/res/values/config.xml) | Dock apps, hidden apps, grid columns |
 | [examples/](examples/) | Debloat lists per TV model |
+| [tools/](tools/) | ADB helpers and the debloat/restore scripts (macOS/Linux) |
+| [tools/windows/](tools/windows/) | The debloat/restore scripts for Windows |
+| [.github/workflows/build.yml](.github/workflows/build.yml) | Builds the APK on every push; tag `v*` to publish a release |
+| [PROMPT.md](PROMPT.md) | The original Claude Code prompt |
 
-## The launcher
+## Gotchas
 
-- Clock, greeting and date top-left. Frosted pills top-right for **Inputs** (HDMI/AV/Live TV
-  dropdown; the remote's Menu key opens it too), **Wi-Fi** (shows the network name) and **Settings**.
-- A dock of your favourite apps. The focused app's name appears above it over a glow coloured from
-  its banner. Press Down for every other app in a grid.
-- 12 nature photos crossfade every 10 minutes, with a scrim so text stays readable. Swap them in
-  `launcher/assets/wallpapers/` (1920×1080 JPEGs, credits in `launcher/WALLPAPER-CREDITS.md`).
-- Deterministic D-pad focus, remembers the last tile, picks up newly installed apps on return.
+From this fork:
+- **Netflix doesn't exit on Back.** Netflix's TV app consumes Back on its own home screen; use
+  Home (or Netflix's *Exit* item). A launcher can't change this.
+- **Back from an app opened outside the launcher** (from a cast, say) returns to the previous app,
+  not home. That's standard Android task behaviour; Home always works.
+- **Long-press in tests.** `adb shell input keyevent --longpress` doesn't trigger long-click on
+  ordinary views, which time a real held button. The player and guide read key events directly,
+  so they handle both.
+- **Recordings need the login per request.** Tvheadend's ticketed recordings playlist only lists
+  finished recordings, so the player signs each (seeking) request with Digest auth instead.
+- **Channel logos missing?** Usually the server's picon path, not the launcher: see
+  *Tvheadend tips* above.
 
-Change the dock: edit `config.xml`, then run `launcher/build-and-install.sh`.
-
-## Live TV (Tvheadend)
-
-- A **LIVE TV** row under the dock lists the server's enabled channels in number order, each with
-  what's on now and a progress bar. Select a channel to watch it full screen.
-- **Set up:** select *Set up Live TV* on that row (or *Inputs → Live TV setup…*) and enter the server
-  address (`http://<server>:9981`), username and password. Digest (Tvheadend's default) and Basic
-  logins both work. The login stays in the app's private storage on the TV.
-- **While watching:** Up/Down or Channel ± zap, Left goes back to the previous channel, OK opens
-  the channel list, Right/Info shows the now/next banner, number keys tune directly, Back returns home.
-- Streams use Tvheadend's `pass` profile (no transcoding) with short-lived ticket URLs, and play
-  through the box's hardware decoders via Media3 ExoPlayer. The player is released when you leave
-  it, so it uses no memory while you're on the home screen.
-- Optional: *Start the last channel after the box restarts*.
-- Channel logos come from Tvheadend's `icon_public_url`. If they don't appear, check the picon path
-  in Tvheadend's settings.
-
-Build and install:
-
-```bash
-./gradlew :launcher:assembleRelease
-adb install -r launcher/build/outputs/apk/release/launcher-release.apk
-```
-
-Tested on: Xiaomi TV Box S (2nd Gen), Android 14, Tvheadend 4.3.
-
-## Gotchas we hit
-
-- **macOS blocks the `adb` binary** on the local network ("No route to host"). `tools/tv.py` uses
-  the `adb-shell` Python package instead.
+From the original:
 - **Google TV hijacks the Home button.** With the stock launcher disabled, the setup app
-  (`com.google.android.tungsten.setupwraith`) has a higher HOME priority than any third-party
-  launcher. The install script disables it; `restore.sh` re-enables it.
-- **Home opened the launcher behind the current app**, because of a stale home task from switching
-  launchers. Force-stopping the launcher and `com.android.tv.settings` and pressing Home fixes it.
-  The install script does this.
+  (`com.google.android.tungsten.setupwraith`) outranks any third-party launcher. Disable it too.
 - **Chained `pm` commands** (`pm disable a; pm disable b`) can silently stop after the first. The
-  scripts run one per shell call.
-- **Apps installed from the Play Store didn't appear**, because the package broadcast was missed
-  while another app was in front. The launcher re-checks with `getChangedPackages` on every return.
-- **Unsplash blocks scripted downloads** with a bot check. The wallpapers come from Wikimedia
-  Commons Featured Pictures instead.
+  scripts run one per call.
+- **macOS blocks the `adb` binary** on the local network. `tools/tv.py` uses the `adb-shell`
+  Python package instead.
+- **Apps installed from the Play Store didn't appear**, because the package broadcast was missed.
+  The launcher re-checks on every return.
 
-## Supported TVs
+## Tested on
 
-Android TV and Google TV: TCL, Xiaomi/Redmi, Hisense, Sony, OnePlus, Realme, Nvidia Shield,
-Chromecast with Google TV and most others. Not Samsung (Tizen), LG (webOS) or Fire TV.
-Tested on: TCL Google TV (Android 11). Add yours to `examples/`.
+- Xiaomi TV Box S (2nd Gen), Google TV, Android 14, with Tvheadend 4.3 (Greek DVB-T: ERT, Digea).
+- TCL Google TV, Android 11 (the original project).
 
 ## Credits
 
-Inspired by [Gathin23/tv-vibehack](https://github.com/Gathin23/tv-vibehack). Wallpaper photos are
-from Wikimedia Commons under their own licences, see
-[launcher/WALLPAPER-CREDITS.md](launcher/WALLPAPER-CREDITS.md). Code is MIT, see [LICENSE](LICENSE).
+The launcher, debloat tools and wallpapers are by
+[mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home), inspired by
+[Gathin23/tv-vibehack](https://github.com/Gathin23/tv-vibehack). Wallpaper photos are from
+Wikimedia Commons under their own licences, see
+[launcher/WALLPAPER-CREDITS.md](launcher/WALLPAPER-CREDITS.md). Channel logos are not included;
+they come from your Tvheadend server. Playback uses [AndroidX Media3](https://github.com/androidx/media).
+Code is MIT, see [LICENSE](LICENSE).

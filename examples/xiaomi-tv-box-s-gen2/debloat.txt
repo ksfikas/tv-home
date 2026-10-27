@@ -1,0 +1,25 @@
+# Xiaomi TV Box S (2nd Gen), model MiTV-AFKR0, Google TV, Android 14, Amlogic S905X4, 2 GB RAM
+# Apply: tools/disable.sh examples/xiaomi-tv-box-s-gen2/debloat.txt   Undo: tools/restore.sh <same file>
+# Windows: tools/windows/debloat.ps1 / tools/windows/restore.ps1 with this file.
+# Everything is DISABLED for user 0, never uninstalled. A factory reset re-enables it all.
+#
+# Before disabling the ambient screensaver, point the screensaver at Android's own:
+#   adb shell settings put secure screensaver_components com.android.dreams.basic/.Colors
+# The stock launcher (launcherx) and Google's setup app (setupwraith) are handled when the
+# launcher is installed, not here; see the README.
+#
+# Left alone on purpose: mitv.service, xiaomi.tvservice, com.xiaomi.mitv.updateservice
+# (firmware security updates), Play Store, Play Services, the keyboard, Wi-Fi and HDMI services.
+
+# Telemetry
+com.xiaomi.statistic                     # Xiaomi statistics collector
+com.miui.tv.analytics                    # MIUI TV analytics
+
+# Ads
+com.google.android.apps.tv.dreamx        # Google TV ambient mode ("Backdrop"), shows promoted content
+
+# Xiaomi extras: comment out any you use
+com.mitv.tvhome.mitvplus                 # Mi TV+ free ad-supported channels
+com.xiaomi.android.tvsetup.partnercustomizer  # partner branding / promo rows
+com.mitv.gallery                         # Mi photo gallery
+com.xiaomi.mitv.mediaexplorer            # USB and network media player

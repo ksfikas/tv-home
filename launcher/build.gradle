@@ -36,13 +36,27 @@ android {
         disable "ExpiredTargetSdkVersion"
     }
 
+    // Sideloaded, so any stable key works; what matters is that every build uses the same one, or an
+    // update won't install over the previous version. CI passes the key in through these variables
+    // (from repository secrets); local builds without them use this machine's debug key.
+    signingConfigs {
+        release {
+            def ks = System.getenv("TVHOME_KEYSTORE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("TVHOME_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("TVHOME_KEY_ALIAS")
+                keyPassword System.getenv("TVHOME_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt")
-            // Personal sideload build: sign with the local debug key.
-            signingConfig signingConfigs.debug
+            signingConfig System.getenv("TVHOME_KEYSTORE") ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
