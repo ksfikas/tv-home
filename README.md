@@ -1,5 +1,10 @@
 # tv-home
 
+> **This fork adds Live TV from a [Tvheadend](https://tvheadend.org) server**, built into the
+> launcher. See [Live TV (Tvheadend)](#live-tv-tvheadend) below. The launcher now builds with
+> Gradle (`./gradlew :launcher:assembleRelease`) because playback uses AndroidX Media3, so
+> `launcher/build-and-install.sh` no longer works for this version.
+
 **Make a slow, ad-filled Android TV fast and clean again.** Debloat it over Wi-Fi and give it a
 tiny Apple TV-style home screen with rotating nature wallpapers. You can hand the whole thing to
 Claude Code with one prompt, or do it by hand with the scripts here.
@@ -68,6 +73,31 @@ Undo everything with `tools/restore.sh <the same list>`.
 - Deterministic D-pad focus, remembers the last tile, picks up newly installed apps on return.
 
 Change the dock: edit `config.xml`, then run `launcher/build-and-install.sh`.
+
+## Live TV (Tvheadend)
+
+- A **LIVE TV** row under the dock lists the server's enabled channels in number order, each with
+  what's on now and a progress bar. Select a channel to watch it full screen.
+- **Set up:** select *Set up Live TV* on that row (or *Inputs → Live TV setup…*) and enter the server
+  address (`http://<server>:9981`), username and password. Digest (Tvheadend's default) and Basic
+  logins both work. The login stays in the app's private storage on the TV.
+- **While watching:** Up/Down or Channel ± zap, Left goes back to the previous channel, OK opens
+  the channel list, Right/Info shows the now/next banner, number keys tune directly, Back returns home.
+- Streams use Tvheadend's `pass` profile (no transcoding) with short-lived ticket URLs, and play
+  through the box's hardware decoders via Media3 ExoPlayer. The player is released when you leave
+  it, so it uses no memory while you're on the home screen.
+- Optional: *Start the last channel after the box restarts*.
+- Channel logos come from Tvheadend's `icon_public_url`. If they don't appear, check the picon path
+  in Tvheadend's settings.
+
+Build and install:
+
+```bash
+./gradlew :launcher:assembleRelease
+adb install -r launcher/build/outputs/apk/release/launcher-release.apk
+```
+
+Tested on: Xiaomi TV Box S (2nd Gen), Android 14, Tvheadend 4.3.
 
 ## Gotchas we hit
 

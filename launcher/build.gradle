@@ -1,0 +1,53 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.mihir.tvhome"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.mihir.tvhome"
+        minSdk 30
+        targetSdk 30
+        versionCode 2
+        versionName "2.0-tvh"
+    }
+
+    // Keep the original flat layout: launcher/{AndroidManifest.xml,src,res,assets}.
+    sourceSets {
+        main {
+            manifest.srcFile "AndroidManifest.xml"
+            java.srcDirs = ["src"]
+            res.srcDirs = ["res"]
+            assets.srcDirs = ["assets"]
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    lint {
+        // Media3's @UnstableApi opt-in check is Kotlin-oriented; plain Java callers trip it.
+        disable "UnsafeOptInUsageError"
+        // Sideloaded, never published to Play; targetSdk 30 matches the original launcher.
+        disable "ExpiredTargetSdkVersion"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt")
+            // Personal sideload build: sign with the local debug key.
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+dependencies {
+    // Live TV playback (hardware decoding through MediaCodec). No UI module: the player draws on a plain SurfaceView.
+    implementation "androidx.media3:media3-exoplayer:1.4.1"
+}

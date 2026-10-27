@@ -36,10 +36,17 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.app.AlertDialog;
+import android.text.InputType;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.text.SimpleDateFormat;
@@ -57,7 +64,8 @@ import java.util.Set;
 /**
  * Apple TV style home screen: clock top-left, pills top-right, the focused dock app's name over an
  * ambient glow, a dock of pinned apps, and every other app in a grid that scrolls up on Down.
- * Plain framework views only (no AndroidX), no network, no background work.
+ * Plain framework views only (no AndroidX), no background work. The only network use is the
+ * Live TV row, which talks to the user's own Tvheadend server (see Tvh) while home is on screen.
  */
 public class MainActivity extends Activity {
 
@@ -101,8 +109,20 @@ public class MainActivity extends Activity {
     private int packageSeq;
     private PopupWindow inputsPopup;
 
+    // Live TV row (Tvheadend).
+    private LinearLayout liveSection, channelRow;
+    private HorizontalScrollView channelScroll;
+    private final List<View> channelCards = new ArrayList<>();
+    private final Map<String, TextView> channelNow = new HashMap<>();
+    private final Map<String, ProgressBar> channelProgress = new HashMap<>();
+    private List<String> shownChannels = Collections.emptyList();
+    private long channelsLoadedAt, nowLoadedAt;
+    private boolean liveLoading;
+    private String liveStateKey;
+    static final long CHANNELS_TTL_MS = 15 * 60 * 1000, NOW_TTL_MS = 60 * 1000;
+
     private final BroadcastReceiver tick = new BroadcastReceiver() {
-        @Override public void onReceive(Context c, Intent i) { updateClock(); updateWifi(); }
+        @Override public void onReceive(Context c, Intent i) { updateClock(); updateWifi(); tickLive(); }
     };
     private final BroadcastReceiver packages = new BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) { buildApps(); }
@@ -124,6 +144,13 @@ public class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setContentView(buildUi());
         buildApps();
+        showLiveState(null);
+        // Just booted and Live TV is set to resume: go straight back to the last channel.
+        if (b == null && SystemClock.elapsedRealtime() < 4 * 60 * 1000 && Tvh.get(this) != null
+                && Tvh.prefs(this).getBoolean("autoplay", false)
+                && Tvh.prefs(this).getString("last_channel", null) != null) {
+            launch(new Intent(this, PlayerActivity.class));
+        }
 
         IntentFilter pf = new IntentFilter();
         pf.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -143,6 +170,7 @@ public class MainActivity extends Activity {
         registerReceiver(tick, tf);
         updateClock();
         updateWifi();
+        refreshLive(false);
         View last = lastFocusedId == View.NO_ID ? null : findViewById(lastFocusedId);
         if (last == null && !dockCards.isEmpty()) last = dockCards.get(0);
         if (last != null) last.requestFocus();
@@ -255,6 +283,28 @@ public class MainActivity extends Activity {
         band.setStroke(dp(1), 0x14FFFFFF);
         dockRow.setBackground(band);
         bottom.addView(dockRow, new LinearLayout.LayoutParams(-1, -2));
+
+        // Live TV: one horizontal row of Tvheadend channels between the dock and the app grid.
+        liveSection = new LinearLayout(this);
+        liveSection.setOrientation(LinearLayout.VERTICAL);
+        liveSection.setClipChildren(false);
+        liveSection.setClipToPadding(false);
+        TextView liveLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
+        liveLabel.setText("LIVE TV");
+        liveLabel.setLetterSpacing(0.22f);
+        liveSection.addView(liveLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
+        channelScroll = new HorizontalScrollView(this);
+        channelScroll.setHorizontalScrollBarEnabled(false);
+        channelScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        channelScroll.setClipChildren(false);
+        channelScroll.setClipToPadding(false);
+        channelScroll.setPadding(dp(68), dp(14), dp(68), dp(14));
+        channelRow = new LinearLayout(this);
+        channelRow.setClipChildren(false);
+        channelRow.setClipToPadding(false);
+        channelScroll.addView(channelRow, new FrameLayout.LayoutParams(-2, -2));
+        liveSection.addView(channelScroll, new LinearLayout.LayoutParams(-1, -2));
+        content.addView(liveSection, llp(-1, -2, 0, 0, 0, dp(30)));
 
         appsLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
         appsLabel.setText("ALL APPS");
@@ -490,7 +540,7 @@ public class MainActivity extends Activity {
 
     /** Explicit D-pad targets: one row per press, ends of rows and of the top bar don't wrap. */
     private void wireFocus() {
-        int d = dockCards.size(), g = gridCards.size();
+        int d = dockCards.size(), g = gridCards.size(), ch = channelCards.size();
         for (int i = 0; i < pills.size(); i++) {
             View p = pills.get(i);
             p.setNextFocusLeftId(i == 0 ? p.getId() : pills.get(i - 1).getId());
@@ -504,14 +554,23 @@ public class MainActivity extends Activity {
             c.setNextFocusUpId(topId);
             c.setNextFocusLeftId(i == 0 ? c.getId() : dockCards.get(i - 1).getId());
             c.setNextFocusRightId(i == d - 1 ? c.getId() : dockCards.get(i + 1).getId());
-            c.setNextFocusDownId(g > 0 ? gridCards.get(Math.min(i, g - 1)).getId() : c.getId());
+            c.setNextFocusDownId(ch > 0 ? channelCards.get(0).getId()
+                    : g > 0 ? gridCards.get(Math.min(i, g - 1)).getId() : c.getId());
+        }
+        // Channel row: one line, Up to the dock, Down to the apps. Its own scroller keeps the focused card in view.
+        for (int i = 0; i < ch; i++) {
+            View c = channelCards.get(i);
+            c.setNextFocusLeftId(i == 0 ? c.getId() : channelCards.get(i - 1).getId());
+            c.setNextFocusRightId(i == ch - 1 ? c.getId() : channelCards.get(i + 1).getId());
+            c.setNextFocusUpId(d > 0 ? dockCards.get(0).getId() : topId);
+            c.setNextFocusDownId(g > 0 ? gridCards.get(0).getId() : c.getId());
         }
         int lastRow = (g - 1) / cols;
         for (int j = 0; j < g; j++) {
             View c = gridCards.get(j);
             int r = j / cols, col = j % cols;
             c.setNextFocusUpId(r == 0
-                    ? (d > 0 ? dockCards.get(Math.min(col, d - 1)).getId() : topId)
+                    ? (ch > 0 ? channelCards.get(0).getId() : d > 0 ? dockCards.get(Math.min(col, d - 1)).getId() : topId)
                     : gridCards.get(j - cols).getId());
             c.setNextFocusDownId(j + cols < g ? gridCards.get(j + cols).getId()
                     : r < lastRow ? gridCards.get(g - 1).getId() : c.getId());
@@ -526,7 +585,8 @@ public class MainActivity extends Activity {
         int screenH = getResources().getDisplayMetrics().heightPixels;
         // First grid row: slide the dock band up to the top edge; later rows centre on screen.
         View band = (View) dockRow.getParent();
-        int target = grid.indexOfChild(row) == 0
+        // With the Live TV row in place, that slot belongs to the channels and every app row centres.
+        int target = grid.indexOfChild(row) == 0 && channelCards.isEmpty()
                 ? hero.getTop() + band.getTop() + dockRow.getTop() - dp(22)
                 : y - (int) (screenH * 0.42f);
         int max = Math.max(0, content.getHeight() - scroll.getHeight());
@@ -562,9 +622,9 @@ public class MainActivity extends Activity {
             }));
         }
         if (isInstalled(liveTvPkg)) rows.add(inputRow("Live TV", () -> openPackage(liveTvPkg)));
+        rows.add(inputRow("Live TV setup…", this::showLiveSetup));
         if (inputs.isEmpty() && isInstalled(inputPickerPkg)) rows.add(inputRow("All sources…", () -> openPackage(inputPickerPkg)));
 
-        if (rows.isEmpty()) rows.add(inputRow("Settings", () -> launch(new Intent(Settings.ACTION_SETTINGS))));
         for (TextView r : rows) {
             r.setOnClickListener(v -> { pw.dismiss(); ((Runnable) v.getTag()).run(); });
             list.addView(r, new LinearLayout.LayoutParams(-1, dp(36)));
@@ -607,6 +667,301 @@ public class MainActivity extends Activity {
             r.setTextColor(has ? 0xFF111111 : Color.WHITE);
         });
         return r;
+    }
+
+    // ---------------------------------------------------------------- live tv
+
+    /** Reload channels (every 15 min) or just what's on now (every minute) while home is showing. */
+    private void refreshLive(boolean force) {
+        Tvh tvh = Tvh.get(this);
+        if (tvh == null) { showLiveState(null); return; }
+        if (liveLoading) return;
+        long now = SystemClock.elapsedRealtime();
+        boolean needChannels = force || channelCards.isEmpty() || now - channelsLoadedAt > CHANNELS_TTL_MS;
+        if (!needChannels && now - nowLoadedAt < NOW_TTL_MS) return;
+        liveLoading = true;
+        if (channelCards.isEmpty()) showLiveState("Loading channels…");
+        Tvh.IO.execute(() -> {
+            String error = null;
+            List<Tvh.Channel> list = null;
+            try {
+                if (needChannels) list = tvh.loadChannels();
+                else { list = new ArrayList<>(Tvh.channels); tvh.fillNow(list); }
+            } catch (java.io.IOException e) {
+                error = e.getMessage();
+            }
+            List<Tvh.Channel> result = list;
+            String err = error;
+            runOnUiThread(() -> {
+                liveLoading = false;
+                if (isDestroyed()) return;
+                if (result == null) { if (channelCards.isEmpty()) showLiveState(err); return; }
+                long t = SystemClock.elapsedRealtime();
+                nowLoadedAt = t;
+                if (needChannels) channelsLoadedAt = t;
+                if (result.isEmpty()) { showLiveState("No channels on the Tvheadend server"); return; }
+                showChannels(result);
+            });
+        });
+    }
+
+    /** Called every minute: move the progress bars, and fetch the next programmes once one ends. */
+    private void tickLive() {
+        long nowSec = System.currentTimeMillis() / 1000;
+        boolean ended = false;
+        for (Tvh.Channel ch : Tvh.channels) {
+            ProgressBar p = channelProgress.get(ch.uuid);
+            if (p != null && ch.now != null) p.setProgress((int) (ch.now.progress(nowSec) * 1000));
+            if (ch.now != null && ch.now.stop <= nowSec) ended = true;
+        }
+        if (ended || SystemClock.elapsedRealtime() - nowLoadedAt > 5 * NOW_TTL_MS) refreshLive(false);
+    }
+
+    /** Rebuild the row only when the channel line-up changed; otherwise update the text in place. */
+    private void showChannels(List<Tvh.Channel> list) {
+        List<String> ids = new ArrayList<>();
+        for (Tvh.Channel ch : list) ids.add(ch.uuid);
+        if (!ids.equals(shownChannels)) {
+            View focused = getCurrentFocus();
+            int focusedChannel = channelCards.indexOf(focused);
+            channelRow.removeAllViews();
+            channelCards.clear();
+            channelNow.clear();
+            channelProgress.clear();
+            for (int i = 0; i < list.size(); i++) {
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(tileWidth(), -2);
+                p.setMargins(i == 0 ? 0 : dp(10), 0, i == list.size() - 1 ? 0 : dp(10), 0);
+                channelRow.addView(channelTile(list.get(i)), p);
+            }
+            shownChannels = ids;
+            wireFocus();
+            if (focusedChannel >= 0 && !channelCards.isEmpty()) {
+                channelCards.get(Math.min(focusedChannel, channelCards.size() - 1)).requestFocus();
+            }
+        }
+        long nowSec = System.currentTimeMillis() / 1000;
+        for (Tvh.Channel ch : list) {
+            TextView t = channelNow.get(ch.uuid);
+            ProgressBar p = channelProgress.get(ch.uuid);
+            if (t == null || p == null) continue;
+            t.setText(ch.now == null ? " " : ch.now.title);
+            p.setVisibility(ch.now == null ? View.INVISIBLE : View.VISIBLE);
+            if (ch.now != null) p.setProgress((int) (ch.now.progress(nowSec) * 1000));
+        }
+    }
+
+    /** One placeholder card for "not set up", "loading" or an error; selecting it opens setup or retries. */
+    private void showLiveState(String message) {
+        boolean configured = Tvh.get(this) != null;
+        String key = configured + "|" + message;
+        if (key.equals(liveStateKey) && shownChannels.isEmpty() && !channelCards.isEmpty()) return;
+        liveStateKey = key;
+        channelRow.removeAllViews();
+        channelCards.clear();
+        channelNow.clear();
+        channelProgress.clear();
+        shownChannels = Collections.emptyList();
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        FrameLayout card = new AspectFrame(this);
+        card.setId(View.generateViewId());
+        card.setFocusable(true);
+        card.setClickable(true);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(10));
+        bg.setColor(0xFF1C1C1E);
+        bg.setStroke(dp(2), 0x00FFFFFF);
+        card.setBackground(bg);
+        TextView t = text(13, "sans-serif-medium", Color.WHITE);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(14), 0, dp(14), 0);
+        t.setText(!configured ? "▶  Set up Live TV" : message != null ? message : "Loading channels…");
+        card.addView(t, new FrameLayout.LayoutParams(-1, -1));
+        card.setOnClickListener(v -> { if (configured) refreshLive(true); else showLiveSetup(); });
+        card.setOnLongClickListener(v -> { showLiveSetup(); return true; });
+        card.setOnFocusChangeListener((v, has) -> {
+            bg.setStroke(dp(2), has ? 0xE6FFFFFF : 0x00FFFFFF);
+            v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(200).start();
+            if (has) onChannelFocus(v);
+        });
+        box.addView(card, new LinearLayout.LayoutParams(-1, -2));
+        if (configured && message != null && !message.startsWith("Loading")) {
+            TextView hint = text(11, "sans-serif", 0x99FFFFFF);
+            hint.setText("OK to retry · hold OK for setup");
+            hint.setGravity(Gravity.CENTER);
+            box.addView(hint, llp(-1, -2, 0, dp(10), 0, 0));
+        }
+        channelRow.addView(box, new LinearLayout.LayoutParams(Math.round(tileWidth() * 1.6f), -2));
+        channelCards.add(card);
+        wireFocus();
+    }
+
+    private View channelTile(Tvh.Channel ch) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setClipChildren(false);
+        box.setClipToPadding(false);
+
+        FrameLayout card = new AspectFrame(this);
+        card.setId(View.generateViewId());
+        card.setFocusable(true);
+        card.setClickable(true);
+        card.setClipToOutline(true);
+        card.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) {
+                o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(10));
+            }
+        });
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xFF1C1C1E);
+        card.setBackground(bg);
+
+        ImageView logo = new ImageView(this);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        logo.setPadding(dp(18), dp(12), dp(18), dp(12));
+        card.addView(logo, new FrameLayout.LayoutParams(-1, -1));
+        // No logo: the channel name stands in for it.
+        TextView fallback = text(14, "sans-serif-medium", Color.WHITE);
+        fallback.setText(ch.name);
+        fallback.setGravity(Gravity.CENTER);
+        fallback.setPadding(dp(10), 0, dp(10), 0);
+        card.addView(fallback, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView number = text(10, "sans-serif-medium", 0xB3FFFFFF);
+        number.setText(ch.numberLabel());
+        card.addView(number, lp(-2, -2, Gravity.TOP | Gravity.START, dp(8), dp(6), 0, 0));
+
+        GradientDrawable ring = new GradientDrawable();
+        ring.setCornerRadius(dp(10));
+        ring.setStroke(dp(2), 0xE6FFFFFF);
+        View shine = new View(this);
+        shine.setBackground(ring);
+        shine.setAlpha(0f);
+        card.addView(shine, new FrameLayout.LayoutParams(-1, -1));
+        box.addView(card, new LinearLayout.LayoutParams(-1, -2));
+
+        TextView now = text(11, "sans-serif-medium", 0xE6FFFFFF);
+        now.setSingleLine(true);
+        now.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        now.setText(ch.now == null ? " " : ch.now.title);
+        box.addView(now, llp(-1, -2, dp(2), dp(10), dp(2), 0));
+
+        ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(1000);
+        progress.setProgressTintList(android.content.res.ColorStateList.valueOf(0xE6FFFFFF));
+        progress.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x33FFFFFF));
+        progress.setVisibility(View.INVISIBLE);
+        box.addView(progress, llp(-1, dp(3), dp(2), dp(6), dp(2), 0));
+
+        channelNow.put(ch.uuid, now);
+        channelProgress.put(ch.uuid, progress);
+
+        card.setOnClickListener(v -> launch(new Intent(this, PlayerActivity.class)
+                .putExtra(PlayerActivity.EXTRA_CHANNEL, ch.uuid)));
+        card.setOnLongClickListener(v -> { showLiveSetup(); return true; });
+        card.setOnFocusChangeListener((v, has) -> {
+            v.animate().scaleX(has ? 1.1f : 1f).scaleY(has ? 1.1f : 1f).translationZ(has ? dp(14) : 0)
+                    .setInterpolator(has ? new OvershootInterpolator(1.8f) : new DecelerateInterpolator())
+                    .setDuration(has ? 320 : 200).start();
+            shine.animate().alpha(has ? 1f : 0f).setDuration(160).start();
+            if (has) onChannelFocus(v);
+        });
+
+        Tvh tvh = Tvh.get(this);
+        if (tvh != null && ch.icon != null) Tvh.IO.execute(() -> {
+            android.graphics.Bitmap bm = tvh.logo(this, ch, tileWidth());
+            if (bm != null) runOnUiThread(() -> { logo.setImageBitmap(bm); fallback.setVisibility(View.GONE); });
+        });
+        channelCards.add(card);
+        return box;
+    }
+
+    private void onChannelFocus(View card) {
+        lastFocusedId = card.getId();
+        fadeGlow(0.35f);
+        title.animate().alpha(0f).setDuration(200).start();
+        // Same spot as the first app row in the original layout: the dock band slides to the top edge.
+        View band = (View) dockRow.getParent();
+        int target = hero.getTop() + band.getTop() + dockRow.getTop() - dp(22);
+        int max = Math.max(0, content.getHeight() - scroll.getHeight());
+        scroll.smoothScrollTo(0, Math.max(0, Math.min(target, max)));
+    }
+
+    /** Same width as an app tile in the grid, so the channel row lines up with it. */
+    private int tileWidth() {
+        int w = getResources().getDisplayMetrics().widthPixels - 2 * dp(68);
+        return (w - (cols - 1) * dp(20)) / cols;
+    }
+
+    /** Server address, login, and the restart option. Credentials stay in this app's private storage. */
+    private void showLiveSetup() {
+        android.content.SharedPreferences prefs = Tvh.prefs(this);
+        LinearLayout form = new LinearLayout(this);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setPadding(dp(24), dp(8), dp(24), 0);
+        EditText url = field(form, "Tvheadend address", prefs.getString("url", "http://192.168.1.10:9981"),
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        EditText user = field(form, "Username", prefs.getString("user", ""), InputType.TYPE_CLASS_TEXT);
+        EditText pass = field(form, "Password", prefs.getString("pass", ""),
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        CheckBox autoplay = new CheckBox(this);
+        autoplay.setText("Start the last channel after the box restarts");
+        autoplay.setChecked(prefs.getBoolean("autoplay", false));
+        form.addView(autoplay, llp(-1, -2, 0, dp(8), 0, 0));
+        TextView result = text(13, "sans-serif", 0xFFFF8A80);
+        form.addView(result, llp(-1, -2, 0, dp(6), 0, 0));
+
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Live TV")
+                .setView(form)
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Remove", (d, w) -> {
+                    prefs.edit().remove("url").remove("user").remove("pass").apply();
+                    Tvh.channels = Collections.emptyList();
+                    showLiveState(null);
+                })
+                .create();
+        dialog.setOnShowListener(d -> {
+            Button save = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            save.setOnClickListener(v -> {
+                String u = url.getText().toString().trim();
+                if (!u.startsWith("http")) u = "http://" + u;
+                String address = u;
+                result.setTextColor(0xB3FFFFFF);
+                result.setText("Checking…");
+                save.setEnabled(false);
+                prefs.edit().putString("url", address)
+                        .putString("user", user.getText().toString().trim())
+                        .putString("pass", pass.getText().toString())
+                        .putBoolean("autoplay", autoplay.isChecked())
+                        .apply();
+                Tvh tvh = Tvh.get(this);
+                Tvh.IO.execute(() -> {
+                    String err = tvh.test();
+                    runOnUiThread(() -> {
+                        save.setEnabled(true);
+                        if (err != null) { result.setTextColor(0xFFFF8A80); result.setText(err); return; }
+                        dialog.dismiss();
+                        refreshLive(true);
+                    });
+                });
+            });
+        });
+        dialog.show();
+    }
+
+    private EditText field(LinearLayout form, String label, String value, int type) {
+        TextView l = text(12, "sans-serif-medium", 0xB3FFFFFF);
+        l.setText(label);
+        form.addView(l, llp(-1, -2, 0, dp(10), 0, 0));
+        EditText e = new EditText(this);
+        e.setSingleLine(true);
+        e.setInputType(type);
+        e.setText(value);
+        form.addView(e, new LinearLayout.LayoutParams(-1, -2));
+        return e;
     }
 
     // ---------------------------------------------------------------- status

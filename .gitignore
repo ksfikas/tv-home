@@ -8,5 +8,8 @@ shots/
 
 # Build output
 launcher/build/
+build/
+.gradle/
+local.properties
 .DS_Store
 __pycache__/
