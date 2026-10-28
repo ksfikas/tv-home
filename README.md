@@ -58,16 +58,25 @@ separate TV client.
   ("▶ title · show · 12 min left", with a progress bar and the artwork faded in behind), or "Paused
   at 14:49", or "Last opened 20 min ago" for apps that don't say what they play. Only what was played on
   this box, kept on the box.
-- **Phone remote**: Inputs → Phone remote… turns on a small page served by the box (home network
-  only, paired once with a PIN shown on the TV). From the phone: zap, pause, back to live, volume,
-  sleep timer, the channel list, guide search with record / every episode / remind me, and opening
-  apps. Android doesn't let it press keys inside other apps.
+- **Top Shelf** (Control → Top shelf), the big area above the dock, in one of four modes:
+  *Focused app* (what you last watched there, the default), *All continue watching* (a carousel
+  with Resume / Remove), *Recommendations & news* (Greece's popular films from Apple's chart, with
+  Apple TV and Where to watch; headlines with photos from ERT News, Kathimerini or in.gr, with a QR
+  to read on your phone), or *Off*. Films and news can each be switched off.
+- **Phone remote**: Control → Phone remote shows a QR code; scan it and the remote opens already
+  paired (home network only). From the phone: zap, pause, back to live, volume, sleep timer, turn
+  the TV off and on, the channel list, the guide (now and next on every channel, or search) with
+  record / every episode / remind me, opening apps, and sending photos as wallpapers. Android
+  doesn't let it press keys inside other apps.
 - **Voice search**: the mic in Search uses Google TV's voice input through the remote.
 - **Your dock**: hold OK on any app for Open, Add to dock / Move left / Move right / Remove from dock,
   Hide, App info and Uninstall. Up to 6 apps; your choice replaces the default list.
-- **Control Center** (◐ Control, top right): Wi-Fi, Bluetooth, volume, a box-wide sleep timer, weather
-  details (feels like, next hours, 3 days, sunrise/sunset, UV, rain, air quality), phone remote, Box
-  status, Live TV setup and Turn off.
+- **Control Center** (Control, top right), tvOS style: frosted capsules over a blurred screen.
+  Sleep timer for the whole box, Wi-Fi, Bluetooth, Inputs, Settings, Top shelf, TV guide, weather
+  details (feels like, next hours, 3 days, sunrise/sunset, UV, rain, air quality), phone remote,
+  and round buttons for voice search, volume, Box status and Turn off.
+- **Frosted glass** behind every menu and dialog (a one-off blurred snapshot, so it costs nothing
+  while idle), and clean line icons throughout (Material Symbols Rounded).
 - **Wallpapers from your phone**: in the phone remote, *Send a photo*; it's resized on the phone and
   shown on the TV at once. Mix them with the built-in photos or show only yours.
 - **Hide apps** from the grid (hold OK → Hide from All Apps).
@@ -286,5 +295,8 @@ The launcher, debloat tools and wallpapers are by
 [Gathin23/tv-vibehack](https://github.com/Gathin23/tv-vibehack). Wallpaper photos are from
 Wikimedia Commons under their own licences, see
 [launcher/WALLPAPER-CREDITS.md](launcher/WALLPAPER-CREDITS.md). Channel logos are not included;
-they come from your Tvheadend server. Playback uses [AndroidX Media3](https://github.com/androidx/media).
+they come from your Tvheadend server. Playback uses [AndroidX Media3](https://github.com/androidx/media). Icons are
+[Material Symbols](https://github.com/google/material-design-icons) (Apache 2.0); QR codes by
+[ZXing](https://github.com/zxing/zxing) (Apache 2.0); weather by [Open-Meteo](https://open-meteo.com).
+
 Code is MIT, see [LICENSE](LICENSE).

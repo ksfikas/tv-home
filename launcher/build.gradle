@@ -10,8 +10,8 @@ android {
         applicationId "com.mihir.tvhome"
         minSdk 30
         targetSdk 30
-        versionCode 3
-        versionName "2.1-tvh"
+        versionCode 4
+        versionName "2.2-tvh"
     }
 
     // Keep the original flat layout: launcher/{AndroidManifest.xml,src,res,assets}.
