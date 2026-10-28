@@ -1664,7 +1664,7 @@ public class MainActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.addView(ccTile("◉", "Wi-Fi", net, false, dialog, () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))), new LinearLayout.LayoutParams(-1, pill));
-        col.addView(ccTile("ᛒ", "Bluetooth", "Remotes, speakers", false, dialog, () -> launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))), llp(-1, pill, 0, gap, 0, 0));
+        col.addView(ccTile("ᛒ", "Bluetooth", "Remotes, speakers", false, dialog, this::openBluetooth), llp(-1, pill, 0, gap, 0, 0));
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, square, 1f);
         cl.setMargins(gap, 0, 0, 0);
         r1.addView(col, cl);
@@ -2148,6 +2148,18 @@ public class MainActivity extends Activity {
             return true;
         } catch (RuntimeException e) {
             return false;
+        }
+    }
+
+    /**
+     * Bluetooth settings. Phones and some TVs answer the standard intent; Android TV's own Settings
+     * (the Xiaomi box) doesn't, and offers the "add accessory" pairing screen instead. Last resort:
+     * the main Settings app, so the tile never does nothing.
+     */
+    private void openBluetooth() {
+        for (String action : new String[]{Settings.ACTION_BLUETOOTH_SETTINGS, "com.google.android.intent.action.CONNECT_INPUT",
+                Settings.ACTION_SETTINGS}) {
+            if (launch(new Intent(action))) return;
         }
     }
 
