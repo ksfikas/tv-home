@@ -36,8 +36,14 @@ public class MediaWatcher extends NotificationListenerService {
         ComponentName me = new ComponentName(this, MediaWatcher.class);
         try {
             sessions.addOnActiveSessionsChangedListener(changed, me, handler);
-            track(sessions.getActiveSessions(me));
-        } catch (SecurityException ignored) { } // access was taken away
+        } catch (SecurityException ignored) { return; } // access was taken away
+        // The sessions already playing: a binder call, so off the main thread; track() runs on it again.
+        Tvh.IO.execute(() -> {
+            try {
+                List<MediaController> now = sessions.getActiveSessions(me);
+                handler.post(() -> track(now));
+            } catch (SecurityException ignored) { }
+        });
     }
 
     @Override
