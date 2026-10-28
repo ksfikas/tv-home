@@ -314,6 +314,22 @@ final class RemoteServer {
                 }
                 return a;
             }
+            case "/api/guide": {
+                // What's on now and next on every channel: the Guide tab before you search.
+                if (tvh == null) return err("The guide needs Tvheadend");
+                if (Tvh.channels.isEmpty()) Sources.load(c);
+                Map<String, Tvh.Event[]> nn = tvh.nowNext();
+                JSONArray a = new JSONArray();
+                for (Tvh.Channel ch : Tvh.channels) {
+                    if (ch.radio) continue;
+                    Tvh.Event[] e = nn.get(ch.uuid);
+                    JSONObject o = channel(ch);
+                    if (e != null && e[0] != null) o.put("nowEv", event(c, e[0]));
+                    if (e != null && e[1] != null) o.put("nextEv", event(c, e[1]));
+                    a.put(o);
+                }
+                return a;
+            }
             case "/api/record":
                 if (tvh == null) return err("Recording needs Tvheadend");
                 if ("series".equals(p.get("kind"))) tvh.recordSeries(Long.parseLong(p.get("id")));
@@ -354,6 +370,11 @@ final class RemoteServer {
         try (java.io.FileOutputStream fo = new java.io.FileOutputStream(f)) { fo.write(data); }
         MainActivity.wallpaperAdded(f.getAbsolutePath());
         return new JSONObject().put("ok", true).put("count", MainActivity.userWallpapers(c).length);
+    }
+
+    private static JSONObject event(Context c, Tvh.Event e) throws JSONException {
+        return new JSONObject().put("id", e.id).put("title", e.title).put("start", e.start).put("stop", e.stop)
+                .put("rec", e.recordingSet()).put("remind", Reminders.isSet(c, e.id));
     }
 
     private static JSONObject channel(Tvh.Channel ch) throws JSONException {

@@ -105,7 +105,7 @@
 
 <section id="tab-guide" class="hide">
   <h1>Guide</h1>
-  <input id="q" type="search" placeholder="Search a programme title" enterkeyhint="search">
+  <input id="q" type="search" placeholder="Search, or browse what's on below" enterkeyhint="search">
   <div id="results" style="margin-top:12px"></div>
 </section>
 
@@ -200,6 +200,7 @@ function tab(name) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('sel', b.dataset.tab === name));
   if (name === 'channels') channels();
   if (name === 'apps') apps();
+  if (name === 'guide') search(); // empty box: now and next on every channel
   if (name === 'remote') { state(); call('wallpapers').then(showWall).catch(() => {}); }
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => tab(b.dataset.tab));
@@ -228,9 +229,36 @@ async function apps() {
 
 let searchTimer;
 $('q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(search, 500); });
+// Before searching: what's on now and next on every channel. Tap a programme for its actions.
+async function guide() {
+  const list = await call('guide');
+  const now = Date.now() / 1000;
+  const prog = e => e ? Math.max(0, Math.min(100, (now - e.start) * 100 / (e.stop - e.start))) : 0;
+  $('results').innerHTML = list.map((c, i) => `<div class="row" style="display:block">
+    <div class="t"><span class="num" style="display:inline-block;width:34px;color:var(--dim)">${esc(c.number)}</span>${esc(c.name)}</div>
+    ${c.nowEv ? `<div class="m" data-i="${i}" data-w="now" style="color:var(--text);margin-top:6px">${c.nowEv.rec ? '<span class="rec">● </span>' : ''}${esc(c.nowEv.title)} · until ${hhmm(c.nowEv.stop)}</div>
+      <div style="height:3px;background:#ffffff26;border-radius:2px;margin:6px 0"><div style="height:3px;width:${prog(c.nowEv)}%;background:#fff;border-radius:2px"></div></div>` : '<div class="m">No guide data</div>'}
+    ${c.nextEv ? `<div class="m" data-i="${i}" data-w="next">${c.nextEv.rec ? '<span class="rec">● </span>' : c.nextEv.remind ? '○ ' : ''}${hhmm(c.nextEv.start)} ${esc(c.nextEv.title)}</div>` : ''}
+    <div class="acts hide" id="acts${i}"></div></div>`).join('');
+  $('results').querySelectorAll('[data-w]').forEach(el => el.onclick = () => {
+    const c = list[+el.dataset.i], e = el.dataset.w === 'now' ? c.nowEv : c.nextEv, box = $('acts' + el.dataset.i);
+    box.classList.toggle('hide');
+    box.innerHTML = (el.dataset.w === 'now' ? `<button data-a="watch">Watch</button>` : '')
+      + (e.rec ? '' : `<button data-a="record">Record</button>`) + `<button data-a="series">Every episode</button>`
+      + (el.dataset.w === 'next' ? `<button data-a="remind" class="${e.remind ? 'on' : ''}">${e.remind ? 'Reminder set' : 'Remind me'}</button>` : '');
+    box.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const done = m => () => { toast(m); guide(); };
+      if (b.dataset.a === 'watch') call('watch', {ch: c.uuid}).then(() => toast('Watching on the TV'));
+      if (b.dataset.a === 'record') call('record', {id: e.id}).then(done('Will record'));
+      if (b.dataset.a === 'series' && confirm('Record every episode of “' + e.title + '” on ' + c.name + '?')) call('record', {id: e.id, kind: 'series'}).then(done('Series recording set'));
+      if (b.dataset.a === 'remind') call('remind', {id: e.id, ch: c.uuid, title: e.title, start: e.start}).then(done(e.remind ? 'Reminder cancelled' : 'Reminder set'));
+    });
+  });
+}
+
 async function search() {
   const q = $('q').value.trim();
-  if (q.length < 2) { $('results').innerHTML = ''; return; }
+  if (q.length < 2) { guide(); return; }
   const list = await call('search', {q});
   $('results').innerHTML = list.length ? list.map((e, i) => `<div class="row" style="display:block">
     <div class="t">${e.rec ? '<span class="rec">● </span>' : ''}${esc(e.title)}${e.subtitle ? ' · ' + esc(e.subtitle) : ''}</div>
