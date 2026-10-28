@@ -300,6 +300,8 @@ public class MainActivity extends Activity {
         // App name, and under it what was last watched there (see Watched); they fade as one.
         titleBox = new LinearLayout(this);
         titleBox.setOrientation(LinearLayout.VERTICAL);
+        titleBox.setClipChildren(false); // focused shelf buttons grow a little
+        titleBox.setClipToPadding(false);
         bottom.addView(titleBox, llp(-1, -2, dp(8), 0, 0, dp(14)));
         title = text(34, "sans-serif-light", Color.WHITE);
         title.setShadowLayer(dp(18), 0, 0, 0x66000000);
@@ -1296,11 +1298,18 @@ public class MainActivity extends Activity {
                 List<Shelf.Item> cached = Shelf.recommendations(this, false);
                 runOnUiThread(() -> { if (Shelf.RECS.equals(Shelf.mode(this))) setShelf(cached); });
                 List<Shelf.Item> fresh = Shelf.recommendations(this, true);
-                if (fresh.size() != cached.size() || (!fresh.isEmpty() && !fresh.get(0).title.equals(cached.isEmpty() ? "" : cached.get(0).title))) {
+                if (!signature(fresh).equals(signature(cached))) {
                     runOnUiThread(() -> { if (Shelf.RECS.equals(Shelf.mode(this))) setShelf(fresh); });
                 }
             });
         } else setShelf(Collections.emptyList());
+    }
+
+    /** Everything a card shows, so a refreshed list replaces the old one whenever anything changed. */
+    private static String signature(List<Shelf.Item> items) {
+        StringBuilder s = new StringBuilder();
+        for (Shelf.Item it : items) s.append(it.title).append('|').append(it.artUrl).append('|').append(it.sub).append('\n');
+        return s.toString();
     }
 
     private void setShelf(List<Shelf.Item> items) {
@@ -1366,8 +1375,11 @@ public class MainActivity extends Activity {
                 buttons.add(new String[]{"Remove", "close"}); actions.add(() -> { Watched.remove(this, it.pkg); refreshShelf(); });
                 break;
             case "film":
-                buttons.add(new String[]{"Find where to watch", "search"}); actions.add(() -> findWhereToWatch(it.title));
-                buttons.add(new String[]{"About", "info"}); actions.add(() -> shelfDetails(it, null));
+                if (it.link != null && isInstalled("com.apple.atve.androidtv.appletv")) {
+                    buttons.add(new String[]{"Apple TV", "play"}); actions.add(() -> openInAppleTv(it.link));
+                }
+                buttons.add(new String[]{"Where to watch", "search"});
+                actions.add(() -> shelfDetails(it, "https://www.justwatch.com/gr/search?q=" + android.net.Uri.encode(it.title)));
                 break;
             default:
                 buttons.add(new String[]{"Read on phone", "phone"}); actions.add(() -> shelfDetails(it, it.link));
@@ -1428,12 +1440,26 @@ public class MainActivity extends Activity {
         if (i != null) launch(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
-    /** Google TV's own search, which lists the apps a title is on. */
-    private void findWhereToWatch(String title) {
-        Intent i = new Intent("android.search.action.GLOBAL_SEARCH").putExtra(android.app.SearchManager.QUERY, title)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        if (!launch(i)) launch(new Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, title)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    /**
+     * The film's page in the Apple TV app. Its link (tv.apple.com/…/id123) redirects to the real
+     * page, which the app opens itself; resolved off the UI thread, then handed over.
+     */
+    private void openInAppleTv(String link) {
+        Tvh.IO.execute(() -> {
+            String url = link;
+            try {
+                java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(link).openConnection();
+                con.setInstanceFollowRedirects(false);
+                con.setConnectTimeout(5000);
+                String to = con.getHeaderField("Location");
+                if (to != null) url = to.startsWith("http") ? to : "https://tv.apple.com" + to;
+                con.disconnect();
+            } catch (Exception ignored) { }
+            String u = url;
+            runOnUiThread(() -> launch(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(u))
+                    .setPackage("com.apple.atve.androidtv.appletv")
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)));
+        });
     }
 
     /** A card's story; with a link, a QR code to read it on the phone. */
@@ -1612,6 +1638,8 @@ public class MainActivity extends Activity {
         android.app.Dialog dialog = new android.app.Dialog(this, R.style.Glass);
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
+        // Room around the tiles, so a focused one can grow without the window edge cutting it.
+        panel.setPadding(dp(14), dp(10), dp(14), dp(14));
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
@@ -1695,9 +1723,9 @@ public class MainActivity extends Activity {
             win.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
             win.setGravity(Gravity.TOP | Gravity.END);
             android.view.WindowManager.LayoutParams lp = win.getAttributes();
-            lp.width = dp(340);
-            lp.x = dp(48);
-            lp.y = dp(56);
+            lp.width = dp(368);
+            lp.x = dp(34);
+            lp.y = dp(46);
             win.setAttributes(lp);
         }
         Ui.frost(dialog).show();

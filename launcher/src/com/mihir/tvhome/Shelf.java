@@ -106,19 +106,20 @@ final class Shelf {
     /** Cached recommendations; refreshed in the background when older than an hour (call off the UI thread). */
     static List<Item> recommendations(Context c, boolean fetch) {
         File cache = new File(c.getCacheDir(), "shelf.json");
-        String key = films(c) + "|" + news(c) + "|" + feed(c);
+        String key = "v4|" + films(c) + "|" + news(c) + "|" + feed(c); // bump to refetch after a format change
         boolean fresh = cache.exists() && System.currentTimeMillis() - cache.lastModified() < 3600_000L
                 && key.equals(prefs(c).getString("shelf_key", ""));
         if (fetch && !fresh) {
             List<Item> got = new ArrayList<>();
             List<Item> films = films(c) ? films() : new ArrayList<>(), news = news(c) ? news(feed(c)) : new ArrayList<>();
-            // Interleave, so the carousel alternates film / headline.
-            for (int i = 0; i < Math.max(films.size(), news.size()); i++) {
-                if (i < films.size()) got.add(films.get(i));
-                if (i < news.size()) got.add(news.get(i));
-            }
+            // Grouped, not interleaved: all the films, then the headlines.
+            got.addAll(films);
+            got.addAll(news);
+            // A source that failed this time (empty) is retried next time rather than cached as empty.
+            boolean complete = (!films(c) || !films.isEmpty()) && (!news(c) || !news.isEmpty());
             if (!got.isEmpty()) {
                 save(cache, got);
+                if (!complete) cache.setLastModified(System.currentTimeMillis() - 3300_000L); // retry in ~5 min
                 prefs(c).edit().putString("shelf_key", key).apply();
             }
         }
@@ -131,7 +132,7 @@ final class Shelf {
         try {
             JSONArray entries = new JSONObject(http("https://itunes.apple.com/gr/rss/topmovies/limit=10/json"))
                     .getJSONObject("feed").getJSONArray("entry");
-            for (int i = 0; i < entries.length(); i++) {
+            for (int i = 0; i < entries.length(); i++) try {
                 JSONObject e = entries.getJSONObject(i);
                 Item it = new Item();
                 it.kind = "film";
@@ -143,8 +144,11 @@ final class Shelf {
                 JSONArray imgs = e.getJSONArray("im:image");
                 it.artUrl = poster(imgs.getJSONObject(imgs.length() - 1).getString("label"));
                 it.tall = true;
+                // Apple TV app link: tv.apple.com resolves the iTunes id to the film's page.
+                String id = e.getJSONObject("id").getJSONObject("attributes").optString("im:id", "");
+                if (!id.isEmpty()) it.link = "https://tv.apple.com/gr/movie/id" + id;
                 out.add(it);
-            }
+            } catch (Exception oneBadEntry) { }  // skip just that film
         } catch (Exception ignored) { } // offline or the chart changed: no films this time
         return out;
     }
@@ -191,7 +195,14 @@ final class Shelf {
                 if ("item".equals(p.getName()) && it != null) {
                     if (it.title != null) {
                         if (it.sub == null) it.sub = source;
-                        if (it.summary != null) it.summary = android.text.Html.fromHtml(it.summary, android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim();
+                        if (it.summary != null) {
+                            // Many feeds (ERT) put the story's photo in the text as <img>: use it, and
+                            // drop it from the text (Android would show an "OBJ" placeholder there).
+                            java.util.regex.Matcher img = java.util.regex.Pattern.compile("<img[^>]+src=\"([^\"]+)\"").matcher(it.summary);
+                            if (it.artUrl == null && img.find()) it.artUrl = img.group(1);
+                            it.summary = plain(it.summary);
+                        }
+                        it.title = plain(it.title);
                         out.add(it);
                     }
                     it = null;
@@ -200,6 +211,13 @@ final class Shelf {
             }
         }
         return out;
+    }
+
+    /** HTML to plain text, without images' placeholder characters or doubled spaces. */
+    static String plain(String html) {
+        String s = html.replaceAll("(?is)<img[^>]*>", "");
+        s = android.text.Html.fromHtml(s, android.text.Html.FROM_HTML_MODE_COMPACT).toString();
+        return s.replace("￼", "").replaceAll("[ \\t\\x0B\\f\\r]+", " ").replaceAll("\\n{3,}", "\n\n").trim();
     }
 
     private static String ago(String rfc822) {
