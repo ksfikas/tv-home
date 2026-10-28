@@ -1508,6 +1508,37 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Control Center → Screensaver: start it now, which slides to show, and how long each stays. */
+    private void pickScreensaver() {
+        String[] keys = {Screensaver.WEATHER, Screensaver.TV, Screensaver.FILMS, Screensaver.NEWS, Screensaver.TICKER};
+        String[] names = {"Weather", "On TV now", "Popular films", "News slides", "News ticker"};
+        List<String> labels = new ArrayList<>();
+        labels.add("Start now");
+        for (int i = 0; i < keys.length; i++) labels.add(names[i] + ": " + (Screensaver.option(this, keys[i]) ? "on" : "off"));
+        labels.add("Each slide: " + Screensaver.seconds(this) + " seconds");
+        Ui.menu(this, "Screensaver", labels.toArray(new String[0]), i -> {
+            if (i == 0) { startScreensaver(); return; }
+            if (i <= keys.length) Screensaver.toggle(this, keys[i - 1]);
+            else Screensaver.nextSeconds(this);
+            pickScreensaver();
+        });
+    }
+
+    /**
+     * The TV's own "sleep" action starts the chosen screensaver (and only puts the box to sleep when
+     * none is chosen, so check ours is the one first).
+     */
+    private void startScreensaver() {
+        String chosen = Settings.Secure.getString(getContentResolver(), "screensaver_components");
+        if (chosen == null || !chosen.contains(getPackageName())) {
+            android.widget.Toast.makeText(this, "Choose it first: Settings → Device Preferences → Screen saver", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (!launch(new Intent("com.google.android.pano.action.SLEEP"))) {
+            android.widget.Toast.makeText(this, "This TV can't start the screensaver from here", android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
     /** What's on now under a channel card; a red dot when it's being recorded. */
     private static CharSequence nowText(Tvh.Channel ch) {
         if (ch.now == null) return " ";
@@ -1678,13 +1709,15 @@ public class MainActivity extends Activity {
                 {"☰", "TV guide", Tvh.get(this) == null ? "Needs Tvheadend" : "What's on", (Runnable) () -> { if (Tvh.get(this) != null) launch(new Intent(this, GuideActivity.class)); }},
                 {"☁", "Weather", weatherNow == null ? "Set a city" : "Next days", (Runnable) this::showWeatherDetails},
                 {"▯", "Phone remote", RemoteServer.enabled(this) ? "On · QR" : "Off", (Runnable) this::showRemoteSetup},
+                {"▣", "Screensaver", "Photos & info", (Runnable) this::pickScreensaver},
         };
         for (int i = 0; i < pairs.length; i += 2) {
             LinearLayout r = new LinearLayout(this);
             for (int j = 0; j < 2; j++) {
-                Object[] t = pairs[i + j];
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, pill, 1f);
                 p.setMargins(j == 0 ? 0 : gap / 2, 0, j == 0 ? gap / 2 : 0, 0);
+                if (i + j >= pairs.length) { r.addView(new View(this), p); continue; } // odd count: keep the last tile half-width
+                Object[] t = pairs[i + j];
                 r.addView(ccTile((String) t[0], (String) t[1], (String) t[2], false, dialog, (Runnable) t[3]), p);
             }
             panel.addView(r, llp(-1, -2, 0, gap, 0, 0));
@@ -1812,6 +1845,7 @@ public class MainActivity extends Activity {
             case "☰": return R.drawable.sym_view_timeline;
             case "☁": return R.drawable.sym_cloud;
             case "▯": return R.drawable.sym_smartphone;
+            case "▣": return R.drawable.sym_screensaver;
             case "🎙": return R.drawable.sym_mic;
             case "−": return R.drawable.sym_volume_down;
             case "+": return R.drawable.sym_volume_up;

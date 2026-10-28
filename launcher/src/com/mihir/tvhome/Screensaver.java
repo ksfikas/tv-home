@@ -3,6 +3,7 @@ package com.mihir.tvhome;
 import android.animation.Animator;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -10,6 +11,7 @@ import android.graphics.Outline;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.service.dreams.DreamService;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -36,11 +38,28 @@ import java.util.Map;
  * The screensaver (an Android "dream"): your photos drifting slowly under the clock, with a news
  * ticker along the bottom and, in turn, the weather, what is on TV now, popular films and the day's
  * headlines. It uses what the launcher already has (weather, Tvheadend guide, the Top Shelf's news
- * and film feeds, the wallpapers), so there is nothing extra to set up beyond choosing it:
+ * feed, the wallpapers), so there is nothing extra to set up beyond choosing it:
  * adb shell settings put secure screensaver_components com.mihir.tvhome/.Screensaver
+ * Each part can be switched off in Control Center → Screensaver.
+ *
+ * Sizes are in dp for the box's 960 x 540 dp screen: below the clock and above the ticker there is
+ * only about 330 dp, so every slide has to fit in that.
  */
 public class Screensaver extends DreamService {
-    private static final long SLIDE_MS = 16_000, FADE_MS = 1_600, REFRESH_MS = 45 * 60_000L;
+    private static final long FADE_MS = 1_600, REFRESH_MS = 45 * 60_000L;
+
+    // Options (Control Center → Screensaver). All on by default; the slide time is in seconds.
+    static final String WEATHER = "ss_weather", TV = "ss_tv", FILMS = "ss_films", NEWS = "ss_news", TICKER = "ss_ticker";
+    static final int[] SECONDS = {8, 16, 30};
+
+    static boolean option(Context c, String key) { return Tvh.prefs(c).getBoolean(key, true); }
+    static void toggle(Context c, String key) { Tvh.prefs(c).edit().putBoolean(key, !option(c, key)).apply(); }
+    static int seconds(Context c) { return Tvh.prefs(c).getInt("ss_secs", 16); }
+    static void nextSeconds(Context c) {
+        int cur = seconds(c), next = SECONDS[0];
+        for (int i = 0; i < SECONDS.length; i++) if (SECONDS[i] == cur) next = SECONDS[(i + 1) % SECONDS.length];
+        Tvh.prefs(c).edit().putInt("ss_secs", next).apply();
+    }
 
     /** One programme on now, for the "On TV" slide. */
     static final class Row {
@@ -54,7 +73,7 @@ public class Screensaver extends DreamService {
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private FrameLayout bgHolder, content;
+    private FrameLayout bgHolder, content, tickerBar;
     private ImageView bgA, bgB, bgFront;
     private View textScrim, current;
     private TextView weatherChip, ticker;
@@ -63,6 +82,19 @@ public class Screensaver extends DreamService {
     private int slideIndex = -1, photoIndex;
     private boolean running, firstShown;
     private final Runnable tick = this::next, refresh = this::load;
+
+    // The ticker scrolls by hand (once per display frame) rather than with TextView's marquee, which
+    // doesn't reliably start when the text is set before the view has been laid out.
+    private long tickerT0;
+    private float tickerFrom, tickerTo;
+    private final Runnable scroll = new Runnable() {
+        @Override public void run() {
+            if (!running || tickerBar.getVisibility() != View.VISIBLE) return;
+            float travel = tickerFrom - tickerTo, speed = Ui.dp(Screensaver.this, 70) / 1000f; // px per ms
+            ticker.setTranslationX(tickerFrom - ((SystemClock.uptimeMillis() - tickerT0) * speed) % travel);
+            ticker.postOnAnimation(this);
+        }
+    };
 
     // ---------------------------------------------------------------- lifecycle
 
@@ -86,6 +118,7 @@ public class Screensaver extends DreamService {
     public void onDreamingStopped() {
         running = false;
         handler.removeCallbacksAndMessages(null);
+        ticker.removeCallbacks(scroll);
         for (ImageView v : new ImageView[]{bgA, bgB}) {
             v.animate().cancel();
             Object a = v.getTag();
@@ -123,8 +156,9 @@ public class Screensaver extends DreamService {
         textScrim.setAlpha(0f);
         root.addView(textScrim, new FrameLayout.LayoutParams(-1, -1));
 
+        // The slides get the space between the clock and the ticker (~330 dp).
         content = new FrameLayout(this);
-        content.setPadding(side, Ui.dp(this, 150), side, Ui.dp(this, 100));
+        content.setPadding(side, Ui.dp(this, 140), side, Ui.dp(this, 76));
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout clockBox = new LinearLayout(this);
@@ -155,17 +189,15 @@ public class Screensaver extends DreamService {
         wp.setMargins(0, Ui.dp(this, 56), side, 0);
         root.addView(weatherChip, wp);
 
+        // A strip along the bottom; the headline text slides through it (see scroll).
+        tickerBar = new FrameLayout(this);
+        tickerBar.setBackgroundColor(0x66000000);
+        tickerBar.setVisibility(View.GONE);
         ticker = Ui.text(this, 20, "sans-serif", 0xE6FFFFFF);
         ticker.setSingleLine(true);
-        ticker.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-        ticker.setMarqueeRepeatLimit(-1);
-        ticker.setHorizontallyScrolling(true);
-        ticker.setSelected(true); // marquee scrolls only while selected or focused
         ticker.setGravity(Gravity.CENTER_VERTICAL);
-        ticker.setPadding(side, 0, side, 0);
-        ticker.setBackgroundColor(0x66000000);
-        ticker.setVisibility(View.GONE);
-        root.addView(ticker, new FrameLayout.LayoutParams(-1, Ui.dp(this, 60), Gravity.BOTTOM));
+        tickerBar.addView(ticker, new FrameLayout.LayoutParams(-2, -1));
+        root.addView(tickerBar, new FrameLayout.LayoutParams(-1, Ui.dp(this, 60), Gravity.BOTTOM));
         return root;
     }
 
@@ -176,48 +208,63 @@ public class Screensaver extends DreamService {
         return v;
     }
 
+    private void startTicker(String line) {
+        ticker.removeCallbacks(scroll);
+        if (line.isEmpty()) { tickerBar.setVisibility(View.GONE); return; }
+        ticker.setText(line);
+        float w = ticker.getPaint().measureText(line);
+        ticker.getLayoutParams().width = (int) Math.ceil(w) + 4;
+        ticker.requestLayout();
+        tickerFrom = getResources().getDisplayMetrics().widthPixels;
+        tickerTo = -w - 4;
+        tickerT0 = SystemClock.uptimeMillis();
+        ticker.setTranslationX(tickerFrom);
+        tickerBar.setVisibility(View.VISIBLE);
+        ticker.postOnAnimation(scroll);
+    }
+
     // ---------------------------------------------------------------- data
 
     /** Gather everything off the UI thread, then rebuild the slides; repeats every 45 minutes. */
     private void load() {
         handler.removeCallbacks(refresh);
         handler.postDelayed(refresh, REFRESH_MS);
-        final android.content.Context c = getApplicationContext();
+        final Context c = getApplicationContext();
+        final boolean wantWeather = option(c, WEATHER), wantTv = option(c, TV), wantFilms = option(c, FILMS),
+                wantNews = option(c, NEWS), wantTicker = option(c, TICKER);
         Tvh.IO.execute(() -> {
-            String[] weather = Weather.glance(c);
-            List<Shelf.Item> recs = Shelf.recommendations(c, true);
-            List<Row> tv = onTv(c);
+            String[] weather = wantWeather ? Weather.glance(c) : null;
+            List<Row> tv = wantTv ? onTv(c) : new ArrayList<>();
+            List<Shelf.Item> films = wantFilms ? Shelf.films() : new ArrayList<>();
+            List<Shelf.Item> news = wantNews || wantTicker ? Shelf.news(Shelf.feed(c)) : new ArrayList<>();
             List<String> list = photoList(c);
             Map<String, Bitmap> pics = new HashMap<>();
-            int films = 0, news = 0;
-            for (Shelf.Item it : recs) {
-                boolean film = "film".equals(it.kind);
-                if (it.artUrl == null || (film ? films >= 5 : news >= 4)) continue;
-                Bitmap b = Shelf.image(c, it.artUrl, film ? 400 : 800);
-                if (b == null) continue;
-                pics.put(it.artUrl, b);
-                if (film) films++; else news++;
+            int shown = 0;
+            for (Shelf.Item it : films) {
+                if (it.artUrl == null || shown >= 5) continue;
+                Bitmap b = Shelf.image(c, it.artUrl, 400);
+                if (b != null) { pics.put(it.artUrl, b); shown++; }
             }
-            handler.post(() -> { if (running) build(weather, recs, tv, list, pics); });
+            shown = 0;
+            if (wantNews) for (Shelf.Item it : news) {
+                if (it.artUrl == null || shown >= 4) continue;
+                Bitmap b = Shelf.image(c, it.artUrl, 800);
+                if (b != null) { pics.put(it.artUrl, b); shown++; }
+            }
+            handler.post(() -> { if (running) build(weather, tv, films, wantNews ? news : new ArrayList<>(), wantTicker ? tickerText(news) : "", list, pics); });
         });
     }
 
-    private void build(String[] weather, List<Shelf.Item> recs, List<Row> tv, List<String> list, Map<String, Bitmap> pics) {
+    private void build(String[] weather, List<Row> tv, List<Shelf.Item> films, List<Shelf.Item> news, String line,
+                       List<String> list, Map<String, Bitmap> pics) {
         photos = list;
-        List<Shelf.Item> films = new ArrayList<>(), news = new ArrayList<>();
-        for (Shelf.Item it : recs) (("film".equals(it.kind)) ? films : news).add(it);
-
         if (weather != null) {
             weatherChip.setText(weather[0] + "   " + weather[1] + "   ·   " + Weather.city(this));
             weatherChip.setVisibility(View.VISIBLE);
         } else {
             weatherChip.setVisibility(View.GONE);
         }
-        String line = tickerText(news);
-        ticker.setText(line);
-        ticker.setVisibility(line.isEmpty() ? View.GONE : View.VISIBLE);
-        ticker.setSelected(false);
-        ticker.setSelected(true); // restart the scroll with the new text
+        startTicker(line);
 
         // A photo on its own between every information slide, so it still feels like a picture frame.
         List<Slide> out = new ArrayList<>();
@@ -239,7 +286,7 @@ public class Screensaver extends DreamService {
     private void next() {
         handler.removeCallbacks(tick);
         if (!running || slides.isEmpty()) return;
-        handler.postDelayed(tick, SLIDE_MS);
+        handler.postDelayed(tick, seconds(this) * 1000L);
         slideIndex = (slideIndex + 1) % slides.size();
         final Slide s = slides.get(slideIndex);
         final String photo = nextPhoto();
@@ -261,7 +308,7 @@ public class Screensaver extends DreamService {
             in.setPivotX(in.getWidth() * (slideIndex % 2 == 0 ? 0.35f : 0.65f)); // drift towards alternate sides
             in.setPivotY(in.getHeight() * (slideIndex % 3 == 0 ? 0.4f : 0.6f));
             bgHolder.bringChildToFront(in);
-            in.animate().alpha(firstShown ? 1f : 1f).setDuration(firstShown ? FADE_MS : 800).withEndAction(() -> {
+            in.animate().alpha(1f).setDuration(firstShown ? FADE_MS : 800).withEndAction(() -> {
                 Object a = out.getTag();
                 if (a instanceof Animator) ((Animator) a).cancel();
                 out.setImageDrawable(null); // release the previous photo
@@ -269,7 +316,7 @@ public class Screensaver extends DreamService {
             ObjectAnimator zoom = ObjectAnimator.ofPropertyValuesHolder(in,
                     PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.1f),
                     PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.1f));
-            zoom.setDuration(SLIDE_MS + 2 * FADE_MS);
+            zoom.setDuration(seconds(this) * 1000L + 2 * FADE_MS);
             zoom.setInterpolator(new LinearInterpolator());
             in.setTag(zoom);
             zoom.start();
@@ -287,7 +334,7 @@ public class Screensaver extends DreamService {
             if (s.view.getParent() != null) ((ViewGroup) s.view.getParent()).removeView(s.view);
             content.addView(s.view, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER_VERTICAL));
             s.view.setAlpha(0f);
-            s.view.setTranslationY(Ui.dp(this, 24));
+            s.view.setTranslationY(Ui.dp(this, 16));
             s.view.animate().alpha(1f).translationY(0f).setStartDelay(500).setDuration(FADE_MS).start();
         }
         textScrim.animate().alpha(s.view == null ? 0f : 1f).setDuration(FADE_MS).start();
@@ -306,7 +353,7 @@ public class Screensaver extends DreamService {
         t.setAllCaps(true);
         t.setLetterSpacing(0.2f);
         t.setText(s);
-        t.setPadding(0, 0, 0, Ui.dp(this, 14));
+        t.setPadding(0, 0, 0, Ui.dp(this, 12));
         return t;
     }
 
@@ -319,19 +366,19 @@ public class Screensaver extends DreamService {
     private Slide weatherSlide(String[] w) {
         LinearLayout v = column();
         v.addView(label("Weather  ·  " + Weather.city(this)));
-        v.addView(text(w[0], 120, "sans-serif-thin", Color.WHITE));
-        v.addView(text(w[1], 36, "sans-serif-light", Color.WHITE));
-        TextView extra = text(w[2], 16, "sans-serif", 0xCCFFFFFF);
-        extra.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 30));
+        v.addView(text(w[0], 72, "sans-serif-thin", Color.WHITE));
+        v.addView(text(w[1], 26, "sans-serif-light", Color.WHITE));
+        TextView extra = text(w[2], 14, "sans-serif", 0xCCFFFFFF);
+        extra.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 14));
         v.addView(extra);
-        for (int i = 3; i < w.length; i++) {
+        for (int i = 3; i < w.length && i < 6; i++) { // today and the two days after
             String[] p = w[i].split("\t");
             if (p.length < 3) continue;
             LinearLayout row = new LinearLayout(this);
-            row.setPadding(0, Ui.dp(this, 5), 0, Ui.dp(this, 5));
-            row.addView(cell(p[0], 22, "sans-serif-medium", Color.WHITE, 150));
-            row.addView(cell(p[1], 22, "sans-serif-light", Color.WHITE, 150));
-            row.addView(cell(p[2], 22, "sans-serif-light", 0xCCFFFFFF, 260));
+            row.setPadding(0, Ui.dp(this, 3), 0, Ui.dp(this, 3));
+            row.addView(cell(p[0], 19, "sans-serif-medium", Color.WHITE, 120));
+            row.addView(cell(p[1], 19, "sans-serif-light", Color.WHITE, 120));
+            row.addView(cell(p[2], 19, "sans-serif-light", 0xCCFFFFFF, 220));
             v.addView(row);
         }
         return new Slide(v);
@@ -348,25 +395,26 @@ public class Screensaver extends DreamService {
     private Slide tvSlide(List<Row> rows) {
         LinearLayout v = column();
         v.addView(label("On TV now"));
-        for (Row r : rows) {
+        for (int i = 0; i < rows.size() && i < 5; i++) {
+            Row r = rows.get(i);
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, Ui.dp(this, 7), 0, Ui.dp(this, 7));
-            row.addView(cell(r.channel, 19, "sans-serif-medium", 0xCCFFFFFF, 210));
+            row.setPadding(0, Ui.dp(this, 5), 0, Ui.dp(this, 5));
+            row.addView(cell(r.channel, 16, "sans-serif-medium", 0xCCFFFFFF, 150));
             LinearLayout titles = column();
-            titles.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 620), -2));
-            TextView title = text(r.title, 27, "sans-serif-light", Color.WHITE);
+            titles.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 450), -2));
+            TextView title = text(r.title, 21, "sans-serif-light", Color.WHITE);
             title.setSingleLine(true);
             title.setEllipsize(TextUtils.TruncateAt.END);
             titles.addView(title);
             if (r.next != null) {
-                TextView next = text("Next: " + r.next, 15, "sans-serif", 0x99FFFFFF);
+                TextView next = text("Next: " + r.next, 13, "sans-serif", 0x99FFFFFF);
                 next.setSingleLine(true);
                 next.setEllipsize(TextUtils.TruncateAt.END);
                 titles.addView(next);
             }
             row.addView(titles);
-            row.addView(text("until " + Ui.time(this, r.stop), 17, "sans-serif", 0xB3FFFFFF));
+            row.addView(text("until " + Ui.time(this, r.stop), 15, "sans-serif", 0xB3FFFFFF));
             v.addView(row);
         }
         return new Slide(v);
@@ -382,16 +430,17 @@ public class Screensaver extends DreamService {
             if (b == null || shown >= 5) continue;
             shown++;
             LinearLayout card = column();
-            card.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 170), -2));
-            ((LinearLayout.LayoutParams) card.getLayoutParams()).rightMargin = Ui.dp(this, 26);
-            ImageView img = rounded(new ImageView(this), 10);
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(Ui.dp(this, 118), -2);
+            cp.rightMargin = Ui.dp(this, 20);
+            card.setLayoutParams(cp);
+            ImageView img = rounded(new ImageView(this), 8);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             img.setImageBitmap(b);
-            card.addView(img, new LinearLayout.LayoutParams(Ui.dp(this, 170), Ui.dp(this, 255)));
-            TextView name = text(f.title, 15, "sans-serif-medium", Color.WHITE);
+            card.addView(img, new LinearLayout.LayoutParams(Ui.dp(this, 118), Ui.dp(this, 177)));
+            TextView name = text(f.title, 13, "sans-serif-medium", Color.WHITE);
             name.setMaxLines(2);
             name.setEllipsize(TextUtils.TruncateAt.END);
-            name.setPadding(0, Ui.dp(this, 10), 0, 0);
+            name.setPadding(0, Ui.dp(this, 8), 0, 0);
             card.addView(name);
             posters.addView(card);
         }
@@ -405,24 +454,24 @@ public class Screensaver extends DreamService {
         LinearLayout words = column();
         words.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
         words.addView(label(n.sub == null ? "News" : n.sub));
-        TextView head = text(n.title, 38, "sans-serif-light", Color.WHITE);
+        TextView head = text(n.title, 28, "sans-serif-light", Color.WHITE);
         head.setMaxLines(4);
         head.setEllipsize(TextUtils.TruncateAt.END);
         words.addView(head);
         if (n.summary != null && !n.summary.isEmpty()) {
-            TextView sum = text(n.summary, 18, "sans-serif", 0xCCFFFFFF);
-            sum.setMaxLines(4);
+            TextView sum = text(n.summary, 15, "sans-serif", 0xCCFFFFFF);
+            sum.setMaxLines(3);
             sum.setEllipsize(TextUtils.TruncateAt.END);
-            sum.setPadding(0, Ui.dp(this, 16), 0, 0);
+            sum.setPadding(0, Ui.dp(this, 12), 0, 0);
             words.addView(sum);
         }
         v.addView(words);
         if (photo != null) {
-            ImageView img = rounded(new ImageView(this), 14);
+            ImageView img = rounded(new ImageView(this), 10);
             img.setScaleType(ImageView.ScaleType.CENTER_CROP);
             img.setImageBitmap(photo);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 500), Ui.dp(this, 310));
-            lp.leftMargin = Ui.dp(this, 56);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(this, 280), Ui.dp(this, 175));
+            lp.leftMargin = Ui.dp(this, 40);
             v.addView(img, lp);
         }
         return new Slide(v);
@@ -440,7 +489,7 @@ public class Screensaver extends DreamService {
     // ---------------------------------------------------------------- photos
 
     /** Your photos (only them, if you chose that on the phone), then the built-in ones, shuffled. */
-    private List<String> photoList(android.content.Context c) {
+    private List<String> photoList(Context c) {
         List<String> out = new ArrayList<>();
         for (File f : MainActivity.userWallpapers(c)) out.add(f.getAbsolutePath());
         if (out.isEmpty() || !Tvh.prefs(c).getBoolean("wall_mine_only", false)) {
@@ -490,13 +539,13 @@ public class Screensaver extends DreamService {
         return s.toString();
     }
 
-    private static List<Row> onTv(android.content.Context c) {
+    private static List<Row> onTv(Context c) {
         Tvh t = Tvh.get(c);
         if (t == null) return new ArrayList<>();
         try {
             List<Tvh.Channel> channels = Tvh.channels.isEmpty() ? t.loadChannels() : Tvh.channels;
             long now = System.currentTimeMillis() / 1000;
-            return pick(channels, Tvh.favourites(c), t.window(now, now + 3 * 3600), now, 6);
+            return pick(channels, Tvh.favourites(c), t.window(now, now + 3 * 3600), now, 5);
         } catch (Exception e) {
             return new ArrayList<>(); // server asleep or unreachable: no TV slide this time
         }
