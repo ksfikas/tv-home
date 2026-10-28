@@ -186,8 +186,28 @@ starts the chosen screensaver). Any remote key wakes it.
 
 ## Install
 
+### Before you start
+
+- **A TV or box running Android 11 or newer.** It was built and tested on Google TV (Android 14).
+  The steps below turn off Google TV's stock home screen; other Android TV models use different
+  package names for theirs (see step 3).
+- **A computer on the same network, with `adb`** (Android's debugging tool). Nothing to install
+  beyond Google's [platform-tools](https://developer.android.com/tools/releases/platform-tools)
+  download, or on Windows `winget install Google.PlatformTools`, on macOS
+  `brew install android-platform-tools`.
+- **The TV's IP address**: in the TV's network settings (Settings → Network & Internet → your
+  connection), or in your router's list of devices. Give it a fixed address in the router so it
+  doesn't change.
+- **Tvheadend is optional.** Without a server you still get the home screen, Control Center,
+  weather and the screensaver; Live TV, the guide and recordings need a
+  [Tvheadend](https://tvheadend.org) server (or a network tuner), which you can add later.
+
+### Steps
+
 1. **Turn on debugging on the TV**: Settings → System → About → press OK on **Build** 7 times,
-   then Developer options → **USB debugging** (and **Network debugging** if your box has it).
+   then Developer options → **USB debugging** and **Network debugging** (which is what lets
+   `adb connect` reach the TV over Wi-Fi). If your box only offers USB debugging, connect it to
+   your computer with a USB cable and skip `adb connect` below.
 2. **Get the APK**: download `tv-home.apk` from [Releases](../../releases), or build it:
 
    ```bash
@@ -196,6 +216,10 @@ starts the chosen screensaver). Any remote key wakes it.
 
    (Gradle downloads itself, and Android Studio or the SDK tools fetch the matching SDK platform and
    build-tools. CI runs the unit tests and lint on every push.)
+
+   Releases from v2.2.0 on are signed with the same key, so a new release installs straight over the
+   last one with `adb install -r`. An APK you build yourself is signed with your own key: uninstall the other
+   one first if you switch between the two (see the device-admin note below).
 
 3. **Install it and make it the home screen** (Google TV):
 
@@ -208,7 +232,11 @@ starts the chosen screensaver). Any remote key wakes it.
    adb shell cmd package set-home-activity --user 0 com.mihir.tvhome/.MainActivity
    ```
 
-   Two optional extras, also one line each:
+   Not Google TV? Skip the two `pm disable-user` lines and disable your TV's own home screen
+   instead: `adb shell pm list packages` shows the package names (look for "launcher" or "home"),
+   and `pm disable-user --user 0 <package>` turns one off.
+
+   Optional extras, one line each:
 
    ```bash
    adb shell appops set com.mihir.tvhome SYSTEM_ALERT_WINDOW allow     # reminders pop up over other apps
@@ -227,6 +255,11 @@ starts the chosen screensaver). Any remote key wakes it.
 
    Undo with `tools/windows/restore.ps1` (Windows; on macOS or Linux, run the same `adb shell pm
    enable` commands from your list by hand).
+
+   **Did it work?** Press Home on the remote: you should see the clock over a nature wallpaper, a
+   dock of apps, and (once Live TV is set up) a LIVE TV row. If you still see the stock home screen,
+   the stock launcher or setup app wasn't disabled; see *Google TV hijacks the Home button* under
+   Gotchas.
 
 4. **Connect Live TV**: on the home screen, select **Set up Live TV** (or *Inputs → Live TV
    setup…*), enter `http://<server>:9981` and your Tvheadend username and password, and Save. It
