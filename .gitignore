@@ -1,8 +1,6 @@
 # Private to your machine / your TV
-tools/venv/
-tools/adbkey/
-tools/.tv_host
 launcher/debug.keystore
+*.keystore
 backup/
 shots/
 

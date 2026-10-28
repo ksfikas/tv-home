@@ -1,4 +1,4 @@
-# Windows version of tools/restore.sh: re-enable every package in a debloat list, bring back the
+# Re-enable every package in a debloat list, bring back the
 # stock Google TV launcher and Google's setup app, and make the stock launcher the home screen again.
 #
 #   .\tools\windows\restore.ps1 examples\xiaomi-tv-box-s-gen2\debloat.txt

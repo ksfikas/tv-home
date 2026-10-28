@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Launcher settings. Edit, then run launcher/build-and-install.sh.
-  Package names: tools/venv/bin/python -I tools/tv.py 'pm list packages'
+  Launcher settings. Edit, then rebuild: ./gradlew :launcher:assembleRelease
+  Package names: adb shell pm list packages
 -->
 <resources>
     <!-- Dock apps, left to right. Apps that aren't installed are skipped. -->

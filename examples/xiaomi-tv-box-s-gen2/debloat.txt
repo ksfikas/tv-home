@@ -1,6 +1,5 @@
 # Xiaomi TV Box S (2nd Gen), model MiTV-AFKR0, Google TV, Android 14, Amlogic S905X4, 2 GB RAM
-# Apply: tools/disable.sh examples/xiaomi-tv-box-s-gen2/debloat.txt   Undo: tools/restore.sh <same file>
-# Windows: tools/windows/debloat.ps1 / tools/windows/restore.ps1 with this file.
+# Apply: tools/windows/debloat.ps1 examples/xiaomi-tv-box-s-gen2/debloat.txt   Undo: tools/windows/restore.ps1 <same file>
 # Everything is DISABLED for user 0, never uninstalled. A factory reset re-enables it all.
 #
 # Before disabling the ambient screensaver, point the screensaver at Android's own:

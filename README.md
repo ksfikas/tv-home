@@ -5,21 +5,36 @@
 guide, recordings, radio with a live spectrum, and pausing live TV. One small app, no ads, no
 separate TV client.
 
-> Forked from [mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home). The launcher,
-> the debloat tools and the wallpapers are the original author's work (MIT). This fork adds
-> everything Live TV, a Xiaomi TV Box S profile and Windows scripts.
-
 ![Home screen: a dock of streaming apps, a Live TV row with Guide, Recordings and channel logos showing what's on, and a Radio row](docs/screenshots/home-live-tv.jpg)
+
+## Highlights
+
+- **Live TV where your apps are.** Channels with logos and a "what's on" progress bar sit right on
+  the home screen and play on the box's hardware decoders. Tvheadend, HDHomeRun-style network
+  tuners and tuner apps on the box all feed the same rows.
+- **A full TV toolkit in one small app:** a programme guide, recordings, record-every-episode,
+  search, reminders, pausing live TV, and radio with a live spectrum.
+- **A screensaver that is actually worth looking at.** Your photos drift under a clock, with a news
+  ticker along the bottom and, in turn, the weather, what's on TV right now, popular films and the
+  day's headlines. [See it below.](#screensaver)
+- **Apple TV polish:** a Top Shelf with what you were watching, recommendations and news, a frosted
+  glass Control Center, blurred menus, and a "last watched" line under every dock app.
+- **A phone remote with no app to install.** Scan a QR code, and your phone zaps, pauses, searches
+  the guide, books recordings, and sends photos to the TV as wallpapers.
+- **Light on purpose.** About 5.7 MB, plain Android views, nothing running in the background; made
+  for a 2 GB box. [How it stays light](#how-it-stays-light).
+- **Current tooling.** Gradle 9.8, Android Gradle Plugin 9.5, Media3 1.11, with unit tests and
+  lint running in CI on every push.
 
 ## What it does
 
-**Home screen** (from the original)
+**Home screen**
 - A dock of your favourite apps under the clock, over rotating nature wallpapers, with a glow
   coloured from the focused app. Every other app in a grid below.
 - Plain Android views, nothing running in the background. The whole APK is about 5.7 MB, most of
   it wallpapers.
 
-**Live TV** (this fork)
+**Live TV**
 - A **LIVE TV** row with every channel (Guide, Search, Recordings and Continue sit in a small block at its start: press Left): logo, number, what's on now and a progress bar. Pick one
   and it plays full screen on the box's **hardware decoders** (MPEG-2, H.264, HEVC, MP2, AAC, AC3).
 - **Three kinds of source**, alone or together, merged into the same rows:
@@ -51,7 +66,10 @@ separate TV client.
 - **Favourites**: hold OK on a channel to pin it; the row then shows only your favourites, in your order.
 - A **red dot** on channels that are recording right now, and a warning next to LIVE TV when the
   server's recordings disk is nearly full.
-- **Radio screensaver**: after three idle minutes the radio screen dims and drifts slowly.
+- **Screensaver**: photos, clock, weather, a news ticker, what's on TV and popular films while the
+  TV is idle; each part can be switched off. See [Screensaver](#screensaver).
+- **Radio screen saver**: after three idle minutes the radio screen dims and drifts slowly. Opening
+  the channel list there keeps the playing station centred.
 - **Weather** under the clock (Open-Meteo, no account), and **Box status**: free memory and
   storage, uptime, the recordings disk; the launcher tidies its own cache once a day.
 - **Last watched, under each dock app**: focus an app and its name gets what you last watched there
@@ -72,9 +90,10 @@ separate TV client.
 - **Your dock**: hold OK on any app for Open, Add to dock / Move left / Move right / Remove from dock,
   Hide, App info and Uninstall. Up to 6 apps; your choice replaces the default list.
 - **Control Center** (Control, top right), tvOS style: frosted capsules over a blurred screen.
-  Sleep timer for the whole box, Wi-Fi, Bluetooth, Inputs, Settings, Top shelf, TV guide, weather
-  details (feels like, next hours, 3 days, sunrise/sunset, UV, rain, air quality), phone remote,
-  and round buttons for voice search, volume, Box status and Turn off.
+  Sleep timer for the whole box, Wi-Fi, Bluetooth (Android TV's accessory pairing screen), Inputs,
+  Settings, Top shelf, TV guide, weather details (feels like, next hours, 3 days, sunrise/sunset,
+  UV, rain, air quality), phone remote, Screensaver options, and round buttons for voice search,
+  volume, Box status and Turn off.
 - **Frosted glass** behind every menu and dialog (a one-off blurred snapshot, so it costs nothing
   while idle), and clean line icons throughout (Material Symbols Rounded).
 - **Wallpapers from your phone**: in the phone remote, *Send a photo*; it's resized on the phone and
@@ -99,6 +118,48 @@ separate TV client.
 
 <sub>The video picture is missing from the screenshots on purpose: the box draws hardware-decoded
 video on its own layer, which screenshots don't capture.</sub>
+
+## Screensaver
+
+When the TV sits idle (after 10 minutes, Android's usual timeout) it turns into a picture frame:
+
+- **Photos, slowly.** The built-in wallpapers and any photos you sent from your phone crossfade with
+  a gentle zoom, under a thin clock and the date. The weather sits in the corner.
+- **A news ticker** scrolls the latest headlines along the bottom.
+- **In between, a few slides**: the **weather** (now, feels like, three days), **what's on TV right
+  now** on your favourite channels with what comes next, **popular films** with their posters, and
+  **headlines** with the story's photo.
+- **Nothing new to set up.** It reuses what the launcher already has: the weather city, your
+  Tvheadend guide and favourites, the Top Shelf's news feed (ERT News, Kathimerini or in.gr), the
+  wallpapers. Slides for things you haven't set up (no Tvheadend, no weather) simply don't appear.
+- **Your choice of what shows.** *Control → Screensaver* has **Start now**, an on/off switch for
+  each of Weather, On TV now, Popular films, News slides and the News ticker, and how long each
+  slide stays (8, 16 or 30 seconds).
+
+<table>
+<tr>
+<td><img src="docs/screenshots/screensaver-photo.jpg" alt="Screensaver: a volcanic island photo under a thin clock and date, the weather in the corner and a news ticker along the bottom"></td>
+<td><img src="docs/screenshots/screensaver-weather.jpg" alt="Screensaver weather slide: big temperature, conditions, feels like, humidity and wind, and three days of forecast"></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/screensaver-tv.jpg" alt="Screensaver on-TV-now slide: five channels with the current programme, what is next and when it ends"></td>
+<td><img src="docs/screenshots/screensaver-films.jpg" alt="Screensaver popular films slide: five film posters with titles"></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/screensaver-news.jpg" alt="Screensaver news slide: a headline, a short summary and the story's photo, over a mountain wallpaper"></td>
+</tr>
+</table>
+
+Choose it once, over ADB (Google TV's own Settings → Device preferences → Screen saver works too):
+
+```bash
+adb shell settings put secure screensaver_components com.mihir.tvhome/.Screensaver
+adb shell settings put secure screensaver_enabled 1
+```
+
+To see it straight away without waiting: *Control → Screensaver → Start now*, or
+`adb shell am start -a com.google.android.pano.action.SLEEP` (Google TV's own "sleep" action, which
+starts the chosen screensaver). Any remote key wakes it.
 
 ## Remote control
 
@@ -130,8 +191,11 @@ video on its own layer, which screenshots don't capture.</sub>
 2. **Get the APK**: download `tv-home.apk` from [Releases](../../releases), or build it:
 
    ```bash
-   ./gradlew :launcher:assembleRelease     # JDK 17 + Android SDK (platform 34)
+   ./gradlew :launcher:assembleRelease     # JDK 17 + Android SDK (platform 36)
    ```
+
+   (Gradle downloads itself, and Android Studio or the SDK tools fetch the matching SDK platform and
+   build-tools. CI runs the unit tests and lint on every push.)
 
 3. **Install it and make it the home screen** (Google TV):
 
@@ -152,13 +216,17 @@ video on its own layer, which screenshots don't capture.</sub>
    adb shell cmd notification allow_listener com.mihir.tvhome/com.mihir.tvhome.MediaWatcher   # last watched
    adb shell appops set com.mihir.tvhome GET_USAGE_STATS allow        # "last opened" for the rest
    adb shell settings put global low_power_standby_enabled 0          # phone remote works in standby (Turn on)
+   adb shell pm grant com.mihir.tvhome android.permission.BLUETOOTH_CONNECT    # Control → Bluetooth (asked for on first use otherwise)
+   adb shell settings put secure screensaver_components com.mihir.tvhome/.Screensaver   # the screensaver (see above)
+   adb shell settings put secure screensaver_enabled 1
    ```
 
    The second makes the launcher a device admin with one power, turning the screen off. Android
    won't uninstall a device admin, so run `adb shell dpm remove-active-admin com.mihir.tvhome/.SleepAdmin`
    before uninstalling (updates are fine). Without it, the sleep timer just stops playback.
 
-   Undo with `tools/restore.sh` (macOS/Linux) or `tools/windows/restore.ps1` (Windows).
+   Undo with `tools/windows/restore.ps1` (Windows; on macOS or Linux, run the same `adb shell pm
+   enable` commands from your list by hand).
 
 4. **Connect Live TV**: on the home screen, select **Set up Live TV** (or *Inputs → Live TV
    setup…*), enter `http://<server>:9981` and your Tvheadend username and password, and Save. It
@@ -205,6 +273,9 @@ The box this was built on has 2 GB of RAM, so every feature had to earn its plac
 - **Pause costs nothing until you pause.** The stream runs through a small in-memory buffer.
   Only while paused does it spill to a temp file, capped at 700 MB (or the free space minus
   400 MB), and the file is deleted when you go back to live or leave.
+- **The screensaver** exists only while the TV is dreaming. It decodes each photo down to screen
+  size, keeps two on screen at a time, fetches news, films and weather at most every 45 minutes, and
+  scrolls its ticker with one tiny update per display frame.
 - **The spectrum** taps the decoded audio the player already has (no microphone permission) and
   runs only while the radio screen is visible.
 - **Logos** are cached on disk, and in memory at exactly the size they're drawn.
@@ -219,17 +290,17 @@ with both rows of logos, and about 86 MB while playing HD.
 
 ## Debloating
 
-The original project's tools work as before. Lists are per model in [examples/](examples/); see
-[examples/xiaomi-tv-box-s-gen2](examples/xiaomi-tv-box-s-gen2/debloat.txt) for the box this fork
-was built on (telemetry, Google TV's ambient ads, optional Xiaomi extras).
+Lists are per model in [examples/](examples/); see
+[examples/xiaomi-tv-box-s-gen2](examples/xiaomi-tv-box-s-gen2/debloat.txt) for the box this was
+built on (telemetry, Google TV's ambient ads, optional Xiaomi extras).
 
-```bash
-tools/disable.sh examples/xiaomi-tv-box-s-gen2/debloat.txt          # macOS / Linux
+```powershell
 .\tools\windows\debloat.ps1 examples\xiaomi-tv-box-s-gen2\debloat.txt   # Windows (adb on PATH)
 ```
 
-Undo with `tools/restore.sh` or `tools/windows/restore.ps1` and the same list. Everything is
-disabled for user 0, never uninstalled, and a factory reset brings it all back.
+Undo with `tools\windows\restore.ps1` and the same list. On macOS or Linux, the list is plain
+package names: run `adb shell pm disable-user --user 0 <package>` for each, one call per package.
+Everything is disabled for user 0, never uninstalled, and a factory reset brings it all back.
 
 On that box, the whole clean-up (debloat, launcher swap, 0.5× animations, cleared caches, unused
 apps removed) took free memory from about **535 MB to 940 MB** after a restart, and free storage
@@ -237,8 +308,8 @@ from 1.1 GB to 1.9 GB.
 
 ### With Claude Code
 
-This fork was built in a Claude Code session, the same way the original suggests. Clone the repo,
-open Claude Code in it, and describe your TV. The original prompt is in [PROMPT.md](PROMPT.md).
+This project was built in Claude Code sessions. Clone the repo, open Claude Code in it, and
+describe your TV and what you want from it.
 
 ## What's here
 
@@ -247,14 +318,11 @@ open Claude Code in it, and describe your TV. The original prompt is in [PROMPT.
 | [launcher/](launcher/) | The app: home screen, Live TV, guide, recordings, player |
 | [launcher/res/values/config.xml](launcher/res/values/config.xml) | Dock apps, hidden apps, grid columns |
 | [examples/](examples/) | Debloat lists per TV model |
-| [tools/](tools/) | ADB helpers and the debloat/restore scripts (macOS/Linux) |
-| [tools/windows/](tools/windows/) | The debloat/restore scripts for Windows |
-| [.github/workflows/build.yml](.github/workflows/build.yml) | Builds the APK on every push; tag `v*` to publish a release |
-| [PROMPT.md](PROMPT.md) | The original Claude Code prompt |
+| [tools/windows/](tools/windows/) | The debloat and restore scripts (PowerShell) |
+| [.github/workflows/build.yml](.github/workflows/build.yml) | Builds the APK, runs the unit tests and lint on every push; tag `v*` to publish a release |
 
 ## Gotchas
 
-From this fork:
 - **Phone remote in standby.** Google TV's Low Power Standby cuts ordinary apps off the network while
   the box sleeps, so the remote can't answer or wake it. `settings put global low_power_standby_enabled 0`
   (over ADB) keeps the network up in standby, at a small cost in standby power; set it back to 1 to undo.
@@ -272,27 +340,29 @@ From this fork:
   finished recordings, so the player signs each (seeking) request with Digest auth instead.
 - **Channel logos missing?** Usually the server's picon path, not the launcher: see
   *Tvheadend tips* above.
+- **Bluetooth on Android TV.** The box has no standard Bluetooth settings screen, so Control →
+  Bluetooth opens Android TV's *Add accessory* pairing screen instead (it needs the
+  `BLUETOOTH_CONNECT` permission, which the app asks for on first use).
+- **The box is about 540 dp tall**, not 1080: a 1080p TV is drawn at 2× density. When adding UI,
+  size it in dp for 960 × 540, or it runs off the screen.
 
-From the original:
+Google TV and ADB:
 - **Google TV hijacks the Home button.** With the stock launcher disabled, the setup app
   (`com.google.android.tungsten.setupwraith`) outranks any third-party launcher. Disable it too.
 - **Chained `pm` commands** (`pm disable a; pm disable b`) can silently stop after the first. The
   scripts run one per call.
-- **macOS blocks the `adb` binary** on the local network. `tools/tv.py` uses the `adb-shell`
-  Python package instead.
 - **Apps installed from the Play Store didn't appear**, because the package broadcast was missed.
   The launcher re-checks on every return.
 
 ## Tested on
 
 - Xiaomi TV Box S (2nd Gen), Google TV, Android 14, with Tvheadend 4.3 (Greek DVB-T: ERT, Digea).
-- TCL Google TV, Android 11 (the original project).
+- TCL Google TV, Android 11.
 
 ## Credits
 
-The launcher, debloat tools and wallpapers are by
-[mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home), inspired by
-[Gathin23/tv-vibehack](https://github.com/Gathin23/tv-vibehack). Wallpaper photos are from
+Started as a fork of [mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home) (MIT),
+whose debloat tools and wallpaper set are still part of it. Wallpaper photos are from
 Wikimedia Commons under their own licences, see
 [launcher/WALLPAPER-CREDITS.md](launcher/WALLPAPER-CREDITS.md). Channel logos are not included;
 they come from your Tvheadend server. Playback uses [AndroidX Media3](https://github.com/androidx/media). Icons are

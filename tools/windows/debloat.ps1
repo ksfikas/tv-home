@@ -1,4 +1,4 @@
-# Windows version of tools/disable.sh: disable every package in a debloat list over ADB.
+# Disable every package in a debloat list over ADB.
 # Packages are disabled for user 0, never uninstalled. Undo with tools/windows/restore.ps1 <same list>.
 #
 #   adb connect 192.168.1.50:5555            # accept "Allow USB debugging?" on the TV
