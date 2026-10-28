@@ -241,6 +241,25 @@ final class RemoteServer {
             case "/api/home":
                 start(c, new Intent(c, MainActivity.class));
                 return ok();
+            case "/api/power": {
+                if ("off".equals(p.get("do"))) {
+                    // Standby, like the sleep timer; HDMI-CEC usually turns the TV off with it.
+                    android.app.admin.DevicePolicyManager dpm = c.getSystemService(android.app.admin.DevicePolicyManager.class);
+                    if (dpm == null || !dpm.isAdminActive(new android.content.ComponentName(c, SleepAdmin.class))) {
+                        return err("Turning off needs the sleep permission (see the README)");
+                    }
+                    ui.post(dpm::lockNow);
+                } else {
+                    // Wake the screen (and, over HDMI-CEC, usually the TV), then show home.
+                    android.os.PowerManager pm = c.getSystemService(android.os.PowerManager.class);
+                    @SuppressWarnings("deprecation")
+                    android.os.PowerManager.WakeLock wl = pm.newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+                            | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "tvhome:remote");
+                    wl.acquire(3000);
+                    start(c, new Intent(c, MainActivity.class));
+                }
+                return ok();
+            }
             case "/api/volume": {
                 AudioManager am = c.getSystemService(AudioManager.class);
                 String d = p.get("do");

@@ -86,6 +86,8 @@
   <div class="grid g2">
     <button onclick="call('home')">⌂ Home</button>
     <button onclick="player('stop')">■ Stop watching</button>
+    <button onclick="power('on')">⏻ Turn on</button>
+    <button onclick="power('off')">⏻ Turn off</button>
   </div>
 </section>
 
@@ -134,6 +136,8 @@ async function call(path, params = {}) {
   return j;
 }
 const player = (d, arg) => call('player', {do: d, arg: arg || ''}).then(() => setTimeout(state, 700));
+const power = d => (d === 'off' && !confirm('Turn the TV off?')) ? null
+  : call('power', {do: d}).then(() => toast(d === 'off' ? 'Turning off' : 'Turning on'));
 const sleepIn = m => player('sleep', m).then(() => toast(m ? 'Sleep in ' + m + ' min' : 'Sleep timer off'));
 
 function showPair() { $('pair').classList.remove('hide'); $('nav').classList.add('hide'); document.querySelectorAll('[id^=tab-]').forEach(s => s.classList.add('hide')); }
