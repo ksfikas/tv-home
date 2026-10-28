@@ -2191,10 +2191,25 @@ public class MainActivity extends Activity {
      * the main Settings app, so the tile never does nothing.
      */
     private void openBluetooth() {
-        for (String action : new String[]{Settings.ACTION_BLUETOOTH_SETTINGS, "com.google.android.intent.action.CONNECT_INPUT",
-                Settings.ACTION_SETTINGS}) {
-            if (launch(new Intent(action))) return;
+        if (launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))) return;
+        // The accessory screen refuses callers without BLUETOOTH_CONNECT (a runtime permission since Android 12).
+        if (android.os.Build.VERSION.SDK_INT >= 31
+                && checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_BLUETOOTH);
+            return;
         }
+        if (launch(new Intent("com.google.android.intent.action.CONNECT_INPUT"))) return;
+        launch(new Intent(Settings.ACTION_SETTINGS));
+    }
+
+    private static final int REQUEST_BLUETOOTH = 41;
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code != REQUEST_BLUETOOTH) return;
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) openBluetooth();
+        else launch(new Intent(Settings.ACTION_SETTINGS)); // refused: general Settings, and don't ask again
     }
 
     private boolean isInstalled(String pkg) {

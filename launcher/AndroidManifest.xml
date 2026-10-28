@@ -13,6 +13,8 @@
     <!-- "Uninstall" in an app's hold-OK menu (Android still asks the user to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Control Center → Bluetooth opens Android TV's accessory pairing screen, which wants this (asked for on first use). -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- Channels from tuner apps on the box (Android TV inputs); a normal permission, no prompt. -->
     <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
     <!-- "Last opened" under dock apps that announce nothing while playing; usage access, granted over ADB. -->

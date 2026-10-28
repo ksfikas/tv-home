@@ -1015,7 +1015,7 @@ public class PlayerActivity extends Activity {
         listPanel.setVisibility(View.VISIBLE);
         shiftRadio(true);
         View focus = currentRow != null ? currentRow : listRows.getChildAt(0);
-        focus.post(focus::requestFocus);
+        focus.post(() -> { focus.requestFocus(); centerFocusedRow(); });
         List<Tvh.Channel> chs = new ArrayList<>(list);
         boolean stale = nowNext == null || android.os.SystemClock.elapsedRealtime() - nowNextAt > 60_000;
         Tvh.IO.execute(() -> {
@@ -1026,6 +1026,7 @@ public class PlayerActivity extends Activity {
                 if (got != null) { nowNext = got; nowNextAt = android.os.SystemClock.elapsedRealtime(); }
                 if (listPanel.getVisibility() != View.VISIBLE) return;
                 for (Tvh.Channel ch : chs) { TextView r = listLabels.get(ch.uuid); if (r != null) r.setText(listLabel(ch)); }
+                centerFocusedRow(); // rows just grew from one line to three
             });
             // Logos: usually on disk already; small, shared with the guide's cache.
             for (Tvh.Channel ch : chs) {
@@ -1034,6 +1035,24 @@ public class PlayerActivity extends Activity {
                 if (b != null) runOnUiThread(() -> { TextView r = listLabels.get(ch.uuid); if (r != null) setRowLogo(r, b, logoW, logoH); });
             }
         });
+    }
+
+    /**
+     * Scroll the focused row (the playing channel, when the list opens) to the middle of the list. Rows
+     * start one line tall and grow to three once the guide text arrives, which would push the focused
+     * row off the bottom, so this runs again after that, once the new layout is in place.
+     */
+    private void centerFocusedRow() {
+        if (!(listRows.getParent() instanceof ScrollView)) return;
+        final ScrollView sv = (ScrollView) listRows.getParent();
+        sv.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override public void onGlobalLayout() {
+                sv.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                View f = listRows.findFocus();
+                if (f != null) sv.scrollTo(0, Math.max(0, f.getTop() - (sv.getHeight() - f.getHeight()) / 2));
+            }
+        });
+        listRows.requestLayout(); // make sure a layout pass follows, so the listener fires
     }
 
     private void setRowLogo(TextView row, Bitmap b, int w, int h) {
