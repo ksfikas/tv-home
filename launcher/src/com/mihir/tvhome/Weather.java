@@ -99,11 +99,8 @@ final class Weather {
             }
 
             s.append("\nNEXT DAYS\n");
-            String[] days = {"Today", "Tomorrow", null};
             for (int i = 0; i < d.getJSONArray("time").length(); i++) {
-                String name = i < 2 ? days[i] : new java.text.SimpleDateFormat("EEEE", Locale.getDefault())
-                        .format(new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).parse(d.getJSONArray("time").getString(i)));
-                s.append(name).append("   ").append(Math.round(d.getJSONArray("temperature_2m_max").getDouble(i))).append("° / ")
+                s.append(dayName(i, d.getJSONArray("time").getString(i))).append("   ").append(Math.round(d.getJSONArray("temperature_2m_max").getDouble(i))).append("° / ")
                         .append(Math.round(d.getJSONArray("temperature_2m_min").getDouble(i))).append("°  ")
                         .append(describe(d.getJSONArray("weather_code").getInt(i), true))
                         .append("  ·  rain ").append(d.getJSONArray("precipitation_probability_max").optInt(i, 0)).append("%\n");
@@ -122,6 +119,61 @@ final class Weather {
             return s.toString();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * The weather slide of the screensaver: {big temperature, conditions, feels-like line, then one
+     * "day TAB high / low TAB conditions" entry per day}. Cached 30 minutes; null when weather is off
+     * or has never loaded.
+     */
+    static String[] glance(Context c) {
+        SharedPreferences p = prefs(c);
+        if (!p.contains("lat")) return null;
+        long age = System.currentTimeMillis() - p.getLong("glance_at", 0);
+        if (!p.contains("glance") || age > 30 * 60_000) {
+            try {
+                JSONObject f = new JSONObject(get(String.format(Locale.ROOT,
+                        "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&timezone=auto&forecast_days=4"
+                                + "&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m,wind_speed_10m"
+                                + "&daily=weather_code,temperature_2m_max,temperature_2m_min",
+                        p.getFloat("lat", 0), p.getFloat("lon", 0))));
+                JSONObject cur = f.getJSONObject("current"), d = f.getJSONObject("daily");
+                JSONArray out = new JSONArray();
+                out.put(Math.round(cur.getDouble("temperature_2m")) + "°");
+                out.put(describe(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1));
+                out.put("Feels like " + Math.round(cur.getDouble("apparent_temperature")) + "°   ·   humidity "
+                        + cur.getInt("relative_humidity_2m") + "%   ·   wind " + Math.round(cur.getDouble("wind_speed_10m")) + " km/h");
+                for (int i = 0; i < d.getJSONArray("time").length(); i++) {
+                    out.put(dayName(i, d.getJSONArray("time").getString(i)) + "\t"
+                            + Math.round(d.getJSONArray("temperature_2m_max").getDouble(i)) + "° / "
+                            + Math.round(d.getJSONArray("temperature_2m_min").getDouble(i)) + "°\t"
+                            + describe(d.getJSONArray("weather_code").getInt(i), true));
+                }
+                p.edit().putString("glance", out.toString()).putLong("glance_at", System.currentTimeMillis()).apply();
+                age = 0;
+            } catch (Exception ignored) { }
+        }
+        if (age > 3 * 3600_000 || !p.contains("glance")) return null; // don't show stale weather
+        try {
+            JSONArray a = new JSONArray(p.getString("glance", "[]"));
+            String[] out = new String[a.length()];
+            for (int i = 0; i < out.length; i++) out[i] = a.getString(i);
+            return out.length >= 3 ? out : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** "Today", "Tomorrow", then the weekday; iso is the day as yyyy-MM-dd. */
+    static String dayName(int i, String iso) {
+        if (i == 0) return "Today";
+        if (i == 1) return "Tomorrow";
+        try {
+            return new java.text.SimpleDateFormat("EEEE", Locale.getDefault())
+                    .format(new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).parse(iso));
+        } catch (java.text.ParseException e) {
+            return iso;
         }
     }
 

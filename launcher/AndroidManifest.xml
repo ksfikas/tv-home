@@ -128,6 +128,19 @@
             </intent-filter>
         </service>
 
+        <!-- Screensaver (photos, clock, weather, news ticker). Chosen over ADB:
+             settings put secure screensaver_components com.mihir.tvhome/.Screensaver -->
+        <service
+            android:name=".Screensaver"
+            android:exported="true"
+            android:label="Home screensaver"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <!-- Sleep timer: may turn the screen off (standby), nothing else. Activated over ADB. -->
         <receiver
             android:name=".SleepAdmin"
