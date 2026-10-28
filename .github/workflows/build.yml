@@ -41,7 +41,7 @@ jobs:
       - name: Test
         run: |
           chmod +x gradlew
-          ./gradlew :launcher:testReleaseUnitTest :launcher:lintRelease --console=plain
+          ./gradlew :launcher:testDebugUnitTest :launcher:lintRelease --console=plain
 
       - name: Test report
         if: failure()
