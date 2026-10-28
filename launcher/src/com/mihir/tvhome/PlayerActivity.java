@@ -1013,6 +1013,7 @@ public class PlayerActivity extends Activity {
             if (i == index) currentRow = row;
         }
         listPanel.setVisibility(View.VISIBLE);
+        shiftRadio(true);
         View focus = currentRow != null ? currentRow : listRows.getChildAt(0);
         focus.post(focus::requestFocus);
         List<Tvh.Channel> chs = new ArrayList<>(list);
@@ -1083,6 +1084,20 @@ public class PlayerActivity extends Activity {
         listPanel.setVisibility(View.GONE);
         listRows.removeAllViews();
         listLabels.clear();
+        shiftRadio(false);
+    }
+
+    /**
+     * On radio the list covers the left 520 dp, and the centred now-playing card would sit half under
+     * it: while the list is open, move the card into the free part to its right (centre 740 dp, so 260
+     * dp over from the middle) and shrink it to fit. The children move, not the panel, which has the
+     * background.
+     */
+    private void shiftRadio(boolean listOpen) {
+        float shift = listOpen ? Ui.dp(this, 260) : 0f, scale = listOpen ? 0.62f : 1f;
+        for (int i = 0; i < radioPanel.getChildCount(); i++) {
+            radioPanel.getChildAt(i).animate().translationX(shift).scaleX(scale).scaleY(scale).setDuration(200).start();
+        }
     }
 
     // ---------------------------------------------------------------- layout
