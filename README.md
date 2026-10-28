@@ -142,6 +142,7 @@ video on its own layer, which screenshots don't capture.</sub>
    adb shell dpm set-active-admin com.mihir.tvhome/.SleepAdmin         # sleep timer can put the box to standby
    adb shell cmd notification allow_listener com.mihir.tvhome/com.mihir.tvhome.MediaWatcher   # last watched
    adb shell appops set com.mihir.tvhome GET_USAGE_STATS allow        # "last opened" for the rest
+   adb shell settings put global low_power_standby_enabled 0          # phone remote works in standby (Turn on)
    ```
 
    The second makes the launcher a device admin with one power, turning the screen off. Android
@@ -245,6 +246,9 @@ open Claude Code in it, and describe your TV. The original prompt is in [PROMPT.
 ## Gotchas
 
 From this fork:
+- **Phone remote in standby.** Google TV's Low Power Standby cuts ordinary apps off the network while
+  the box sleeps, so the remote can't answer or wake it. `settings put global low_power_standby_enabled 0`
+  (over ADB) keeps the network up in standby, at a small cost in standby power; set it back to 1 to undo.
 - **Tvheadend looks for HDHomeRuns too.** It sends the same network discovery the launcher does.
   Anything answering it should be a real tuner; a half-implemented test device made Tvheadend
   restart here.

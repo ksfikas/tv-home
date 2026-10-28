@@ -268,13 +268,9 @@ final class RemoteServer {
                     if (!SleepTimer.canSleep(c)) return err("Turning off needs the sleep permission (see the README)");
                     ui.post(() -> SleepTimer.sleepNow(c));
                 } else {
-                    // Wake the screen (and, over HDMI-CEC, usually the TV), then show home.
-                    android.os.PowerManager pm = c.getSystemService(android.os.PowerManager.class);
-                    @SuppressWarnings("deprecation")
-                    android.os.PowerManager.WakeLock wl = pm.newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK
-                            | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "tvhome:remote");
-                    wl.acquire(3000);
-                    start(c, new Intent(c, MainActivity.class));
+                    // Wake from standby (and, over HDMI-CEC, usually the TV): WakeActivity turns the screen on.
+                    // A fresh task every time, so onCreate (and turnScreenOn) really runs again.
+                    start(c, new Intent(c, WakeActivity.class).addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
                 }
                 return ok();
             }

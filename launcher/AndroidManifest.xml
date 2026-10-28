@@ -10,8 +10,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Reminders: re-armed after a restart, and allowed to pop up over other apps (granted over ADB). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Phone remote "Turn on": wakes the screen from standby. -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- "Uninstall" in an app's hold-OK menu (Android still asks the user to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -80,6 +78,14 @@
             android:screenOrientation="landscape"
             android:theme="@style/Player"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|density" />
+
+        <activity
+            android:name=".WakeActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <activity
             android:name=".SearchActivity"
