@@ -82,6 +82,13 @@
     <button onclick="sleepIn(60)">1 h</button>
     <button onclick="sleepIn(0)">Off</button>
   </div>
+  <div class="label">Wallpaper</div>
+  <div class="grid g2">
+    <button onclick="$('photo').click()">🖼 Send a photo</button>
+    <button id="wallmode" onclick="wallMode()">Mix with built-in</button>
+  </div>
+  <input id="photo" type="file" accept="image/*" multiple class="hide">
+  <div class="sub" id="wallinfo" style="margin:8px 4px 0"></div>
   <div class="label">TV</div>
   <div class="grid g2">
     <button onclick="call('home')">⌂ Home</button>
@@ -138,7 +145,46 @@ async function call(path, params = {}) {
 const player = (d, arg) => call('player', {do: d, arg: arg || ''}).then(() => setTimeout(state, 700));
 const power = d => (d === 'off' && !confirm('Turn the TV off?')) ? null
   : call('power', {do: d}).then(() => toast(d === 'off' ? 'Turning off' : 'Turning on'));
-const sleepIn = m => player('sleep', m).then(() => toast(m ? 'Sleep in ' + m + ' min' : 'Sleep timer off'));
+const sleepIn = m => call('sleep', {min: m}).then(() => toast(m ? 'Standby in ' + m + ' min' : 'Sleep timer off'));
+
+// Wallpapers: shrink to TV size on the phone (fast upload), then send; the TV shows it at once.
+let wall = {count: 0, mineOnly: false};
+function showWall(w) {
+  wall = w;
+  $('wallinfo').innerHTML = w.count ? `${w.count} of your photos on the TV · <a href="#" onclick="clearWalls();return false" style="color:#fff">remove them</a>` : 'Using the built-in photos';
+  $('wallmode').textContent = w.mineOnly ? 'Only my photos ✓' : 'Mix with built-in';
+  $('wallmode').disabled = !w.count;
+}
+const wallMode = () => call('wallpapers', {do: wall.mineOnly ? 'all' : 'mine'}).then(showWall);
+const clearWalls = () => confirm('Remove your photos from the TV?') && call('wallpapers', {do: 'clear'}).then(showWall);
+function shrink(file) {
+  return new Promise((ok, fail) => {
+    const img = new Image();
+    img.onload = () => {
+      const W = 1920, H = 1080, s = Math.max(W / img.width, H / img.height); // fill the screen, crop the rest
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      cv.getContext('2d').drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
+      cv.toBlob(b => b ? ok(b) : fail(), 'image/jpeg', 0.85);
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = fail;
+    img.src = URL.createObjectURL(file);
+  });
+}
+$('photo').addEventListener('change', async e => {
+  for (const f of e.target.files) {
+    toast('Sending…');
+    try {
+      const blob = await shrink(f);
+      const r = await fetch('/api/wallpaper', {method: 'POST', headers: {'X-Token': token, 'Content-Type': 'image/jpeg'}, body: blob});
+      const j = await r.json();
+      if (j.error) { toast(j.error); break; }
+      toast('On the TV now');
+    } catch (err) { toast('Couldn\'t send that photo'); }
+  }
+  e.target.value = '';
+  call('wallpapers').then(showWall);
+});
 
 function showPair() { $('pair').classList.remove('hide'); $('nav').classList.add('hide'); document.querySelectorAll('[id^=tab-]').forEach(s => s.classList.add('hide')); }
 async function pair() {
@@ -155,7 +201,7 @@ function tab(name) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('sel', b.dataset.tab === name));
   if (name === 'channels') channels();
   if (name === 'apps') apps();
-  if (name === 'remote') state();
+  if (name === 'remote') { state(); call('wallpapers').then(showWall).catch(() => {}); }
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => tab(b.dataset.tab));
 

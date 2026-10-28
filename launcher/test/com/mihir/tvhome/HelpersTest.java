@@ -43,6 +43,21 @@ public class HelpersTest {
     }
 
     @Test
+    public void uvAndAirQualityBands() {
+        assertEquals("1 low", Weather.uv(1.2));
+        assertEquals("5 moderate", Weather.uv(4.6));
+        assertEquals("7 high", Weather.uv(7));
+        assertEquals("9 very high", Weather.uv(9.4));
+        assertEquals("11 extreme", Weather.uv(11));
+        assertEquals("good", Weather.airQuality(15));
+        assertEquals("fair", Weather.airQuality(40));
+        assertEquals("moderate", Weather.airQuality(55));
+        assertEquals("poor", Weather.airQuality(75));
+        assertEquals("very poor", Weather.airQuality(95));
+        assertEquals("extremely poor", Weather.airQuality(140));
+    }
+
+    @Test
     public void weatherCodesInWords() {
         assertEquals("Sunny", Weather.describe(0, true));
         assertEquals("Clear", Weather.describe(0, false));

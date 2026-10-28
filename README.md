@@ -63,7 +63,14 @@ separate TV client.
   sleep timer, the channel list, guide search with record / every episode / remind me, and opening
   apps. Android doesn't let it press keys inside other apps.
 - **Voice search**: the mic in Search uses Google TV's voice input through the remote.
-- **Hide apps** from the grid by holding OK on them.
+- **Your dock**: hold OK on any app for Open, Add to dock / Move left / Move right / Remove from dock,
+  Hide, App info and Uninstall. Up to 6 apps; your choice replaces the default list.
+- **Control Center** (◐ Control, top right): Wi-Fi, Bluetooth, volume, a box-wide sleep timer, weather
+  details (feels like, next hours, 3 days, sunrise/sunset, UV, rain, air quality), phone remote, Box
+  status, Live TV setup and Turn off.
+- **Wallpapers from your phone**: in the phone remote, *Send a photo*; it's resized on the phone and
+  shown on the TV at once. Mix them with the built-in photos or show only yours.
+- **Hide apps** from the grid (hold OK → Hide from All Apps).
 - Optional: start the last channel when the box boots.
 
 <table>

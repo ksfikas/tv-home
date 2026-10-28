@@ -132,7 +132,8 @@ final class RemoteServer {
             Map<String, String> params = parse(query);
             int len = 0;
             try { len = Integer.parseInt(headers.getOrDefault("content-length", "0")); } catch (NumberFormatException ignored) { }
-            if (len > 0 && len < 65536) {
+            boolean image = headers.getOrDefault("content-type", "").startsWith("image/");
+            if (len > 0 && len < 65536 && !image) {
                 byte[] body = new byte[len];
                 int got = 0;
                 while (got < len) { int n = in.read(body, got, len - got); if (n < 0) break; got += n; }
@@ -158,6 +159,10 @@ final class RemoteServer {
             String token = headers.get("x-token");
             if (token == null || !prefs(c).getStringSet("tokens", new HashSet<>()).contains(token)) {
                 send(out, 401, "application/json", "{\"error\":\"Pair with the PIN shown on the TV\"}");
+                return;
+            }
+            if (path.equals("/api/wallpaper") && image) {
+                sendJson(out, saveWallpaper(c, in, len));
                 return;
             }
             sendJson(out, api(c, path, params));
@@ -241,14 +246,27 @@ final class RemoteServer {
             case "/api/home":
                 start(c, new Intent(c, MainActivity.class));
                 return ok();
+            case "/api/sleep":
+                if (!SleepTimer.canSleep(c)) return err("The sleep timer needs the sleep permission (see the README)");
+                SleepTimer.set(c, Integer.parseInt(p.get("min")));
+                return ok();
+            case "/api/wallpapers": {
+                // Info, or: do=clear (back to the built-in photos), do=mine / do=all (rotation).
+                String d = p.get("do");
+                if ("clear".equals(d)) {
+                    for (java.io.File f : MainActivity.userWallpapers(c)) f.delete();
+                    Tvh.prefs(c).edit().remove("wall_mine_only").apply();
+                } else if ("mine".equals(d) || "all".equals(d)) {
+                    Tvh.prefs(c).edit().putBoolean("wall_mine_only", "mine".equals(d)).apply();
+                }
+                return new JSONObject().put("count", MainActivity.userWallpapers(c).length)
+                        .put("mineOnly", Tvh.prefs(c).getBoolean("wall_mine_only", false));
+            }
             case "/api/power": {
                 if ("off".equals(p.get("do"))) {
                     // Standby, like the sleep timer; HDMI-CEC usually turns the TV off with it.
-                    android.app.admin.DevicePolicyManager dpm = c.getSystemService(android.app.admin.DevicePolicyManager.class);
-                    if (dpm == null || !dpm.isAdminActive(new android.content.ComponentName(c, SleepAdmin.class))) {
-                        return err("Turning off needs the sleep permission (see the README)");
-                    }
-                    ui.post(dpm::lockNow);
+                    if (!SleepTimer.canSleep(c)) return err("Turning off needs the sleep permission (see the README)");
+                    ui.post(() -> SleepTimer.sleepNow(c));
                 } else {
                     // Wake the screen (and, over HDMI-CEC, usually the TV), then show home.
                     android.os.PowerManager pm = c.getSystemService(android.os.PowerManager.class);
@@ -317,6 +335,29 @@ final class RemoteServer {
             default:
                 return err("Unknown request");
         }
+    }
+
+    private static final int MAX_PHOTO = 8 * 1024 * 1024, MAX_PHOTOS = 30;
+
+    /** A photo from the phone (already shrunk there to TV size) becomes a wallpaper, shown at once. */
+    private static JSONObject saveWallpaper(Context c, InputStream in, int len) throws IOException, JSONException {
+        if (len <= 0 || len > MAX_PHOTO) return err("Photo too large");
+        byte[] data = new byte[len];
+        int got = 0;
+        while (got < len) { int n = in.read(data, got, len - got); if (n < 0) break; got += n; }
+        if (got != len) return err("Upload interrupted");
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        android.graphics.BitmapFactory.decodeByteArray(data, 0, len, o);
+        if (o.outWidth <= 0) return err("That isn't a photo the TV can show");
+        java.io.File dir = new java.io.File(c.getFilesDir(), "wallpapers");
+        dir.mkdirs();
+        java.io.File[] have = MainActivity.userWallpapers(c);
+        for (int i = 0; i <= have.length - MAX_PHOTOS; i++) have[i].delete(); // keep the newest 30
+        java.io.File f = new java.io.File(dir, System.currentTimeMillis() + ".jpg");
+        try (java.io.FileOutputStream fo = new java.io.FileOutputStream(f)) { fo.write(data); }
+        MainActivity.wallpaperAdded(f.getAbsolutePath());
+        return new JSONObject().put("ok", true).put("count", MainActivity.userWallpapers(c).length);
     }
 
     private static JSONObject channel(Tvh.Channel ch) throws JSONException {

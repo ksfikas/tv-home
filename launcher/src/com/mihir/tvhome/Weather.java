@@ -65,6 +65,77 @@ final class Weather {
         return age < 3 * 3600_000 ? p.getString("text", null) : null; // don't show stale weather
     }
 
+    /**
+     * The detail card (Control Center → Weather): now, the next hours, three days, sun, UV, rain and
+     * air quality. Fetched only when opened; null when weather is off or unreachable.
+     */
+    static String details(Context c) {
+        SharedPreferences p = prefs(c);
+        if (!p.contains("lat")) return null;
+        float lat = p.getFloat("lat", 0), lon = p.getFloat("lon", 0);
+        try {
+            JSONObject f = new JSONObject(get(String.format(Locale.ROOT,
+                    "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&timezone=auto&forecast_days=3&forecast_hours=7"
+                            + "&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m,wind_speed_10m"
+                            + "&hourly=temperature_2m,weather_code,precipitation_probability"
+                            + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,uv_index_max",
+                    lat, lon)));
+            JSONObject cur = f.getJSONObject("current"), h = f.getJSONObject("hourly"), d = f.getJSONObject("daily");
+            StringBuilder s = new StringBuilder();
+            s.append(Math.round(cur.getDouble("temperature_2m"))).append("°  ")
+                    .append(describe(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1))
+                    .append("   ·   feels like ").append(Math.round(cur.getDouble("apparent_temperature"))).append('°')
+                    .append("   ·   humidity ").append(cur.getInt("relative_humidity_2m")).append('%')
+                    .append("   ·   wind ").append(Math.round(cur.getDouble("wind_speed_10m"))).append(" km/h\n\n");
+
+            s.append("NEXT HOURS\n");
+            for (int i = 1; i < h.getJSONArray("time").length(); i++) {
+                s.append(h.getJSONArray("time").getString(i).substring(11, 16)).append("   ")
+                        .append(Math.round(h.getJSONArray("temperature_2m").getDouble(i))).append("°  ")
+                        .append(describe(h.getJSONArray("weather_code").getInt(i), true));
+                int rain = h.getJSONArray("precipitation_probability").optInt(i, 0);
+                if (rain >= 20) s.append("  ·  rain ").append(rain).append('%');
+                s.append('\n');
+            }
+
+            s.append("\nNEXT DAYS\n");
+            String[] days = {"Today", "Tomorrow", null};
+            for (int i = 0; i < d.getJSONArray("time").length(); i++) {
+                String name = i < 2 ? days[i] : new java.text.SimpleDateFormat("EEEE", Locale.getDefault())
+                        .format(new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).parse(d.getJSONArray("time").getString(i)));
+                s.append(name).append("   ").append(Math.round(d.getJSONArray("temperature_2m_max").getDouble(i))).append("° / ")
+                        .append(Math.round(d.getJSONArray("temperature_2m_min").getDouble(i))).append("°  ")
+                        .append(describe(d.getJSONArray("weather_code").getInt(i), true))
+                        .append("  ·  rain ").append(d.getJSONArray("precipitation_probability_max").optInt(i, 0)).append("%\n");
+            }
+
+            s.append("\nSunrise ").append(d.getJSONArray("sunrise").getString(0).substring(11, 16))
+                    .append("   ·   sunset ").append(d.getJSONArray("sunset").getString(0).substring(11, 16))
+                    .append("   ·   UV ").append(uv(d.getJSONArray("uv_index_max").optDouble(0, 0)));
+            try {
+                JSONObject aq = new JSONObject(get(String.format(Locale.ROOT,
+                        "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.3f&longitude=%.3f&current=european_aqi", lat, lon)))
+                        .getJSONObject("current");
+                int aqi = aq.getInt("european_aqi");
+                s.append("   ·   air ").append(airQuality(aqi)).append(" (").append(aqi).append(')');
+            } catch (Exception ignored) { } // air quality is a nice-to-have
+            return s.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** UV index in words (WHO bands). */
+    static String uv(double v) {
+        long r = Math.round(v);
+        return r + (r <= 2 ? " low" : r <= 5 ? " moderate" : r <= 7 ? " high" : r <= 10 ? " very high" : " extreme");
+    }
+
+    /** European AQI bands. */
+    static String airQuality(int aqi) {
+        return aqi <= 20 ? "good" : aqi <= 40 ? "fair" : aqi <= 60 ? "moderate" : aqi <= 80 ? "poor" : aqi <= 100 ? "very poor" : "extremely poor";
+    }
+
     /** WMO weather codes, in words. */
     static String describe(int code, boolean day) {
         if (code == 0) return day ? "Sunny" : "Clear";

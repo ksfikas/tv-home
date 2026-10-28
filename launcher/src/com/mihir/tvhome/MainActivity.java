@@ -96,7 +96,7 @@ public class MainActivity extends Activity {
     private ImageView wallBack, wallFront;
     private View gridShade;
     private String[] wallpapers = new String[0];
-    private int wallIndex = -1;
+    private int wallIndex = -2; // -2: not shown yet (resume from the saved one)
     private long wallChangedAt;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable rotateWallpaper = this::nextWallpaper;
@@ -156,6 +156,7 @@ public class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setContentView(buildUi());
         buildApps();
+        current = new java.lang.ref.WeakReference<>(this);
         RemoteServer.start(this); // only if the phone remote was turned on
         showLiveState(null);
         // Just booted and Live TV is set to resume: go straight back to the last channel.
@@ -413,7 +414,9 @@ public class MainActivity extends Activity {
         wifiPill.setOnClickListener(v -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS)));
         TextView settings = pill("Settings", "⚙");
         settings.setOnClickListener(v -> launch(new Intent(Settings.ACTION_SETTINGS)));
-        for (TextView p : new TextView[]{inputs, wifiPill, settings}) {
+        TextView control = pill("Control", "◐");
+        control.setOnClickListener(v -> showControlCenter());
+        for (TextView p : new TextView[]{control, inputs, wifiPill, settings}) {
             right.addView(p, llp(-2, dp(30), dp(10), 0, 0, 0));
             pills.add(p);
         }
@@ -468,7 +471,7 @@ public class MainActivity extends Activity {
         }
 
         List<App> dock = new ArrayList<>();
-        for (String p : dockApps) if (byPkg.containsKey(p)) dock.add(byPkg.remove(p));
+        for (String p : dockList()) if (byPkg.containsKey(p)) dock.add(byPkg.remove(p));
         List<App> rest = new ArrayList<>(byPkg.values());
         Collections.sort(rest, (x, y) -> x.label.compareToIgnoreCase(y.label));
 
@@ -510,6 +513,67 @@ public class MainActivity extends Activity {
         View last = lastFocusedId == View.NO_ID ? null : findViewById(lastFocusedId);
         if (last != null) last.requestFocus();
         else if (!dockCards.isEmpty()) dockCards.get(0).requestFocus();
+    }
+
+    private static final int DOCK_MAX = 6;
+
+    /** Dock apps in order: the user's choice if they've edited it, else config.xml's list. */
+    private List<String> dockList() {
+        String s = Tvh.prefs(this).getString("dock_user", null);
+        if (s == null) return new ArrayList<>(Arrays.asList(dockApps));
+        List<String> out = new ArrayList<>();
+        for (String p : s.split(",")) if (!p.isEmpty()) out.add(p);
+        return out;
+    }
+
+    /** Save the dock, rebuild, and keep focus on the app that was edited. */
+    private void setDock(List<String> pkgs, App keep) {
+        Tvh.prefs(this).edit().putString("dock_user", android.text.TextUtils.join(",", pkgs)).apply();
+        lastFocusedId = View.NO_ID;
+        buildApps();
+        List<View> all = new ArrayList<>(dockCards);
+        all.addAll(gridCards);
+        for (View c : all) if (c.getTag() instanceof App && ((App) c.getTag()).pkg.equals(keep.pkg)) { c.requestFocus(); break; }
+    }
+
+    /** Hold OK on any app: open, dock it or move it, hide it, app info, uninstall. */
+    private void appMenu(App app, boolean inDock) {
+        List<String> dock = dockList();
+        // Only apps that are actually installed count towards the dock's size.
+        dock.removeIf(p -> !isInstalled(p));
+        int i = dock.indexOf(app.pkg);
+        List<String> labels = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        labels.add("Open");
+        actions.add(() -> launch(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                .setComponent(app.component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)));
+        if (inDock) {
+            if (i > 0) { labels.add("Move left"); actions.add(() -> { dock.remove(i); dock.add(i - 1, app.pkg); setDock(dock, app); }); }
+            if (i >= 0 && i < dock.size() - 1) { labels.add("Move right"); actions.add(() -> { dock.remove(i); dock.add(i + 1, app.pkg); setDock(dock, app); }); }
+            if (dock.size() > 1) { labels.add("Remove from dock"); actions.add(() -> { dock.remove(app.pkg); setDock(dock, app); }); }
+        } else {
+            labels.add(dock.size() < DOCK_MAX ? "Add to dock" : "Add to dock (replaces the last one)");
+            actions.add(() -> {
+                if (dock.size() >= DOCK_MAX) dock.remove(dock.size() - 1);
+                dock.add(app.pkg);
+                setDock(dock, app);
+            });
+            labels.add("Hide from All Apps");
+            actions.add(() -> {
+                Set<String> h = new HashSet<>(Tvh.prefs(this).getStringSet("hidden_user", new HashSet<>()));
+                h.add(app.pkg);
+                Tvh.prefs(this).edit().putStringSet("hidden_user", h).apply();
+                lastFocusedId = View.NO_ID;
+                buildApps();
+            });
+        }
+        labels.add("App info");
+        actions.add(() -> launch(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:" + app.pkg))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+        labels.add("Uninstall");
+        actions.add(() -> launch(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + app.pkg))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+        Ui.menu(this, app.label, labels.toArray(new String[0]), k -> actions.get(k).run());
     }
 
     /** A 16:9 card with the app's banner; the name shows under it while focused. */
@@ -569,17 +633,7 @@ public class MainActivity extends Activity {
                 .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
                 .setComponent(app.component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)));
-        // Hold OK on an app in the grid to hide its tile (the app itself is untouched).
-        if (!inDock) card.setOnLongClickListener(v -> {
-            Ui.menu(this, app.label, new String[]{"Hide from All Apps"}, i -> {
-                Set<String> h = new HashSet<>(Tvh.prefs(this).getStringSet("hidden_user", new HashSet<>()));
-                h.add(app.pkg);
-                Tvh.prefs(this).edit().putStringSet("hidden_user", h).apply();
-                lastFocusedId = View.NO_ID;
-                buildApps();
-            });
-            return true;
-        });
+        card.setOnLongClickListener(v -> { appMenu(app, inDock); return true; });
         card.setOnFocusChangeListener((v, has) -> {
             float s = has ? (inDock ? 1.12f : 1.1f) : 1f;
             v.animate().scaleX(s).scaleY(s).translationZ(has ? dp(14) : 0)
@@ -1303,6 +1357,111 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    /**
+     * Control Center: the quick things in one panel, tvOS style. Tiles show their current state
+     * (network, sleep timer, weather) and do one thing each.
+     */
+    private void showControlCenter() {
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        grid.setPadding(dp(20), dp(8), dp(20), dp(8));
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Control Center").setView(grid).create();
+        int sleep = SleepTimer.left(this);
+        String weatherNow = Weather.current(this, false);
+        String net = String.valueOf(wifiPill.getText()).replaceFirst("^◉\\s*", "");
+        Object[][] tiles = {
+                {"Wi-Fi", net, (Runnable) () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))},
+                {"Bluetooth", "Remotes, speakers", (Runnable) () -> launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))},
+                {"Volume −", "", (Runnable) () -> volume(android.media.AudioManager.ADJUST_LOWER)},
+                {"Volume +", "", (Runnable) () -> volume(android.media.AudioManager.ADJUST_RAISE)},
+                {"Sleep timer", sleep > 0 ? "in " + sleep + " min" : "Off", (Runnable) this::pickSleepTimer},
+                {"Weather", weatherNow == null ? "Set a city" : weatherNow, (Runnable) this::showWeatherDetails},
+                {"Phone remote", RemoteServer.enabled(this) ? "On · show QR" : "Off", (Runnable) this::showRemoteSetup},
+                {"Box status", "Memory, storage", (Runnable) () -> BoxHealth.show(this)},
+                {"Live TV setup", "Sources", (Runnable) this::showLiveSetup},
+                {"Turn off", SleepTimer.canSleep(this) ? "Standby now" : "Needs permission", (Runnable) () -> {
+                    if (SleepTimer.canSleep(this)) SleepTimer.sleepNow(this);
+                    else android.widget.Toast.makeText(this, "Turning off needs the sleep permission (see the README)", android.widget.Toast.LENGTH_LONG).show();
+                }},
+        };
+        LinearLayout row = null;
+        View first = null;
+        for (int i = 0; i < tiles.length; i++) {
+            if (i % 4 == 0) {
+                row = new LinearLayout(this);
+                grid.addView(row, llp(-1, -2, 0, 0, 0, dp(10)));
+            }
+            Object[] t = tiles[i];
+            TextView tile = text(15, "sans-serif-medium", Color.WHITE);
+            android.text.SpannableStringBuilder s = new android.text.SpannableStringBuilder((String) t[0]);
+            if (!((String) t[1]).isEmpty()) {
+                int a = s.length();
+                s.append("\n").append((String) t[1]);
+                s.setSpan(new android.text.style.RelativeSizeSpan(0.78f), a, s.length(), 0);
+                s.setSpan(new android.text.style.ForegroundColorSpan(0x99888888), a, s.length(), 0);
+            }
+            tile.setText(s);
+            tile.setMaxLines(3);
+            tile.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            tile.setGravity(Gravity.CENTER_VERTICAL);
+            tile.setPadding(dp(14), dp(10), dp(14), dp(10));
+            tile.setFocusable(true);
+            tile.setClickable(true);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(dp(14));
+            bg.setColor(0x26FFFFFF);
+            tile.setBackground(bg);
+            tile.setOnFocusChangeListener((v, has) -> {
+                bg.setColor(has ? 0xF2FFFFFF : 0x26FFFFFF);
+                ((TextView) v).setTextColor(has ? 0xFF111111 : Color.WHITE);
+            });
+            Runnable action = (Runnable) t[2];
+            tile.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(74), 1f);
+            p.setMargins(i % 4 == 0 ? 0 : dp(5), 0, i % 4 == 3 ? 0 : dp(5), 0);
+            row.addView(tile, p);
+            if (first == null) first = tile;
+        }
+        // Pad the last row so its tiles keep their width.
+        for (int i = tiles.length % 4; i != 0 && i < 4; i++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        dialog.show();
+        if (dialog.getWindow() != null) dialog.getWindow().setLayout(dp(860), -2);
+        if (first != null) first.requestFocus();
+    }
+
+    private void volume(int direction) {
+        android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
+        if (am != null) am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, direction, android.media.AudioManager.FLAG_SHOW_UI);
+    }
+
+    private void pickSleepTimer() {
+        if (!SleepTimer.canSleep(this)) {
+            android.widget.Toast.makeText(this, "The sleep timer needs the sleep permission (see the README)", android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        int[] mins = {0, 15, 30, 60, 90, 120};
+        String[] labels = {"Off", "15 minutes", "30 minutes", "1 hour", "1½ hours", "2 hours"};
+        Ui.menu(this, "Sleep timer", labels, i -> {
+            SleepTimer.set(this, mins[i]);
+            android.widget.Toast.makeText(this, mins[i] == 0 ? "Sleep timer off" : "Going to standby in " + labels[i], android.widget.Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void showWeatherDetails() {
+        if (Weather.city(this).isEmpty()) { showWeatherSetup(); return; }
+        AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(Weather.city(this))
+                .setMessage("Loading…")
+                .setPositiveButton("Close", null)
+                .setNeutralButton("Change city", (x, w) -> showWeatherSetup())
+                .show();
+        Tvh.IO.execute(() -> {
+            String s = Weather.details(this);
+            runOnUiThread(() -> { if (d.isShowing()) d.setMessage(s == null ? "Can't reach the weather service" : s); });
+        });
+    }
+
     /** Phone remote: on/off, and a QR code (address + PIN) or the address and PIN to pair a phone. */
     private void showRemoteSetup() {
         boolean on = RemoteServer.enabled(this);
@@ -1461,17 +1620,49 @@ public class MainActivity extends Activity {
     }
 
     /** Decode the next photo off the main thread, then crossfade it in over the current one. */
+    /** Photos sent from the phone remote, oldest first. */
+    static java.io.File[] userWallpapers(Context c) {
+        java.io.File[] f = new java.io.File(c.getFilesDir(), "wallpapers").listFiles();
+        if (f == null) return new java.io.File[0];
+        Arrays.sort(f, (a, b) -> a.getName().compareTo(b.getName()));
+        return f;
+    }
+
+    /** Your photos (only them, if you chose that on the phone), then the built-in ones. */
+    private List<String> wallpaperList() {
+        List<String> out = new ArrayList<>();
+        for (java.io.File f : userWallpapers(this)) out.add(f.getAbsolutePath());
+        if (out.isEmpty() || !Tvh.prefs(this).getBoolean("wall_mine_only", false)) {
+            for (String w : wallpapers) out.add("wallpapers/" + w);
+        }
+        return out;
+    }
+
+    /** A photo just arrived from the phone: show it now (the phone remote calls this). */
+    static void wallpaperAdded(String path) {
+        MainActivity m = current == null ? null : current.get();
+        if (m == null) return;
+        m.runOnUiThread(() -> {
+            if (m.isDestroyed()) return;
+            m.wallIndex = Math.max(-1, m.wallpaperList().indexOf(path) - 1); // nextWallpaper steps onto it
+            m.nextWallpaper();
+        });
+    }
+
+    private static java.lang.ref.WeakReference<MainActivity> current;
+
     private void nextWallpaper() {
         handler.removeCallbacks(rotateWallpaper);
-        if (wallpapers.length == 0) return;
-        if (wallIndex < 0) wallIndex = getPreferences(MODE_PRIVATE).getInt("wallpaper", -1);
-        wallIndex = (wallIndex + 1) % wallpapers.length;
+        List<String> list = wallpaperList();
+        if (list.isEmpty()) return;
+        if (wallIndex == -2) wallIndex = getPreferences(MODE_PRIVATE).getInt("wallpaper", -1);
+        wallIndex = (wallIndex + 1) % list.size();
         getPreferences(MODE_PRIVATE).edit().putInt("wallpaper", wallIndex).apply();
         wallChangedAt = SystemClock.elapsedRealtime();
-        String name = "wallpapers/" + wallpapers[wallIndex];
+        String name = list.get(wallIndex);
         new Thread(() -> {
             Bitmap bm = null;
-            try (java.io.InputStream in = getAssets().open(name)) {
+            try (java.io.InputStream in = name.startsWith("/") ? new java.io.FileInputStream(name) : getAssets().open(name)) {
                 BitmapFactory.Options o = new BitmapFactory.Options();
                 o.inPreferredConfig = Bitmap.Config.RGB_565;
                 bm = BitmapFactory.decodeStream(in, null, o);
