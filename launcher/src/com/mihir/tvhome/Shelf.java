@@ -1,0 +1,298 @@
+package com.mihir.tvhome;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.util.Xml;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.xmlpull.v1.XmlPullParser;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * The Top Shelf above the dock (tvOS style), in one of four modes:
+ *  app  — what you last watched in the focused app (Watched), the default;
+ *  all  — everything you were watching, as a carousel with Resume;
+ *  recs — popular films (Apple's iTunes chart for Greece) and news headlines (an RSS feed);
+ *  off  — just the wallpaper.
+ * Recommendations are fetched at most hourly while home is showing, cached on the box.
+ */
+final class Shelf {
+    private Shelf() { }
+
+    static final String APP = "app", ALL = "all", RECS = "recs", OFF = "off";
+
+    static final class Item {
+        String kind;            // "watch", "film", "news"
+        String title, sub, summary, link, pkg, artUrl;
+        File artFile;           // continue watching: the app's artwork on the box
+        boolean tall;           // a poster (portrait) rather than a backdrop
+        float progress = -1;
+        long at;                // continue watching: when it was last played
+    }
+
+    static final String[][] FEEDS = {
+            {"ERT News", "https://www.ertnews.gr/feed/"},
+            {"Kathimerini", "https://www.kathimerini.gr/infeeds/rss/nx-rss-feed.xml"},
+            {"in.gr", "https://www.in.gr/feed/"},
+    };
+
+    private static SharedPreferences prefs(Context c) { return Tvh.prefs(c); }
+
+    static String mode(Context c) { return prefs(c).getString("shelf_mode", APP); }
+    static void setMode(Context c, String m) { prefs(c).edit().putString("shelf_mode", m).apply(); }
+    static boolean films(Context c) { return prefs(c).getBoolean("shelf_films", true); }
+    static boolean news(Context c) { return prefs(c).getBoolean("shelf_news", true); }
+    static int feed(Context c) { return Math.min(FEEDS.length - 1, prefs(c).getInt("shelf_feed", 0)); }
+
+    static String modeName(String m) {
+        switch (m) {
+            case ALL: return "All continue watching";
+            case RECS: return "Recommendations & news";
+            case OFF: return "Off";
+            default: return "Focused app";
+        }
+    }
+
+    // ---------------------------------------------------------------- continue watching
+
+    /** Everything Watched knows about, newest first, for apps still installed. */
+    static List<Item> continueWatching(Context c) {
+        List<Item> out = new ArrayList<>();
+        PackageManager pm = c.getPackageManager();
+        for (Map.Entry<String, Watched.Entry> e : Watched.all(c).entrySet()) {
+            Watched.Entry w = e.getValue();
+            if (w.title == null && w.pos <= 0) continue;
+            String label;
+            try { label = String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(e.getKey(), 0))); }
+            catch (PackageManager.NameNotFoundException gone) { continue; }
+            Item it = new Item();
+            it.kind = "watch";
+            it.pkg = e.getKey();
+            it.title = w.title != null ? w.title : label;
+            StringBuilder s = new StringBuilder(label);
+            if (w.subtitle != null && w.title != null) s.append("  ·  ").append(w.subtitle);
+            if (w.dur > 0 && w.pos > 0 && w.pos < w.dur) s.append("  ·  ").append(Watched.left(w.dur - w.pos));
+            else if (w.title == null) s.append("  ·  ").append(w.paused ? "paused at " : "stopped at ").append(Ui.duration(w.pos));
+            s.append("  ·  ").append(Watched.ago(System.currentTimeMillis() - w.at));
+            it.sub = s.toString();
+            if (w.dur > 0 && w.pos > 0) it.progress = Math.min(1f, w.pos / (float) w.dur);
+            File art = Watched.artFile(c, e.getKey());
+            if (art.exists()) it.artFile = art;
+            it.at = w.at;
+            out.add(it);
+        }
+        out.sort((a, b) -> Long.compare(b.at, a.at));
+        return out.size() > 8 ? out.subList(0, 8) : out;
+    }
+
+    // ---------------------------------------------------------------- recommendations & news
+
+    /** Cached recommendations; refreshed in the background when older than an hour (call off the UI thread). */
+    static List<Item> recommendations(Context c, boolean fetch) {
+        File cache = new File(c.getCacheDir(), "shelf.json");
+        String key = films(c) + "|" + news(c) + "|" + feed(c);
+        boolean fresh = cache.exists() && System.currentTimeMillis() - cache.lastModified() < 3600_000L
+                && key.equals(prefs(c).getString("shelf_key", ""));
+        if (fetch && !fresh) {
+            List<Item> got = new ArrayList<>();
+            List<Item> films = films(c) ? films() : new ArrayList<>(), news = news(c) ? news(feed(c)) : new ArrayList<>();
+            // Interleave, so the carousel alternates film / headline.
+            for (int i = 0; i < Math.max(films.size(), news.size()); i++) {
+                if (i < films.size()) got.add(films.get(i));
+                if (i < news.size()) got.add(news.get(i));
+            }
+            if (!got.isEmpty()) {
+                save(cache, got);
+                prefs(c).edit().putString("shelf_key", key).apply();
+            }
+        }
+        return load(cache);
+    }
+
+    /** The top films on Apple's Greek iTunes chart, with large posters. */
+    static List<Item> films() {
+        List<Item> out = new ArrayList<>();
+        try {
+            JSONArray entries = new JSONObject(http("https://itunes.apple.com/gr/rss/topmovies/limit=10/json"))
+                    .getJSONObject("feed").getJSONArray("entry");
+            for (int i = 0; i < entries.length(); i++) {
+                JSONObject e = entries.getJSONObject(i);
+                Item it = new Item();
+                it.kind = "film";
+                it.title = e.getJSONObject("im:name").getString("label");
+                String genre = e.optJSONObject("category") == null ? "" : e.getJSONObject("category").getJSONObject("attributes").optString("label");
+                String year = e.optJSONObject("im:releaseDate") == null ? "" : e.getJSONObject("im:releaseDate").optString("label", "").replaceAll("^(\\d{4}).*", "$1");
+                it.sub = "Popular film" + (genre.isEmpty() ? "" : "  ·  " + genre) + (year.isEmpty() ? "" : "  ·  " + year);
+                it.summary = e.optJSONObject("summary") == null ? null : e.getJSONObject("summary").optString("label");
+                JSONArray imgs = e.getJSONArray("im:image");
+                it.artUrl = poster(imgs.getJSONObject(imgs.length() - 1).getString("label"));
+                it.tall = true;
+                out.add(it);
+            }
+        } catch (Exception ignored) { } // offline or the chart changed: no films this time
+        return out;
+    }
+
+    /** iTunes artwork links end in the size (".../115x170bb.png"); ask for a big one. */
+    static String poster(String url) {
+        return url.replaceAll("/\\d+x\\d+bb\\.(png|jpg)$", "/600x900bb.jpg");
+    }
+
+    /** The newest headlines from an RSS feed, with the story's photo when the feed has one. */
+    static List<Item> news(int feed) {
+        List<Item> out = new ArrayList<>();
+        try {
+            out = parseRss(http(FEEDS[feed][1]), FEEDS[feed][0], 8);
+        } catch (Exception ignored) { }
+        return out;
+    }
+
+    static List<Item> parseRss(String xml, String source, int max) throws Exception {
+        List<Item> out = new ArrayList<>();
+        XmlPullParser p = Xml.newPullParser();
+        p.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
+        p.setInput(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)), "UTF-8");
+        Item it = null;
+        String tag = null;
+        for (int ev = p.getEventType(); ev != XmlPullParser.END_DOCUMENT && out.size() < max; ev = p.next()) {
+            if (ev == XmlPullParser.START_TAG) {
+                tag = p.getName();
+                if ("item".equals(tag)) { it = new Item(); it.kind = "news"; }
+                else if (it != null && ("enclosure".equals(tag) || "media:content".equals(tag) || "media:thumbnail".equals(tag))) {
+                    String url = p.getAttributeValue(null, "url"), type = p.getAttributeValue(null, "type");
+                    if (url != null && it.artUrl == null && (type == null || type.startsWith("image"))) it.artUrl = url;
+                }
+            } else if (ev == XmlPullParser.TEXT && it != null && tag != null) {
+                String t = p.getText().trim();
+                if (t.isEmpty()) continue;
+                switch (tag) {
+                    case "title": it.title = it.title == null ? t : it.title + t; break;
+                    case "link": it.link = t; break;
+                    case "description": it.summary = (it.summary == null ? "" : it.summary) + t; break;
+                    case "pubDate": it.sub = source + "  ·  " + ago(t); break;
+                }
+            } else if (ev == XmlPullParser.END_TAG) {
+                if ("item".equals(p.getName()) && it != null) {
+                    if (it.title != null) {
+                        if (it.sub == null) it.sub = source;
+                        if (it.summary != null) it.summary = android.text.Html.fromHtml(it.summary, android.text.Html.FROM_HTML_MODE_COMPACT).toString().trim();
+                        out.add(it);
+                    }
+                    it = null;
+                }
+                tag = null;
+            }
+        }
+        return out;
+    }
+
+    private static String ago(String rfc822) {
+        try {
+            Date d = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH).parse(rfc822);
+            return Watched.ago(System.currentTimeMillis() - d.getTime());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    // ---------------------------------------------------------------- cache
+
+    private static void save(File f, List<Item> items) {
+        JSONArray a = new JSONArray();
+        try {
+            for (Item it : items) {
+                a.put(new JSONObject().put("kind", it.kind).put("title", it.title).put("sub", it.sub)
+                        .put("summary", it.summary).put("link", it.link).put("art", it.artUrl).put("tall", it.tall));
+            }
+            try (FileOutputStream out = new FileOutputStream(f)) { out.write(a.toString().getBytes(StandardCharsets.UTF_8)); }
+        } catch (Exception ignored) { }
+    }
+
+    private static List<Item> load(File f) {
+        List<Item> out = new ArrayList<>();
+        if (!f.exists()) return out;
+        try (InputStream in = new java.io.FileInputStream(f)) {
+            JSONArray a = new JSONArray(new String(read(in), StandardCharsets.UTF_8));
+            for (int i = 0; i < a.length(); i++) {
+                JSONObject o = a.getJSONObject(i);
+                Item it = new Item();
+                it.kind = o.optString("kind");
+                it.title = o.optString("title");
+                it.sub = o.optString("sub", "");
+                it.summary = o.isNull("summary") ? null : o.optString("summary");
+                it.link = o.isNull("link") ? null : o.optString("link");
+                it.artUrl = o.isNull("art") ? null : o.optString("art");
+                it.tall = o.optBoolean("tall");
+                out.add(it);
+            }
+        } catch (Exception ignored) { }
+        return out;
+    }
+
+    // ---------------------------------------------------------------- network
+
+    static String http(String url) throws java.io.IOException {
+        HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+        con.setConnectTimeout(6000);
+        con.setReadTimeout(10000);
+        con.setRequestProperty("User-Agent", "tv-home");
+        con.setInstanceFollowRedirects(true);
+        try (InputStream in = con.getInputStream()) {
+            return new String(read(in), StandardCharsets.UTF_8);
+        } finally {
+            con.disconnect();
+        }
+    }
+
+    /** An image for the shelf, cached on disk by URL. */
+    static android.graphics.Bitmap image(Context c, String url, int maxW) {
+        if (url == null) return null;
+        File f = new File(new File(c.getCacheDir(), "shelf"), Integer.toHexString(url.hashCode()) + ".img");
+        try {
+            byte[] data;
+            if (f.exists()) data = read(new java.io.FileInputStream(f));
+            else {
+                HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
+                con.setConnectTimeout(6000);
+                con.setReadTimeout(15000);
+                try (InputStream in = con.getInputStream()) { data = read(in); } finally { con.disconnect(); }
+                f.getParentFile().mkdirs();
+                try (FileOutputStream out = new FileOutputStream(f)) { out.write(data); }
+            }
+            android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeByteArray(data, 0, data.length, o);
+            o.inSampleSize = 1;
+            while (o.outWidth / (o.inSampleSize * 2) >= maxW) o.inSampleSize *= 2;
+            o.inJustDecodeBounds = false;
+            return android.graphics.BitmapFactory.decodeByteArray(data, 0, data.length, o);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static byte[] read(InputStream in) throws java.io.IOException {
+        try (InputStream is = in) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] b = new byte[16384];
+            for (int n; (n = is.read(b)) > 0; ) out.write(b, 0, n);
+            return out.toByteArray();
+        }
+    }
+}

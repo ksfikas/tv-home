@@ -187,7 +187,7 @@ public class MainActivity extends Activity {
         updateWeather();
         BoxHealth.dailyTidy(this);
         // Back from an app: its "last watched" line may have changed.
-        if (dockFocus != null) showWatched(dockFocus);
+        refreshShelf(); // also refreshes the focused dock app's line
         Tvh.IO.execute(() -> {
             Map<String, Long> used = Watched.lastUsed(this);
             runOnUiThread(() -> { lastUsed = used; if (dockFocus != null && !isDestroyed()) showWatched(dockFocus); });
@@ -210,6 +210,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(rotateWallpaper);
+        handler.removeCallbacks(shelfTick);
         handler.removeCallbacks(retryLive);
         isResumed = false;
         unregisterReceiver(tick);
@@ -316,6 +317,24 @@ public class MainActivity extends Activity {
         watchedBar.setProgressBackgroundTintList(android.content.res.ColorStateList.valueOf(0x40FFFFFF));
         watchedBar.setVisibility(View.GONE);
         titleBox.addView(watchedBar, llp(dp(260), dp(3), dp(2), dp(8), 0, 0));
+        // Top Shelf carousel buttons (Resume / Find where to watch / Read on phone) and a film poster.
+        shelfBar = new LinearLayout(this);
+        shelfBar.setGravity(Gravity.CENTER_VERTICAL);
+        shelfBar.setVisibility(View.GONE);
+        titleBox.addView(shelfBar, llp(-2, -2, 0, dp(14), 0, 0));
+        title.setSingleLine(false);
+        title.setMaxLines(2);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        title.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.66f));
+        poster = new ImageView(this);
+        poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        poster.setClipToOutline(true);
+        poster.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View v, Outline o) { o.setRoundRect(0, 0, v.getWidth(), v.getHeight(), dp(14)); }
+        });
+        poster.setElevation(dp(12));
+        poster.setAlpha(0f);
+        hero.addView(poster, lp(dp(170), dp(255), Gravity.END | Gravity.TOP, 0, dp(110), dp(72), 0));
 
         dockRow = new LinearLayout(this);
         dockRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -408,13 +427,13 @@ public class MainActivity extends Activity {
         LinearLayout right = new LinearLayout(this);
         right.setGravity(Gravity.CENTER_VERTICAL);
         right.setClipChildren(false);
-        TextView inputs = pill("Inputs", "⇥");
+        TextView inputs = pill("Inputs", R.drawable.sym_input);
         inputs.setOnClickListener(v -> showInputs(v));
-        wifiPill = pill("Wi-Fi", "◉");
+        wifiPill = pill("Wi-Fi", R.drawable.sym_wifi);
         wifiPill.setOnClickListener(v -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS)));
-        TextView settings = pill("Settings", "⚙");
+        TextView settings = pill("Settings", R.drawable.sym_settings);
         settings.setOnClickListener(v -> launch(new Intent(Settings.ACTION_SETTINGS)));
-        TextView control = pill("Control", "◐");
+        TextView control = pill("Control", R.drawable.sym_tune);
         control.setOnClickListener(v -> showControlCenter());
         for (TextView p : new TextView[]{control, inputs, wifiPill, settings}) {
             right.addView(p, llp(-2, dp(30), dp(10), 0, 0, 0));
@@ -424,9 +443,10 @@ public class MainActivity extends Activity {
         return header;
     }
 
-    private TextView pill(String label, String glyph) {
+    private TextView pill(String label, int icon) {
         TextView p = text(11, "sans-serif-medium", 0xE6FFFFFF);
-        p.setText(glyph + "  " + label);
+        p.setText(label);
+        Ui.iconBefore(p, icon, 15);
         p.setGravity(Gravity.CENTER);
         p.setPadding(dp(14), 0, dp(14), 0);
         p.setFocusable(true);
@@ -438,7 +458,7 @@ public class MainActivity extends Activity {
         p.setBackground(bg);
         p.setOnFocusChangeListener((v, has) -> {
             bg.setColor(has ? 0xF2FFFFFF : 0x66000000);
-            ((TextView) v).setTextColor(has ? 0xFF111111 : 0xE6FFFFFF);
+            Ui.setIconColor((TextView) v, has ? 0xFF111111 : 0xE6FFFFFF);
             v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f)
                     .setInterpolator(new OvershootInterpolator(2f)).setDuration(220).start();
             if (has) { lastFocusedId = v.getId(); scroll.smoothScrollTo(0, 0); fadeGlow(1f); }
@@ -730,6 +750,10 @@ public class MainActivity extends Activity {
                     : r < lastRow ? gridCards.get(g - 1).getId() : c.getId());
             c.setNextFocusLeftId(col == 0 ? c.getId() : gridCards.get(j - 1).getId());
             c.setNextFocusRightId(col == cols - 1 || j == g - 1 ? c.getId() : gridCards.get(j + 1).getId());
+        }
+        // With a Top Shelf card showing, Up from the dock goes to its buttons first.
+        if (shelfBar != null && shelfBar.getVisibility() == View.VISIBLE && shelfBar.getChildCount() > 1) {
+            for (View c : dockCards) c.setNextFocusUpId(shelfBar.getChildAt(0).getId());
         }
     }
 
@@ -1062,9 +1086,9 @@ public class MainActivity extends Activity {
                 box.addView(line, llp(-1, -2, 0, i == 0 ? 0 : gap, 0, 0));
             }
             String[] it = items.get(i);
-            TextView b = text(17, "sans-serif-light", 0xCCFFFFFF);
-            b.setText(it[0]);
-            b.setGravity(Gravity.CENTER);
+            int icon = "☰".equals(it[0]) ? R.drawable.sym_view_timeline : "⌕".equals(it[0]) ? R.drawable.sym_search
+                    : "●".equals(it[0]) ? R.drawable.sym_fiber_manual_record : R.drawable.sym_play_arrow;
+            ImageView b = Ui.iconView(this, icon, 0xCCFFFFFF, 11);
             b.setId(View.generateViewId());
             b.setFocusable(true);
             b.setClickable(true);
@@ -1075,7 +1099,7 @@ public class MainActivity extends Activity {
             b.setOnClickListener(clicks.get(i));
             b.setOnFocusChangeListener((v, has) -> {
                 bg.setColor(has ? 0xF2FFFFFF : 0x1FFFFFFF);
-                b.setTextColor(has ? 0xFF111111 : 0xCCFFFFFF);
+                b.setImageTintList(android.content.res.ColorStateList.valueOf(has ? 0xFF111111 : 0xCCFFFFFF));
                 v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(160).start();
                 caption.setText(has ? it[1] : " ");
                 if (has) onChannelFocus(v);
@@ -1204,36 +1228,257 @@ public class MainActivity extends Activity {
         return box;
     }
 
-    /** Under the focused dock app's name: what was last watched there, a progress bar, its artwork. */
+    /**
+     * The focused dock app. Top Shelf "focused app" mode shows what was last watched there under
+     * its name (a progress bar, its artwork behind); "off" just the name; the carousel modes keep
+     * showing their current card.
+     */
     private void showWatched(App app) {
         dockFocus = app;
-        Watched.Line l = Watched.line(this, app.pkg, lastUsed);
+        String mode = Shelf.mode(this);
+        if (!shelfItems.isEmpty()) { showShelfItem(); return; }
+        Watched.Line l = Shelf.OFF.equals(mode) ? null : Watched.line(this, app.pkg, lastUsed);
+        title.setText(app.label);
         watchedLine.setText(l == null ? "" : l.text);
         watchedLine.setVisibility(l == null ? View.GONE : View.VISIBLE);
         watchedBar.setVisibility(l != null && l.progress >= 0 ? View.VISIBLE : View.GONE);
         if (l != null && l.progress >= 0) watchedBar.setProgress(Math.round(l.progress * 1000));
         java.io.File art = l == null ? null : Watched.artFile(this, app.pkg);
         showArt(art != null && art.exists() ? app.pkg : null);
+        shelfBar.setVisibility(View.GONE);
     }
 
     /** Fade the app's artwork in over the wallpaper (dimmed by the scrim), or back out. */
     private void showArt(String pkg) {
-        if (pkg == null) {
+        if (pkg == null) { showBackdrop(null, null); return; }
+        java.io.File f = Watched.artFile(this, pkg);
+        showBackdrop(pkg, () -> BitmapFactory.decodeFile(f.getAbsolutePath()));
+    }
+
+    /** A backdrop behind the hero (artwork, a news photo), loaded off the UI thread; null fades it out. */
+    private void showBackdrop(String key, java.util.concurrent.Callable<Bitmap> load) {
+        if (key == null) {
             artPkg = null;
             artLayer.animate().alpha(0f).setDuration(400).start();
+            poster.animate().alpha(0f).setDuration(300).start();
             return;
         }
-        if (pkg.equals(artPkg)) { artLayer.animate().alpha(1f).setDuration(600).start(); return; }
-        artPkg = pkg;
-        java.io.File f = Watched.artFile(this, pkg);
+        if (key.equals(artPkg)) { artLayer.animate().alpha(1f).setDuration(600).start(); return; }
+        artPkg = key;
         Tvh.IO.execute(() -> {
-            Bitmap b = BitmapFactory.decodeFile(f.getAbsolutePath());
+            Bitmap b = null;
+            try { b = load.call(); } catch (Exception ignored) { }
+            Bitmap got = b;
             runOnUiThread(() -> {
-                if (!pkg.equals(artPkg)) return; // focus moved on meanwhile
-                if (b == null) { showArt(null); return; }
-                artLayer.setImageBitmap(b);
+                if (!key.equals(artPkg)) return; // moved on meanwhile
+                if (got == null) { showBackdrop(null, null); return; }
+                artLayer.setImageBitmap(got);
                 artLayer.animate().alpha(1f).setDuration(600).start();
             });
+        });
+    }
+
+    // ---------------------------------------------------------------- top shelf
+
+    private List<Shelf.Item> shelfItems = Collections.emptyList();
+    private int shelfIndex;
+    private LinearLayout shelfBar;
+    private ImageView poster;
+    private final Runnable shelfTick = this::rotateShelf;
+
+    /** Load the shelf for the current mode (continue watching from the box; recommendations online, hourly). */
+    private void refreshShelf() {
+        handler.removeCallbacks(shelfTick);
+        String mode = Shelf.mode(this);
+        if (Shelf.ALL.equals(mode)) setShelf(Shelf.continueWatching(this));
+        else if (Shelf.RECS.equals(mode)) {
+            Tvh.IO.execute(() -> {
+                List<Shelf.Item> cached = Shelf.recommendations(this, false);
+                runOnUiThread(() -> { if (Shelf.RECS.equals(Shelf.mode(this))) setShelf(cached); });
+                List<Shelf.Item> fresh = Shelf.recommendations(this, true);
+                if (fresh.size() != cached.size() || (!fresh.isEmpty() && !fresh.get(0).title.equals(cached.isEmpty() ? "" : cached.get(0).title))) {
+                    runOnUiThread(() -> { if (Shelf.RECS.equals(Shelf.mode(this))) setShelf(fresh); });
+                }
+            });
+        } else setShelf(Collections.emptyList());
+    }
+
+    private void setShelf(List<Shelf.Item> items) {
+        shelfItems = items;
+        if (shelfIndex >= items.size()) shelfIndex = 0;
+        if (items.isEmpty()) {
+            shelfBar.setVisibility(View.GONE);
+            for (View d : dockCards) d.setNextFocusUpId(pills.get(0).getId());
+            if (dockFocus != null) showWatched(dockFocus);
+            else poster.setAlpha(0f);
+            return;
+        }
+        showShelfItem();
+        handler.removeCallbacks(shelfTick);
+        handler.postDelayed(shelfTick, 9000);
+    }
+
+    /** Next card every 9 s, unless you're on the shelf's buttons or away from the dock. */
+    private void rotateShelf() {
+        if (shelfItems.size() > 1 && !shelfBar.hasFocus() && dockFocus != null) {
+            shelfIndex = (shelfIndex + 1) % shelfItems.size();
+            showShelfItem();
+        }
+        handler.postDelayed(shelfTick, 9000);
+    }
+
+    private void showShelfItem() {
+        Shelf.Item it = shelfItems.get(shelfIndex);
+        title.setText(it.title);
+        watchedLine.setText(it.sub);
+        watchedLine.setVisibility(View.VISIBLE);
+        watchedBar.setVisibility(it.progress >= 0 ? View.VISIBLE : View.GONE);
+        if (it.progress >= 0) watchedBar.setProgress(Math.round(it.progress * 1000));
+
+        // Picture: an app's artwork or a news photo behind; a film's poster on the right.
+        if (it.tall) {
+            showBackdrop(null, null);
+            String url = it.artUrl;
+            Tvh.IO.execute(() -> {
+                Bitmap b = Shelf.image(this, url, dp(240));
+                runOnUiThread(() -> {
+                    if (shelfItems.isEmpty() || shelfItems.get(shelfIndex) != it) return;
+                    poster.setImageBitmap(b);
+                    poster.animate().alpha(b == null ? 0f : 1f).setDuration(500).start();
+                });
+            });
+        } else {
+            poster.animate().alpha(0f).setDuration(300).start();
+            if (it.artFile != null) showArt(it.pkg);
+            else if (it.artUrl != null) showBackdrop(it.artUrl, () -> Shelf.image(this, it.artUrl, 1280));
+            else showBackdrop(null, null);
+        }
+
+        // Buttons for this card; Left/Right at the ends step through the cards.
+        View focused = shelfBar.findFocus();
+        int focusedAt = focused == null ? -1 : shelfBar.indexOfChild(focused);
+        shelfBar.removeAllViews();
+        List<String[]> buttons = new ArrayList<>();
+        List<Runnable> actions = new ArrayList<>();
+        switch (it.kind) {
+            case "watch":
+                buttons.add(new String[]{"Resume", "play"}); actions.add(() -> resumeApp(it.pkg));
+                buttons.add(new String[]{"Remove", "close"}); actions.add(() -> { Watched.remove(this, it.pkg); refreshShelf(); });
+                break;
+            case "film":
+                buttons.add(new String[]{"Find where to watch", "search"}); actions.add(() -> findWhereToWatch(it.title));
+                buttons.add(new String[]{"About", "info"}); actions.add(() -> shelfDetails(it, null));
+                break;
+            default:
+                buttons.add(new String[]{"Read on phone", "phone"}); actions.add(() -> shelfDetails(it, it.link));
+        }
+        for (int i = 0; i < buttons.size(); i++) {
+            TextView b = text(14, "sans-serif-medium", Color.WHITE);
+            b.setText(buttons.get(i)[0]);
+            String k = buttons.get(i)[1];
+            Ui.iconBefore(b, "play".equals(k) ? R.drawable.sym_play_arrow : "close".equals(k) ? R.drawable.sym_close
+                    : "search".equals(k) ? R.drawable.sym_search : "info".equals(k) ? R.drawable.sym_info : R.drawable.sym_smartphone, 17);
+            b.setGravity(Gravity.CENTER);
+            b.setPadding(dp(18), 0, dp(18), 0);
+            b.setId(View.generateViewId());
+            ccFocus(b, false);
+            Runnable a = actions.get(i);
+            b.setOnClickListener(v -> a.run());
+            boolean first = i == 0, last = i == buttons.size() - 1;
+            b.setOnKeyListener((v, code, e) -> {
+                if (e.getAction() != android.view.KeyEvent.ACTION_DOWN || shelfItems.size() < 2) return false;
+                int step = code == android.view.KeyEvent.KEYCODE_DPAD_LEFT && first ? -1 : code == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && last ? 1 : 0;
+                if (step == 0) return false;
+                shelfIndex = (shelfIndex + step + shelfItems.size()) % shelfItems.size();
+                showShelfItem();
+                View t = shelfBar.getChildAt(step < 0 ? 0 : Math.max(0, shelfBar.getChildCount() - 2));
+                if (t != null) t.requestFocus();
+                return true;
+            });
+            shelfBar.addView(b, llp(-2, dp(40), i == 0 ? 0 : dp(10), 0, 0, 0));
+        }
+        TextView dots = text(12, "sans-serif", 0x99FFFFFF);
+        StringBuilder d = new StringBuilder();
+        for (int i = 0; i < shelfItems.size(); i++) d.append(i == shelfIndex ? "●" : "○").append(' ');
+        dots.setText(shelfItems.size() > 1 ? d.toString().trim() : "");
+        dots.setGravity(Gravity.CENTER_VERTICAL);
+        shelfBar.addView(dots, llp(-2, dp(40), dp(16), 0, 0, 0));
+        shelfBar.setVisibility(View.VISIBLE);
+        noClip(shelfBar);
+
+        // Up from the dock lands on the shelf's first button; Up again reaches the pills.
+        View firstButton = shelfBar.getChildAt(0);
+        for (View dc : dockCards) dc.setNextFocusUpId(firstButton.getId());
+        for (int i = 0; i < shelfBar.getChildCount() - 1; i++) {
+            View b = shelfBar.getChildAt(i);
+            b.setNextFocusUpId(pills.get(0).getId());
+            b.setNextFocusDownId(dockCards.isEmpty() ? b.getId() : dockCards.get(0).getId());
+        }
+        if (focusedAt >= 0 && focusedAt < shelfBar.getChildCount() - 1) shelfBar.getChildAt(focusedAt).requestFocus();
+    }
+
+    /** Back into the app: straight to its player if it's still running, else just open it. */
+    private void resumeApp(String pkg) {
+        android.app.PendingIntent pi = Watched.resume.get(pkg);
+        if (pi != null) {
+            try { pi.send(); return; } catch (android.app.PendingIntent.CanceledException gone) { Watched.resume.remove(pkg); }
+        }
+        Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
+        if (i == null) i = getPackageManager().getLaunchIntentForPackage(pkg);
+        if (i != null) launch(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
+    /** Google TV's own search, which lists the apps a title is on. */
+    private void findWhereToWatch(String title) {
+        Intent i = new Intent("android.search.action.GLOBAL_SEARCH").putExtra(android.app.SearchManager.QUERY, title)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (!launch(i)) launch(new Intent(Intent.ACTION_WEB_SEARCH).putExtra(android.app.SearchManager.QUERY, title)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
+    /** A card's story; with a link, a QR code to read it on the phone. */
+    private void shelfDetails(Shelf.Item it, String link) {
+        LinearLayout box = new LinearLayout(this);
+        box.setPadding(dp(24), dp(4), dp(24), 0);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        if (link != null) {
+            ImageView qr = new ImageView(this);
+            qr.setImageBitmap(qrCode(link, dp(180)));
+            box.addView(qr, new LinearLayout.LayoutParams(dp(180), dp(180)));
+        }
+        TextView t = text(15, "sans-serif", 0xE6FFFFFF);
+        t.setLineSpacing(dp(3), 1f);
+        String about = it.summary == null || it.summary.isEmpty() ? "" : it.summary;
+        if (about.length() > 600) about = about.substring(0, 597) + "…";
+        t.setText(it.sub + (about.isEmpty() ? "" : "\n\n" + about) + (link != null ? "\n\nScan with your phone's camera to read it." : ""));
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
+        tl.setMargins(link != null ? dp(24) : 0, 0, 0, 0);
+        box.addView(t, tl);
+        Ui.frost(new AlertDialog.Builder(this, R.style.Glass).setTitle(it.title).setView(box)
+                .setPositiveButton("Close", null).create()).show();
+    }
+
+    /** Control Center → Top shelf: the four modes, and what Recommendations includes. */
+    private void pickShelf() {
+        String mode = Shelf.mode(this);
+        String[] modes = {Shelf.APP, Shelf.ALL, Shelf.RECS, Shelf.OFF};
+        List<String> labels = new ArrayList<>();
+        for (String m : modes) labels.add((m.equals(mode) ? "✓  " : "      ") + Shelf.modeName(m));
+        labels.add("Recommendations: films " + (Shelf.films(this) ? "on" : "off"));
+        labels.add("Recommendations: news " + (Shelf.news(this) ? "on" : "off"));
+        labels.add("News from: " + Shelf.FEEDS[Shelf.feed(this)][0]);
+        Ui.menu(this, "Top shelf", labels.toArray(new String[0]), i -> {
+            if (i < modes.length) { Shelf.setMode(this, modes[i]); shelfIndex = 0; refreshShelf(); return; }
+            if (i == modes.length) Tvh.prefs(this).edit().putBoolean("shelf_films", !Shelf.films(this)).apply();
+            else if (i == modes.length + 1) Tvh.prefs(this).edit().putBoolean("shelf_news", !Shelf.news(this)).apply();
+            else {
+                String[] names = new String[Shelf.FEEDS.length];
+                for (int k = 0; k < names.length; k++) names[k] = Shelf.FEEDS[k][0];
+                Ui.menu(this, "News from", names, k -> { Tvh.prefs(this).edit().putInt("shelf_feed", k).apply(); refreshShelf(); });
+                return;
+            }
+            refreshShelf();
+            pickShelf();
         });
     }
 
@@ -1362,70 +1607,64 @@ public class MainActivity extends Activity {
      * (network, sleep timer, weather) and do one thing each.
      */
     private void showControlCenter() {
-        // A glass panel on the right over the frosted home screen, like tvOS: a big Sleep tile,
-        // wide tiles for Wi-Fi / Bluetooth / Inputs / Settings / Weather / Phone remote, round buttons.
+        // tvOS style: no panel, just small frosted tiles and capsules floating over the blurred
+        // screen at the top right; a white square for Sleep, round buttons underneath.
         android.app.Dialog dialog = new android.app.Dialog(this, R.style.Glass);
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(20), dp(18), dp(20), dp(20));
-        GradientDrawable glass = new GradientDrawable();
-        glass.setCornerRadius(dp(30));
-        glass.setColor(0xB8242428);
-        glass.setStroke(dp(1), 0x33FFFFFF);
-        panel.setBackground(glass);
 
         LinearLayout head = new LinearLayout(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView time = text(18, "sans-serif-medium", Color.WHITE);
+        TextView time = text(13, "sans-serif-medium", Color.WHITE);
         time.setText(clock.getText() + (ampm.getText().length() > 0 ? " " + ampm.getText() : ""));
         head.addView(time, new LinearLayout.LayoutParams(0, -2, 1f));
         String weatherNow = Weather.current(this, false);
-        TextView w = text(14, "sans-serif", 0xB3FFFFFF);
+        TextView w = text(12, "sans-serif", 0xB3FFFFFF);
         w.setText(weatherNow == null ? "" : weatherNow);
         head.addView(w);
-        panel.addView(head, llp(-1, -2, dp(4), 0, dp(4), dp(14)));
+        panel.addView(head, llp(-1, -2, dp(6), 0, dp(6), dp(10)));
 
         int sleep = SleepTimer.left(this);
-        String net = String.valueOf(wifiPill.getText()).replaceFirst("^◉\\s*", "");
-        int gap = dp(10);
+        String net = String.valueOf(wifiPill.getText());
+        int gap = dp(8), pill = dp(46);
 
-        // Row 1: the big Sleep tile, with Wi-Fi and Bluetooth stacked beside it.
+        // Sleep square, with Wi-Fi and Bluetooth capsules stacked beside it.
         LinearLayout r1 = new LinearLayout(this);
-        View sleepTile = ccTile("☾", "Sleep", sleep > 0 ? "in " + sleep + " min" : "Off", true, dialog, this::pickSleepTimer);
-        r1.addView(sleepTile, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        int square = pill * 2 + gap;
+        View sleepTile = ccTile("◷", "Sleep", sleep > 0 ? "in " + sleep + " min" : "Off", true, dialog, this::pickSleepTimer);
+        r1.addView(sleepTile, new LinearLayout.LayoutParams(square, square));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.addView(ccTile("◉", "Wi-Fi", net, false, dialog, () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))),
-                new LinearLayout.LayoutParams(-1, 0, 1f));
-        LinearLayout.LayoutParams bt = new LinearLayout.LayoutParams(-1, 0, 1f);
-        bt.setMargins(0, gap, 0, 0);
-        col.addView(ccTile("ᛒ", "Bluetooth", "Remotes, speakers", false, dialog, () -> launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))), bt);
-        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, dp(150), 1f);
+        col.addView(ccTile("◉", "Wi-Fi", net, false, dialog, () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))), new LinearLayout.LayoutParams(-1, pill));
+        col.addView(ccTile("ᛒ", "Bluetooth", "Remotes, speakers", false, dialog, () -> launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))), llp(-1, pill, 0, gap, 0, 0));
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, square, 1f);
         cl.setMargins(gap, 0, 0, 0);
         r1.addView(col, cl);
         panel.addView(r1);
 
-        // Rows 2–3: pairs of wide tiles.
+        // Pairs of capsules.
         Object[][] pairs = {
-                {"⇥", "Inputs", "Sources, Live TV", (Runnable) () -> showInputs(pills.get(1))},
+                {"⇥", "Inputs", "Live TV", (Runnable) () -> showInputs(pills.get(1))},
                 {"⚙", "Settings", "Android TV", (Runnable) () -> launch(new Intent(Settings.ACTION_SETTINGS))},
-                {"☁", "Weather", weatherNow == null ? "Set a city" : "Today, next days", (Runnable) this::showWeatherDetails},
-                {"📱", "Phone remote", RemoteServer.enabled(this) ? "On · QR code" : "Off", (Runnable) this::showRemoteSetup},
+                {"▤", "Top shelf", Shelf.modeName(Shelf.mode(this)), (Runnable) this::pickShelf},
+                {"☰", "TV guide", Tvh.get(this) == null ? "Needs Tvheadend" : "What's on", (Runnable) () -> { if (Tvh.get(this) != null) launch(new Intent(this, GuideActivity.class)); }},
+                {"☁", "Weather", weatherNow == null ? "Set a city" : "Next days", (Runnable) this::showWeatherDetails},
+                {"▯", "Phone remote", RemoteServer.enabled(this) ? "On · QR" : "Off", (Runnable) this::showRemoteSetup},
         };
         for (int i = 0; i < pairs.length; i += 2) {
             LinearLayout r = new LinearLayout(this);
             for (int j = 0; j < 2; j++) {
                 Object[] t = pairs[i + j];
-                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(66), 1f);
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, pill, 1f);
                 p.setMargins(j == 0 ? 0 : gap / 2, 0, j == 0 ? gap / 2 : 0, 0);
                 r.addView(ccTile((String) t[0], (String) t[1], (String) t[2], false, dialog, (Runnable) t[3]), p);
             }
             panel.addView(r, llp(-1, -2, 0, gap, 0, 0));
         }
 
-        // Row 4: round buttons. Volume keeps the panel open, so you can press it a few times.
+        // Small round buttons. Volume keeps the overlay open, so you can press it a few times.
         LinearLayout r4 = new LinearLayout(this);
-        r4.setGravity(Gravity.CENTER);
+        r4.setGravity(Gravity.CENTER_VERTICAL);
         Object[][] round = {
                 {"🎙", "Voice search", (Runnable) () -> launch(new Intent(this, SearchActivity.class))},
                 {"−", "Volume down", (Runnable) () -> volume(android.media.AudioManager.ADJUST_LOWER)},
@@ -1436,32 +1675,29 @@ public class MainActivity extends Activity {
                     else android.widget.Toast.makeText(this, "Turning off needs the sleep permission (see the README)", android.widget.Toast.LENGTH_LONG).show();
                 }},
         };
+        int rs = dp(40);
         for (int i = 0; i < round.length; i++) {
             Object[] t = round[i];
             boolean stay = i == 1 || i == 2;
-            TextView b = text(20, "sans-serif", Color.WHITE);
-            // The TV's fonts have no power symbol (⏻), so that one is drawn.
-            if ("⏻".equals(t[0])) { b.setCompoundDrawablesWithIntrinsicBounds(new PowerGlyph(dp(22)), null, null, null); b.setPadding(dp(17), 0, 0, 0); }
-            else b.setText((String) t[0]);
-            b.setGravity(Gravity.CENTER);
+            ImageView b = Ui.iconView(this, sym((String) t[0]), Color.WHITE, 10);
             b.setContentDescription((String) t[1]);
             ccFocus(b, true);
             Runnable action = (Runnable) t[2];
             b.setOnClickListener(v -> { if (!stay) dialog.dismiss(); action.run(); });
-            r4.addView(b, llp(dp(56), dp(56), i == 0 ? 0 : dp(7), 0, i == round.length - 1 ? 0 : dp(7), 0));
+            r4.addView(b, llp(rs, rs, 0, 0, i == round.length - 1 ? 0 : dp(10), 0));
         }
-        panel.addView(r4, llp(-1, -2, 0, dp(16), 0, 0));
+        panel.addView(r4, llp(-1, -2, dp(2), dp(12), 0, 0));
 
-        noClip(panel); // focused tiles grow 5%: let them spill over their row
+        noClip(panel); // focused tiles grow a little: let them spill over their row
         dialog.setContentView(panel);
         android.view.Window win = dialog.getWindow();
         if (win != null) {
             win.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
             win.setGravity(Gravity.TOP | Gravity.END);
             android.view.WindowManager.LayoutParams lp = win.getAttributes();
-            lp.width = dp(460);
-            lp.x = dp(40);
-            lp.y = dp(28);
+            lp.width = dp(340);
+            lp.x = dp(48);
+            lp.y = dp(56);
             win.setAttributes(lp);
         }
         Ui.frost(dialog).show();
@@ -1475,94 +1711,86 @@ public class MainActivity extends Activity {
         for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) noClip(((ViewGroup) v).getChildAt(i));
     }
 
-    /** A Control Center tile: glyph, name and state; white when focused, like tvOS. */
+    /** A Control Center tile: small glyph, name and state; the square one is white like tvOS's StandBy. */
     private View ccTile(String glyph, String name, String state, boolean big, android.app.Dialog dialog, Runnable action) {
         LinearLayout t = new LinearLayout(this);
         t.setOrientation(big ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         t.setGravity(big ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
-        t.setPadding(dp(14), dp(8), dp(12), dp(8));
-        TextView g = text(big ? 34 : 20, "sans-serif", Color.WHITE);
-        g.setText(glyph);
-        g.setGravity(Gravity.CENTER);
-        t.addView(g, big ? new LinearLayout.LayoutParams(-2, -2) : new LinearLayout.LayoutParams(dp(32), -2));
+        t.setPadding(big ? dp(8) : dp(14), dp(4), dp(12), dp(4));
+        ImageView g = Ui.iconView(this, sym(glyph), Color.WHITE, 0);
+        t.addView(g, big ? new LinearLayout.LayoutParams(dp(30), dp(30)) : new LinearLayout.LayoutParams(dp(19), dp(19)));
         LinearLayout words = new LinearLayout(this);
         words.setOrientation(LinearLayout.VERTICAL);
         words.setGravity(big ? Gravity.CENTER_HORIZONTAL : Gravity.START);
-        TextView n = text(big ? 15 : 14, "sans-serif-medium", Color.WHITE);
+        TextView n = text(12, "sans-serif-medium", Color.WHITE);
         n.setText(name);
         n.setSingleLine(true);
         words.addView(n);
         if (!state.isEmpty()) {
-            TextView s = text(12, "sans-serif", 0x99FFFFFF);
+            TextView s = text(10, "sans-serif", 0x99FFFFFF);
             s.setText(state);
             s.setSingleLine(true);
             s.setEllipsize(android.text.TextUtils.TruncateAt.END);
             words.addView(s);
         }
         LinearLayout.LayoutParams wl = big ? new LinearLayout.LayoutParams(-2, -2) : new LinearLayout.LayoutParams(0, -2, 1f);
-        wl.setMargins(big ? 0 : dp(8), big ? dp(8) : 0, 0, 0);
+        wl.setMargins(big ? 0 : dp(8), big ? dp(6) : 0, 0, 0);
         t.addView(words, wl);
         ccFocus(t, false);
         t.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
         return t;
     }
 
-    /** Glass when idle, white with dark text when focused (all text inside follows). */
+    /** Frosted capsule (or circle) with a fine light edge; white with dark text when focused. */
     private void ccFocus(View v, boolean round) {
         GradientDrawable bg = new GradientDrawable();
-        if (round) bg.setShape(GradientDrawable.OVAL); else bg.setCornerRadius(dp(22));
-        bg.setColor(0x2EFFFFFF);
+        if (round) bg.setShape(GradientDrawable.OVAL); else bg.setCornerRadius(dp(26)); // capsule ends
+        bg.setColor(0x26FFFFFF);
+        bg.setStroke(dp(1), 0x33FFFFFF);
         v.setBackground(bg);
         v.setFocusable(true);
         v.setClickable(true);
         v.setOnFocusChangeListener((x, has) -> {
-            bg.setColor(has ? 0xF2FFFFFF : 0x2EFFFFFF);
+            bg.setColor(has ? 0xF2FFFFFF : 0x26FFFFFF);
+            bg.setStroke(dp(1), has ? 0xF2FFFFFF : 0x33FFFFFF);
             tint(x, has);
-            x.animate().scaleX(has ? 1.05f : 1f).scaleY(has ? 1.05f : 1f).setDuration(150).start();
+            x.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(150).start();
         });
     }
 
-    /** Text inside a focused tile turns dark (secondary text a softer dark); back to its own colour after. */
+    /** Text and icons inside a focused tile turn dark (secondary text a softer dark); back to their own colour after. */
     private static void tint(View v, boolean focused) {
         if (v instanceof TextView) {
             TextView t = (TextView) v;
             if (t.getTag() == null) t.setTag(t.getCurrentTextColor());
             int idle = (Integer) t.getTag();
-            t.setTextColor(focused ? ((idle >>> 24) < 0xF0 ? 0x99000000 : 0xFF111111) : idle);
-            for (Drawable d : t.getCompoundDrawables()) if (d instanceof PowerGlyph) { ((PowerGlyph) d).color = t.getCurrentTextColor(); d.invalidateSelf(); }
+            Ui.setIconColor(t, focused ? ((idle >>> 24) < 0xF0 ? 0x99000000 : 0xFF111111) : idle);
+        } else if (v instanceof ImageView) {
+            ((ImageView) v).setImageTintList(android.content.res.ColorStateList.valueOf(focused ? 0xFF111111 : Color.WHITE));
         } else if (v instanceof ViewGroup) {
             for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) tint(((ViewGroup) v).getChildAt(i), focused);
         }
     }
 
-    /** The power symbol: an open circle with a bar through the gap, drawn in the text colour. */
-    static final class PowerGlyph extends Drawable {
-        int color = Color.WHITE;
-        private final int size;
-        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-
-        PowerGlyph(int size) {
-            this.size = size;
-            p.setStyle(android.graphics.Paint.Style.STROKE);
-            p.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+    /** Control Center's icons, by the short key each tile is declared with. */
+    private static int sym(String key) {
+        switch (key) {
+            case "◷": return R.drawable.sym_bedtime;
+            case "◉": return R.drawable.sym_wifi;
+            case "ᛒ": return R.drawable.sym_bluetooth;
+            case "⇥": return R.drawable.sym_input;
+            case "⚙": return R.drawable.sym_settings;
+            case "▤": return R.drawable.sym_view_carousel;
+            case "☰": return R.drawable.sym_view_timeline;
+            case "☁": return R.drawable.sym_cloud;
+            case "▯": return R.drawable.sym_smartphone;
+            case "🎙": return R.drawable.sym_mic;
+            case "−": return R.drawable.sym_volume_down;
+            case "+": return R.drawable.sym_volume_up;
+            case "ⓘ": return R.drawable.sym_info;
+            case "⏻": return R.drawable.sym_power_settings_new;
+            default: return R.drawable.sym_tune;
         }
-
-        @Override public int getIntrinsicWidth() { return size; }
-        @Override public int getIntrinsicHeight() { return size; }
-
-        @Override
-        public void draw(Canvas c) {
-            android.graphics.Rect b = getBounds();
-            float s = Math.min(b.width(), b.height()), w = s * 0.11f, cx = b.exactCenterX(), cy = b.exactCenterY(), r = s / 2 - w;
-            p.setColor(color);
-            p.setStrokeWidth(w);
-            c.drawArc(new android.graphics.RectF(cx - r, cy - r + w / 2, cx + r, cy + r + w / 2), -60, 300, false, p);
-            c.drawLine(cx, cy - r - w / 2, cx, cy, p);
-        }
-
-        @Override public void setAlpha(int a) { }
-        @Override public void setColorFilter(android.graphics.ColorFilter f) { }
-        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 
     private void volume(int direction) {
@@ -1719,7 +1947,7 @@ public class MainActivity extends Activity {
                 if (wm.getConnectionInfo().getNetworkId() == -1) name = "Offline";
             }
         } catch (SecurityException ignored) { }
-        wifiPill.setText("◉  " + name);
+        wifiPill.setText(name);
     }
 
     // ---------------------------------------------------------------- glow

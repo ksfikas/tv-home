@@ -37,7 +37,7 @@ public class SearchActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable search = this::search;
     private int seq;
-    private TextView mic;
+    private android.widget.ImageView mic;
     private boolean focusFirstResult; // after voice input: jump straight to the results
 
     @Override
@@ -74,16 +74,17 @@ public class SearchActivity extends Activity {
         // Mic first: OK and say the title (Google's voice input, through the remote's microphone).
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        mic = Ui.text(this, 22, "sans-serif", Color.WHITE);
-        mic.setText("🎙");
-        mic.setGravity(android.view.Gravity.CENTER);
+        mic = Ui.iconView(this, R.drawable.sym_mic, Color.WHITE, 12);
         mic.setFocusable(true);
         mic.setClickable(true);
         GradientDrawable mb = new GradientDrawable();
         mb.setShape(GradientDrawable.OVAL);
         mb.setColor(0xFF1C1C1E);
         mic.setBackground(mb);
-        mic.setOnFocusChangeListener((v, has) -> mb.setColor(has ? 0xF2FFFFFF : 0xFF1C1C1E));
+        mic.setOnFocusChangeListener((v, has) -> {
+            mb.setColor(has ? 0xF2FFFFFF : 0xFF1C1C1E);
+            mic.setImageTintList(android.content.res.ColorStateList.valueOf(has ? 0xFF111111 : Color.WHITE));
+        });
         mic.setOnClickListener(v -> listen());
         int ms = Ui.dp(this, 48);
         LinearLayout.LayoutParams mlp = new LinearLayout.LayoutParams(ms, ms);

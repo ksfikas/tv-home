@@ -80,6 +80,7 @@ final class Watched {
             e.subtitle = old.subtitle;
         }
         put(c, pkg, e);
+        if (mc.getSessionActivity() != null) resume.put(pkg, mc.getSessionActivity());
         if (md != null) saveArt(c, pkg, md, e.title, old == null ? null : old.title);
     }
 
@@ -142,6 +143,28 @@ final class Watched {
             return null;
         }
     }
+
+    /** Every app's latest entry (the Top Shelf's "All continue watching"). */
+    static Map<String, Entry> all(Context c) {
+        Map<String, Entry> out = new HashMap<>();
+        for (String pkg : prefs(c).getAll().keySet()) {
+            Entry e = get(c, pkg);
+            if (e != null) out.put(pkg, e);
+        }
+        return out;
+    }
+
+    /** "Remove" on the shelf: forget an app's entry and its artwork. */
+    static void remove(Context c, String pkg) {
+        prefs(c).edit().remove(pkg).apply();
+        artFile(c, pkg).delete();
+    }
+
+    /**
+     * Where each app's player is, while that app is still running: its media session's own
+     * "open me" link, kept in memory only (MediaWatcher fills it). Resume uses it.
+     */
+    static final Map<String, android.app.PendingIntent> resume = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static void put(Context c, String pkg, Entry e) {
         JSONObject o = new JSONObject();

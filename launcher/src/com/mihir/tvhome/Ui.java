@@ -48,6 +48,40 @@ final class Ui {
         return r;
     }
 
+    // ---------------------------------------------------------------- icons
+
+    /** A Material Symbols icon (res/drawable/sym_*), sized in dp; tinted by whoever shows it. */
+    static android.graphics.drawable.Drawable icon(Context c, int res, float sizeDp) {
+        android.graphics.drawable.Drawable d = c.getDrawable(res).mutate();
+        int s = dp(c, sizeDp);
+        d.setBounds(0, 0, s, s);
+        return d;
+    }
+
+    /** An icon before a TextView's text, in the text's colour (keep it in step with setIconColor). */
+    static void iconBefore(TextView t, int res, float sizeDp) {
+        t.setCompoundDrawables(icon(t.getContext(), res, sizeDp), null, null, null);
+        t.setCompoundDrawablePadding(dp(t.getContext(), 8));
+        setIconColor(t, t.getCurrentTextColor());
+    }
+
+    /** Text and its icon in one colour (focus changes). */
+    static void setIconColor(TextView t, int color) {
+        t.setTextColor(color);
+        t.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(color));
+    }
+
+    /** An icon-only button image, tinted, with even padding around it. */
+    static android.widget.ImageView iconView(Context c, int res, int color, float padDp) {
+        android.widget.ImageView v = new android.widget.ImageView(c);
+        v.setImageResource(res);
+        v.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        int p = dp(c, padDp);
+        v.setPadding(p, p, p, p);
+        v.setImageTintList(android.content.res.ColorStateList.valueOf(color));
+        return v;
+    }
+
     /** A simple pick-one menu; framework dialog, D-pad friendly, no extra views to keep around. */
     static void menu(Context c, String title, String[] items, java.util.function.IntConsumer onPick) {
         frost(new AlertDialog.Builder(c, R.style.Glass)
@@ -87,7 +121,7 @@ final class Ui {
         Frost frost = f;
         if (frost.users++ == 0) {
             frost.setVisibility(android.view.View.GONE);
-            frost.setImageBitmap(blurredSnapshot(content, 10));
+            frost.setImageBitmap(blurredSnapshot(content, 14));
             frost.setVisibility(android.view.View.VISIBLE);
             frost.setAlpha(0f);
             frost.animate().cancel();
@@ -115,7 +149,7 @@ final class Ui {
         Frost(Context c) {
             super(c);
             setScaleType(ScaleType.FIT_XY);
-            setColorFilter(0x66000000, android.graphics.PorterDuff.Mode.SRC_ATOP);
+            setColorFilter(0x80000000, android.graphics.PorterDuff.Mode.SRC_ATOP);
             setClickable(false);
             setFocusable(false);
         }
