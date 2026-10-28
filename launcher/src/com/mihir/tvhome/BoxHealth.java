@@ -62,12 +62,13 @@ final class BoxHealth {
     }
 
     static void show(Activity a) {
-        AlertDialog d = new AlertDialog.Builder(a, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog d = new AlertDialog.Builder(a, R.style.Glass)
                 .setTitle("Box status")
                 .setMessage("Checking…")
                 .setPositiveButton("Tidy launcher cache", null)
                 .setNegativeButton("Close", null)
-                .show();
+                .create();
+        Ui.frost(d).show();
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> Tvh.IO.execute(() -> {
             long freed = tidyAll(a);
             a.runOnUiThread(() -> refresh(a, d, "\n\nFreed " + Formatter.formatShortFileSize(a, freed) + "."));

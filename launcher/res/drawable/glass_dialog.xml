@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tvOS-style dark glass: see-through, big rounded corners, a fine light edge. The frosting behind
+     it comes from Ui.frost (a blurred snapshot), since this box has no system window blur. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="16dp" android:insetTop="16dp" android:insetRight="16dp" android:insetBottom="16dp">
+    <shape android:shape="rectangle">
+        <corners android:radius="28dp" />
+        <solid android:color="#B8242428" />
+        <stroke android:width="1dp" android:color="#33FFFFFF" />
+    </shape>
+</inset>

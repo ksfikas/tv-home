@@ -129,7 +129,7 @@ final class Reminders {
             if (r == null) { finish(); return; }
             long nowSec = System.currentTimeMillis() / 1000;
             String when = r.start <= nowSec ? "Starting now" : "Starts at " + Ui.time(this, r.start);
-            AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            AlertDialog d = new AlertDialog.Builder(this, R.style.Glass)
                     .setTitle(r.title)
                     .setMessage(when + (r.channelName.isEmpty() ? "" : " on " + r.channelName))
                     .setPositiveButton("Watch", (x, w) -> startActivity(new Intent(this, PlayerActivity.class)

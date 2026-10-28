@@ -117,7 +117,8 @@ final class Weather {
                         "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.3f&longitude=%.3f&current=european_aqi", lat, lon)))
                         .getJSONObject("current");
                 int aqi = aq.getInt("european_aqi");
-                s.append("   ·   air ").append(airQuality(aqi)).append(" (").append(aqi).append(')');
+                s.append("
+Air quality ").append(airQuality(aqi)).append(" (").append(aqi).append(')');
             } catch (Exception ignored) { } // air quality is a nice-to-have
             return s.toString();
         } catch (Exception e) {

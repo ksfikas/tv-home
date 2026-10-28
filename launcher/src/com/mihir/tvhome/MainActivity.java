@@ -1300,7 +1300,7 @@ public class MainActivity extends Activity {
         android.widget.ScrollView sv = new android.widget.ScrollView(this);
         sv.addView(form);
 
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.Glass)
                 .setTitle("Live TV")
                 .setView(sv)
                 .setPositiveButton("Save", null)
@@ -1354,7 +1354,7 @@ public class MainActivity extends Activity {
                 });
             });
         });
-        dialog.show();
+        Ui.frost(dialog).show();
     }
 
     /**
@@ -1362,72 +1362,207 @@ public class MainActivity extends Activity {
      * (network, sleep timer, weather) and do one thing each.
      */
     private void showControlCenter() {
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        grid.setPadding(dp(20), dp(8), dp(20), dp(8));
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Control Center").setView(grid).create();
-        int sleep = SleepTimer.left(this);
+        // A glass panel on the right over the frosted home screen, like tvOS: a big Sleep tile,
+        // wide tiles for Wi-Fi / Bluetooth / Inputs / Settings / Weather / Phone remote, round buttons.
+        android.app.Dialog dialog = new android.app.Dialog(this, R.style.Glass);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(18), dp(20), dp(20));
+        GradientDrawable glass = new GradientDrawable();
+        glass.setCornerRadius(dp(30));
+        glass.setColor(0xB8242428);
+        glass.setStroke(dp(1), 0x33FFFFFF);
+        panel.setBackground(glass);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView time = text(18, "sans-serif-medium", Color.WHITE);
+        time.setText(clock.getText() + (ampm.getText().length() > 0 ? " " + ampm.getText() : ""));
+        head.addView(time, new LinearLayout.LayoutParams(0, -2, 1f));
         String weatherNow = Weather.current(this, false);
+        TextView w = text(14, "sans-serif", 0xB3FFFFFF);
+        w.setText(weatherNow == null ? "" : weatherNow);
+        head.addView(w);
+        panel.addView(head, llp(-1, -2, dp(4), 0, dp(4), dp(14)));
+
+        int sleep = SleepTimer.left(this);
         String net = String.valueOf(wifiPill.getText()).replaceFirst("^◉\\s*", "");
-        Object[][] tiles = {
-                {"Wi-Fi", net, (Runnable) () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))},
-                {"Bluetooth", "Remotes, speakers", (Runnable) () -> launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))},
-                {"Volume −", "", (Runnable) () -> volume(android.media.AudioManager.ADJUST_LOWER)},
-                {"Volume +", "", (Runnable) () -> volume(android.media.AudioManager.ADJUST_RAISE)},
-                {"Sleep timer", sleep > 0 ? "in " + sleep + " min" : "Off", (Runnable) this::pickSleepTimer},
-                {"Weather", weatherNow == null ? "Set a city" : weatherNow, (Runnable) this::showWeatherDetails},
-                {"Phone remote", RemoteServer.enabled(this) ? "On · show QR" : "Off", (Runnable) this::showRemoteSetup},
-                {"Box status", "Memory, storage", (Runnable) () -> BoxHealth.show(this)},
-                {"Live TV setup", "Sources", (Runnable) this::showLiveSetup},
-                {"Turn off", SleepTimer.canSleep(this) ? "Standby now" : "Needs permission", (Runnable) () -> {
+        int gap = dp(10);
+
+        // Row 1: the big Sleep tile, with Wi-Fi and Bluetooth stacked beside it.
+        LinearLayout r1 = new LinearLayout(this);
+        View sleepTile = ccTile("☾", "Sleep", sleep > 0 ? "in " + sleep + " min" : "Off", true, dialog, this::pickSleepTimer);
+        r1.addView(sleepTile, new LinearLayout.LayoutParams(dp(150), dp(150)));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(ccTile("◉", "Wi-Fi", net, false, dialog, () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))),
+                new LinearLayout.LayoutParams(-1, 0, 1f));
+        LinearLayout.LayoutParams bt = new LinearLayout.LayoutParams(-1, 0, 1f);
+        bt.setMargins(0, gap, 0, 0);
+        col.addView(ccTile("ᛒ", "Bluetooth", "Remotes, speakers", false, dialog, () -> launch(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS))), bt);
+        LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, dp(150), 1f);
+        cl.setMargins(gap, 0, 0, 0);
+        r1.addView(col, cl);
+        panel.addView(r1);
+
+        // Rows 2–3: pairs of wide tiles.
+        Object[][] pairs = {
+                {"⇥", "Inputs", "Sources, Live TV", (Runnable) () -> showInputs(pills.get(1))},
+                {"⚙", "Settings", "Android TV", (Runnable) () -> launch(new Intent(Settings.ACTION_SETTINGS))},
+                {"☁", "Weather", weatherNow == null ? "Set a city" : "Today, next days", (Runnable) this::showWeatherDetails},
+                {"📱", "Phone remote", RemoteServer.enabled(this) ? "On · QR code" : "Off", (Runnable) this::showRemoteSetup},
+        };
+        for (int i = 0; i < pairs.length; i += 2) {
+            LinearLayout r = new LinearLayout(this);
+            for (int j = 0; j < 2; j++) {
+                Object[] t = pairs[i + j];
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(66), 1f);
+                p.setMargins(j == 0 ? 0 : gap / 2, 0, j == 0 ? gap / 2 : 0, 0);
+                r.addView(ccTile((String) t[0], (String) t[1], (String) t[2], false, dialog, (Runnable) t[3]), p);
+            }
+            panel.addView(r, llp(-1, -2, 0, gap, 0, 0));
+        }
+
+        // Row 4: round buttons. Volume keeps the panel open, so you can press it a few times.
+        LinearLayout r4 = new LinearLayout(this);
+        r4.setGravity(Gravity.CENTER);
+        Object[][] round = {
+                {"🎙", "Voice search", (Runnable) () -> launch(new Intent(this, SearchActivity.class))},
+                {"−", "Volume down", (Runnable) () -> volume(android.media.AudioManager.ADJUST_LOWER)},
+                {"+", "Volume up", (Runnable) () -> volume(android.media.AudioManager.ADJUST_RAISE)},
+                {"ⓘ", "Box status", (Runnable) () -> BoxHealth.show(this)},
+                {"⏻", "Turn off", (Runnable) () -> {
                     if (SleepTimer.canSleep(this)) SleepTimer.sleepNow(this);
                     else android.widget.Toast.makeText(this, "Turning off needs the sleep permission (see the README)", android.widget.Toast.LENGTH_LONG).show();
                 }},
         };
-        LinearLayout row = null;
-        View first = null;
-        for (int i = 0; i < tiles.length; i++) {
-            if (i % 4 == 0) {
-                row = new LinearLayout(this);
-                grid.addView(row, llp(-1, -2, 0, 0, 0, dp(10)));
-            }
-            Object[] t = tiles[i];
-            TextView tile = text(15, "sans-serif-medium", Color.WHITE);
-            android.text.SpannableStringBuilder s = new android.text.SpannableStringBuilder((String) t[0]);
-            if (!((String) t[1]).isEmpty()) {
-                int a = s.length();
-                s.append("\n").append((String) t[1]);
-                s.setSpan(new android.text.style.RelativeSizeSpan(0.78f), a, s.length(), 0);
-                s.setSpan(new android.text.style.ForegroundColorSpan(0x99888888), a, s.length(), 0);
-            }
-            tile.setText(s);
-            tile.setMaxLines(3);
-            tile.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            tile.setGravity(Gravity.CENTER_VERTICAL);
-            tile.setPadding(dp(14), dp(10), dp(14), dp(10));
-            tile.setFocusable(true);
-            tile.setClickable(true);
-            GradientDrawable bg = new GradientDrawable();
-            bg.setCornerRadius(dp(14));
-            bg.setColor(0x26FFFFFF);
-            tile.setBackground(bg);
-            tile.setOnFocusChangeListener((v, has) -> {
-                bg.setColor(has ? 0xF2FFFFFF : 0x26FFFFFF);
-                ((TextView) v).setTextColor(has ? 0xFF111111 : Color.WHITE);
-            });
+        for (int i = 0; i < round.length; i++) {
+            Object[] t = round[i];
+            boolean stay = i == 1 || i == 2;
+            TextView b = text(20, "sans-serif", Color.WHITE);
+            // The TV's fonts have no power symbol (⏻), so that one is drawn.
+            if ("⏻".equals(t[0])) { b.setCompoundDrawablesWithIntrinsicBounds(new PowerGlyph(dp(22)), null, null, null); b.setPadding(dp(17), 0, 0, 0); }
+            else b.setText((String) t[0]);
+            b.setGravity(Gravity.CENTER);
+            b.setContentDescription((String) t[1]);
+            ccFocus(b, true);
             Runnable action = (Runnable) t[2];
-            tile.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(74), 1f);
-            p.setMargins(i % 4 == 0 ? 0 : dp(5), 0, i % 4 == 3 ? 0 : dp(5), 0);
-            row.addView(tile, p);
-            if (first == null) first = tile;
+            b.setOnClickListener(v -> { if (!stay) dialog.dismiss(); action.run(); });
+            r4.addView(b, llp(dp(56), dp(56), i == 0 ? 0 : dp(7), 0, i == round.length - 1 ? 0 : dp(7), 0));
         }
-        // Pad the last row so its tiles keep their width.
-        for (int i = tiles.length % 4; i != 0 && i < 4; i++) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
-        dialog.show();
-        if (dialog.getWindow() != null) dialog.getWindow().setLayout(dp(860), -2);
-        if (first != null) first.requestFocus();
+        panel.addView(r4, llp(-1, -2, 0, dp(16), 0, 0));
+
+        noClip(panel); // focused tiles grow 5%: let them spill over their row
+        dialog.setContentView(panel);
+        android.view.Window win = dialog.getWindow();
+        if (win != null) {
+            win.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            win.setGravity(Gravity.TOP | Gravity.END);
+            android.view.WindowManager.LayoutParams lp = win.getAttributes();
+            lp.width = dp(460);
+            lp.x = dp(40);
+            lp.y = dp(28);
+            win.setAttributes(lp);
+        }
+        Ui.frost(dialog).show();
+        sleepTile.requestFocus();
+    }
+
+    private static void noClip(View v) {
+        if (!(v instanceof ViewGroup)) return;
+        ((ViewGroup) v).setClipChildren(false);
+        ((ViewGroup) v).setClipToPadding(false);
+        for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) noClip(((ViewGroup) v).getChildAt(i));
+    }
+
+    /** A Control Center tile: glyph, name and state; white when focused, like tvOS. */
+    private View ccTile(String glyph, String name, String state, boolean big, android.app.Dialog dialog, Runnable action) {
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(big ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        t.setGravity(big ? Gravity.CENTER : Gravity.CENTER_VERTICAL);
+        t.setPadding(dp(14), dp(8), dp(12), dp(8));
+        TextView g = text(big ? 34 : 20, "sans-serif", Color.WHITE);
+        g.setText(glyph);
+        g.setGravity(Gravity.CENTER);
+        t.addView(g, big ? new LinearLayout.LayoutParams(-2, -2) : new LinearLayout.LayoutParams(dp(32), -2));
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        words.setGravity(big ? Gravity.CENTER_HORIZONTAL : Gravity.START);
+        TextView n = text(big ? 15 : 14, "sans-serif-medium", Color.WHITE);
+        n.setText(name);
+        n.setSingleLine(true);
+        words.addView(n);
+        if (!state.isEmpty()) {
+            TextView s = text(12, "sans-serif", 0x99FFFFFF);
+            s.setText(state);
+            s.setSingleLine(true);
+            s.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            words.addView(s);
+        }
+        LinearLayout.LayoutParams wl = big ? new LinearLayout.LayoutParams(-2, -2) : new LinearLayout.LayoutParams(0, -2, 1f);
+        wl.setMargins(big ? 0 : dp(8), big ? dp(8) : 0, 0, 0);
+        t.addView(words, wl);
+        ccFocus(t, false);
+        t.setOnClickListener(v -> { dialog.dismiss(); action.run(); });
+        return t;
+    }
+
+    /** Glass when idle, white with dark text when focused (all text inside follows). */
+    private void ccFocus(View v, boolean round) {
+        GradientDrawable bg = new GradientDrawable();
+        if (round) bg.setShape(GradientDrawable.OVAL); else bg.setCornerRadius(dp(22));
+        bg.setColor(0x2EFFFFFF);
+        v.setBackground(bg);
+        v.setFocusable(true);
+        v.setClickable(true);
+        v.setOnFocusChangeListener((x, has) -> {
+            bg.setColor(has ? 0xF2FFFFFF : 0x2EFFFFFF);
+            tint(x, has);
+            x.animate().scaleX(has ? 1.05f : 1f).scaleY(has ? 1.05f : 1f).setDuration(150).start();
+        });
+    }
+
+    /** Text inside a focused tile turns dark (secondary text a softer dark); back to its own colour after. */
+    private static void tint(View v, boolean focused) {
+        if (v instanceof TextView) {
+            TextView t = (TextView) v;
+            if (t.getTag() == null) t.setTag(t.getCurrentTextColor());
+            int idle = (Integer) t.getTag();
+            t.setTextColor(focused ? ((idle >>> 24) < 0xF0 ? 0x99000000 : 0xFF111111) : idle);
+            for (Drawable d : t.getCompoundDrawables()) if (d instanceof PowerGlyph) { ((PowerGlyph) d).color = t.getCurrentTextColor(); d.invalidateSelf(); }
+        } else if (v instanceof ViewGroup) {
+            for (int i = 0; i < ((ViewGroup) v).getChildCount(); i++) tint(((ViewGroup) v).getChildAt(i), focused);
+        }
+    }
+
+    /** The power symbol: an open circle with a bar through the gap, drawn in the text colour. */
+    static final class PowerGlyph extends Drawable {
+        int color = Color.WHITE;
+        private final int size;
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+        PowerGlyph(int size) {
+            this.size = size;
+            p.setStyle(android.graphics.Paint.Style.STROKE);
+            p.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+        }
+
+        @Override public int getIntrinsicWidth() { return size; }
+        @Override public int getIntrinsicHeight() { return size; }
+
+        @Override
+        public void draw(Canvas c) {
+            android.graphics.Rect b = getBounds();
+            float s = Math.min(b.width(), b.height()), w = s * 0.11f, cx = b.exactCenterX(), cy = b.exactCenterY(), r = s / 2 - w;
+            p.setColor(color);
+            p.setStrokeWidth(w);
+            c.drawArc(new android.graphics.RectF(cx - r, cy - r + w / 2, cx + r, cy + r + w / 2), -60, 300, false, p);
+            c.drawLine(cx, cy - r - w / 2, cx, cy, p);
+        }
+
+        @Override public void setAlpha(int a) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter f) { }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
     }
 
     private void volume(int direction) {
@@ -1450,12 +1585,13 @@ public class MainActivity extends Activity {
 
     private void showWeatherDetails() {
         if (Weather.city(this).isEmpty()) { showWeatherSetup(); return; }
-        AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog d = new AlertDialog.Builder(this, R.style.Glass)
                 .setTitle(Weather.city(this))
                 .setMessage("Loading…")
                 .setPositiveButton("Close", null)
                 .setNeutralButton("Change city", (x, w) -> showWeatherSetup())
-                .show();
+                .create();
+        Ui.frost(d).show();
         Tvh.IO.execute(() -> {
             String s = Weather.details(this);
             runOnUiThread(() -> { if (d.isShowing()) d.setMessage(s == null ? "Can't reach the weather service" : s); });
@@ -1466,7 +1602,7 @@ public class MainActivity extends Activity {
     private void showRemoteSetup() {
         boolean on = RemoteServer.enabled(this);
         String addr = RemoteServer.address();
-        AlertDialog.Builder b = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder b = new AlertDialog.Builder(this, R.style.Glass)
                 .setTitle("Phone remote");
         if (on && addr != null) {
             String pin = RemoteServer.pin(this);
@@ -1491,7 +1627,8 @@ public class MainActivity extends Activity {
         b.setPositiveButton(on ? "Turn off" : "Turn on", (d, w) -> {
             RemoteServer.setEnabled(this, !on);
             if (!on) showRemoteSetup();
-        }).setNegativeButton("Close", null).show();
+        }).setNegativeButton("Close", null);
+        Ui.frost(b.create()).show();
     }
 
     /** Black-on-white QR code, size × size pixels, with the standard quiet zone. */
@@ -1515,7 +1652,7 @@ public class MainActivity extends Activity {
         EditText city = field(form, "City (leave empty for no weather)", Weather.city(this), InputType.TYPE_CLASS_TEXT);
         TextView result = text(13, "sans-serif", 0xFFFF8A80);
         form.addView(result, llp(-1, -2, 0, dp(6), 0, 0));
-        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog dialog = new AlertDialog.Builder(this, R.style.Glass)
                 .setTitle("Weather")
                 .setView(form)
                 .setPositiveButton("Save", null)
@@ -1534,7 +1671,7 @@ public class MainActivity extends Activity {
                 });
             });
         }));
-        dialog.show();
+        Ui.frost(dialog).show();
     }
 
     private void updateWeather() {
