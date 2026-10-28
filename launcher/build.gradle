@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace "com.mihir.tvhome"
+    namespace "io.github.ksfikas.tvhome"
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.mihir.tvhome"
+        applicationId "io.github.ksfikas.tvhome"
         minSdk 30
         targetSdk 30
         versionCode 4

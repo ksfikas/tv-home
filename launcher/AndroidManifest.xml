@@ -119,7 +119,7 @@
         </receiver>
 
         <!-- Hears what other apps play (media sessions) for "last watched" under dock apps.
-             Enabled over ADB: cmd notification allow_listener com.mihir.tvhome/com.mihir.tvhome.MediaWatcher -->
+             Enabled over ADB: cmd notification allow_listener io.github.ksfikas.tvhome/io.github.ksfikas.tvhome.MediaWatcher -->
         <service
             android:name=".MediaWatcher"
             android:exported="true"
@@ -131,7 +131,7 @@
         </service>
 
         <!-- Screensaver (photos, clock, weather, news ticker). Chosen over ADB:
-             settings put secure screensaver_components com.mihir.tvhome/.Screensaver -->
+             settings put secure screensaver_components io.github.ksfikas.tvhome/.Screensaver -->
         <service
             android:name=".Screensaver"
             android:exported="true"

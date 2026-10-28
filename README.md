@@ -153,7 +153,7 @@ When the TV sits idle (after 10 minutes, Android's usual timeout) it turns into 
 Choose it once, over ADB (Google TV's own Settings → Device preferences → Screen saver works too):
 
 ```bash
-adb shell settings put secure screensaver_components com.mihir.tvhome/.Screensaver
+adb shell settings put secure screensaver_components io.github.ksfikas.tvhome/.Screensaver
 adb shell settings put secure screensaver_enabled 1
 ```
 
@@ -226,10 +226,10 @@ starts the chosen screensaver). Any remote key wakes it.
    ```bash
    adb connect <tv-ip>:5555                                   # accept the prompt on the TV
    adb install -r tv-home.apk
-   adb shell pm grant com.mihir.tvhome android.permission.ACCESS_FINE_LOCATION   # Wi-Fi name only
+   adb shell pm grant io.github.ksfikas.tvhome android.permission.ACCESS_FINE_LOCATION   # Wi-Fi name only
    adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx       # stock launcher
    adb shell pm disable-user --user 0 com.google.android.tungsten.setupwraith    # else it grabs Home
-   adb shell cmd package set-home-activity --user 0 com.mihir.tvhome/.MainActivity
+   adb shell cmd package set-home-activity --user 0 io.github.ksfikas.tvhome/.MainActivity
    ```
 
    Not Google TV? Skip the two `pm disable-user` lines and disable your TV's own home screen
@@ -239,18 +239,18 @@ starts the chosen screensaver). Any remote key wakes it.
    Optional extras, one line each:
 
    ```bash
-   adb shell appops set com.mihir.tvhome SYSTEM_ALERT_WINDOW allow     # reminders pop up over other apps
-   adb shell dpm set-active-admin com.mihir.tvhome/.SleepAdmin         # sleep timer can put the box to standby
-   adb shell cmd notification allow_listener com.mihir.tvhome/com.mihir.tvhome.MediaWatcher   # last watched
-   adb shell appops set com.mihir.tvhome GET_USAGE_STATS allow        # "last opened" for the rest
+   adb shell appops set io.github.ksfikas.tvhome SYSTEM_ALERT_WINDOW allow     # reminders pop up over other apps
+   adb shell dpm set-active-admin io.github.ksfikas.tvhome/.SleepAdmin         # sleep timer can put the box to standby
+   adb shell cmd notification allow_listener io.github.ksfikas.tvhome/io.github.ksfikas.tvhome.MediaWatcher   # last watched
+   adb shell appops set io.github.ksfikas.tvhome GET_USAGE_STATS allow        # "last opened" for the rest
    adb shell settings put global low_power_standby_enabled 0          # phone remote works in standby (Turn on)
-   adb shell pm grant com.mihir.tvhome android.permission.BLUETOOTH_CONNECT    # Control → Bluetooth (asked for on first use otherwise)
-   adb shell settings put secure screensaver_components com.mihir.tvhome/.Screensaver   # the screensaver (see above)
+   adb shell pm grant io.github.ksfikas.tvhome android.permission.BLUETOOTH_CONNECT    # Control → Bluetooth (asked for on first use otherwise)
+   adb shell settings put secure screensaver_components io.github.ksfikas.tvhome/.Screensaver   # the screensaver (see above)
    adb shell settings put secure screensaver_enabled 1
    ```
 
    The second makes the launcher a device admin with one power, turning the screen off. Android
-   won't uninstall a device admin, so run `adb shell dpm remove-active-admin com.mihir.tvhome/.SleepAdmin`
+   won't uninstall a device admin, so run `adb shell dpm remove-active-admin io.github.ksfikas.tvhome/.SleepAdmin`
    before uninstalling (updates are fine). Without it, the sleep timer just stops playback.
 
    Undo with `tools/windows/restore.ps1` (Windows; on macOS or Linux, run the same `adb shell pm
@@ -267,6 +267,25 @@ starts the chosen screensaver). Any remote key wakes it.
 
 Then turn debugging off again when you're done: while it's on, anyone you've approved can run
 commands on the TV.
+
+### Upgrading from an older release
+
+Up to v2.x the app's ID was `com.mihir.tvhome`; it is now `io.github.ksfikas.tvhome`. Android
+treats that as a different app, so the new release installs *next to* the old one instead of over
+it, and nothing carries over (Tvheadend login, favourites, dock, reminders). To switch:
+
+1. Install the new APK and repeat step 3 above. That makes the new app the home screen and
+   grants its permissions.
+2. Check that it works, then remove the old one:
+
+   ```bash
+   adb shell dpm remove-active-admin com.mihir.tvhome/.SleepAdmin   # only if you had turned the sleep timer on
+   adb uninstall com.mihir.tvhome
+   ```
+
+3. Enter your Tvheadend login again (*Set up Live TV*) and pick your favourites.
+
+From then on, each release installs over the previous one as usual.
 
 ### Tvheadend tips
 
@@ -390,16 +409,22 @@ Google TV and ADB:
 ## Tested on
 
 - Xiaomi TV Box S (2nd Gen), Google TV, Android 14, with Tvheadend 4.3 (Greek DVB-T: ERT, Digea).
-- TCL Google TV, Android 11.
 
-## Credits
+Other boxes should work if they run Android 11 or newer, but they haven't been tried. Reports are welcome.
 
-Started as a fork of [mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home) (MIT),
-whose debloat tools and wallpaper set are still part of it. Wallpaper photos are from
-Wikimedia Commons under their own licences, see
-[launcher/WALLPAPER-CREDITS.md](launcher/WALLPAPER-CREDITS.md). Channel logos are not included;
-they come from your Tvheadend server. Playback uses [AndroidX Media3](https://github.com/androidx/media). Icons are
-[Material Symbols](https://github.com/google/material-design-icons) (Apache 2.0); QR codes by
-[ZXing](https://github.com/zxing/zxing) (Apache 2.0); weather by [Open-Meteo](https://open-meteo.com).
+## Credits and licence
 
-Code is MIT, see [LICENSE](LICENSE).
+Started as a fork of [mihirgupta0900/tv-home](https://github.com/mihirgupta0900/tv-home) (MIT);
+its wallpaper set is still part of it.
+
+Built on [AndroidX Media3](https://github.com/androidx/media) (playback, Apache 2.0),
+[ZXing](https://github.com/zxing/zxing) (QR codes, Apache 2.0),
+[Material Symbols](https://github.com/google/material-design-icons) (icons, Apache 2.0) and
+[Open-Meteo](https://open-meteo.com) (weather data, CC BY 4.0). Wallpaper photos are from Wikimedia
+Commons, each under its own licence: see [launcher/WALLPAPER-CREDITS.md](launcher/WALLPAPER-CREDITS.md).
+Channel logos are not included; they come from your Tvheadend server. News headlines, photos and the
+film chart are fetched live on your TV from the publishers' public feeds; nothing is stored or
+redistributed here.
+
+This project's code is MIT: © Mihir Gupta (the original project) and © Kostas Sfikas (everything
+added since, including Live TV, the screensaver and the phone remote). See [LICENSE](LICENSE).
