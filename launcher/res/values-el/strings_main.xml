@@ -24,7 +24,7 @@
     <string name="main_remove_from_dock">Κατάργηση από τη γραμμή εφαρμογών</string>
     <string name="main_add_to_dock">Προσθήκη στη γραμμή εφαρμογών</string>
     <string name="main_add_to_dock_replace">Προσθήκη στη γραμμή (αντικαθιστά την τελευταία)</string>
-    <string name="main_hide_from_all_apps">Απόκρυψη από τις Όλες οι εφαρμογές</string>
+    <string name="main_hide_from_all_apps">Απόκρυψη από όλες τις εφαρμογές</string>
     <string name="main_app_info">Πληροφορίες εφαρμογής</string>
     <string name="main_uninstall">Απεγκατάσταση</string>
 
@@ -55,7 +55,7 @@
     <!-- Κάρτες Top Shelf -->
     <string name="main_shelf_resume">Συνέχιση</string>
     <string name="main_shelf_remove">Κατάργηση</string>
-    <string name="main_shelf_where">Πού να δείτε</string>
+    <string name="main_shelf_where">Πού να το δείτε</string>
     <string name="main_shelf_phone">Διαβάστε στο κινητό</string>
     <string name="main_scan_phone">Σαρώστε με την κάμερα του κινητού για να το διαβάσετε.</string>
     <string name="main_close">Κλείσιμο</string>
@@ -76,7 +76,7 @@
     <string name="main_on_tv_now">Τώρα στην τηλεόραση</string>
     <string name="main_popular_films">Δημοφιλείς ταινίες</string>
     <string name="main_news_slides">Διαφάνειες ειδήσεων</string>
-    <string name="main_news_ticker">Ειδήσεις σε κύλιση</string>
+    <string name="main_news_ticker">Γραμμή ειδήσεων</string>
     <string name="main_start_now">Έναρξη τώρα</string>
     <string name="main_name_state">%1$s: %2$s</string>
     <plurals name="main_each_slide">
@@ -139,7 +139,7 @@
     <string name="main_looking_up">Αναζήτηση…</string>
 
     <!-- Τηλεχειριστήριο κινητού -->
-    <string name="main_remote_scan">Στρέψτε την κάμερα του κινητού στον κωδικό (ίδιο Wi-Fi).\n\nΉ ανοίξτε\n%1$s\nκαι εισαγάγετε το PIN  %2$s\n\nΠροσθέστε το στην αρχική οθόνη για γρήγορη πρόσβαση. Αν το απενεργοποιήσετε, ξεχνά τα συνδεδεμένα κινητά.</string>
+    <string name="main_remote_scan">Στρέψτε την κάμερα του κινητού στον κωδικό (ίδιο Wi-Fi).\n\nΉ ανοίξτε\n%1$s\nκαι εισαγάγετε το PIN  %2$s\n\nΠροσθέστε το στην αρχική οθόνη για γρήγορη πρόσβαση. Αν το απενεργοποιήσετε, τα συνδεδεμένα κινητά ξεχνιούνται.</string>
     <string name="main_remote_no_network">Χωρίς δίκτυο: συνδέστε πρώτα τη συσκευή στο Wi-Fi.</string>
     <string name="main_remote_intro">Ελέγξτε τη ζωντανή TV, τον οδηγό, τις εγγραφές, τις εφαρμογές και την ένταση από το πρόγραμμα περιήγησης του κινητού σας, μόνο στο οικιακό σας δίκτυο.</string>
 </resources>

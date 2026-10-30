@@ -18,16 +18,16 @@
     <string name="sources_channel_n">Κανάλι %1$s</string>
 
     <!-- Κάτω από μια εφαρμογή στη γραμμή εφαρμογών και στο Top Shelf -->
-    <string name="watched_paused_at">Παύση στο %1$s</string>
-    <string name="watched_stopped_at">Διακοπή στο %1$s</string>
-    <string name="watched_last_opened">Άνοιξε %1$s</string>
-    <string name="shelf_paused_at">παύση στο %1$s</string>
-    <string name="shelf_stopped_at">διακοπή στο %1$s</string>
+    <string name="watched_paused_at">Σε παύση στο %1$s</string>
+    <string name="watched_stopped_at">Διακόπηκε στο %1$s</string>
+    <string name="watched_last_opened">Τελευταίο άνοιγμα: %1$s</string>
+    <string name="shelf_paused_at">σε παύση στο %1$s</string>
+    <string name="shelf_stopped_at">διακόπηκε στο %1$s</string>
 
     <!-- Κατάσταση συσκευής -->
     <string name="box_title">Κατάσταση συσκευής</string>
     <string name="box_checking">Έλεγχος…</string>
-    <string name="box_tidy">Εκκαθάριση μνήμης εφαρμογής</string>
+    <string name="box_tidy">Εκκαθάριση προσωρινής μνήμης</string>
     <string name="box_close">Κλείσιμο</string>
     <string name="box_freed">Ελευθερώθηκαν %1$s.</string>
     <string name="box_memory">Ελεύθερη μνήμη: %1$s από %2$s</string>

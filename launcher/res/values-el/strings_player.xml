@@ -60,8 +60,8 @@
     </plurals>
     <string name="player_end_programme">Τέλος αυτής της εκπομπής (%1$s)</string>
     <string name="player_end_recording">Τέλος αυτής της εγγραφής</string>
-    <string name="player_going_to_sleep">Μετάβαση σε αναμονή σε %1$s</string>
-    <string name="player_sleep_badge">Μετάβαση σε αναμονή σε %1$d δ.  ·  πατήστε οποιοδήποτε κουμπί για να συνεχίσετε</string>
+    <string name="player_going_to_sleep">Αναμονή σε %1$s</string>
+    <string name="player_sleep_badge">Αναμονή σε %1$d δ.  ·  πατήστε οποιοδήποτε κουμπί για να συνεχίσετε</string>
 
     <!-- Πίνακας πληροφοριών ροής (οι ετικέτες συμπληρώνονται για στοίχιση, μέχρι 8 γράμματα) -->
     <string name="player_info_video">Βίντεο</string>
@@ -70,7 +70,7 @@
     <string name="player_info_tuner">Δέκτης</string>
     <string name="player_info_signal">Σήμα</string>
     <string name="player_info_errors">Σφάλματα</string>
-    <string name="player_stereo">στέρεο</string>
+    <string name="player_stereo">στερεοφωνικό</string>
     <string name="player_mono">μονοφωνικό</string>
     <string name="player_channels">%1$d κανάλια</string>
     <string name="player_waiting_stream">Αναμονή για τη ροή…</string>
