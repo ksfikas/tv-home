@@ -136,7 +136,7 @@
 </tr>
 <tr>
 <td><img src="docs/screenshots/record-from-guide.jpg" alt="Οδηγός με κόκκινη κουκκίδα σε εκπομπή που έχει οριστεί για εγγραφή"></td>
-<td><img src="docs/screenshots/player-options.jpg" alt="Επιλογές player: Παύση, Ήχος, Υπότιτλοι, Εγγραφή αυτής της εκπομπής, Οδηγός προγράμματος, Εγγραφές"></td>
+<td><img src="docs/screenshots/el/player-options.jpg" alt="Επιλογές player: Παύση, Ήχος, Υπότιτλοι, Εγγραφή αυτής της εκπομπής, Οδηγός προγράμματος, Εγγραφές"></td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/player-banner.jpg" alt="Πληροφοριακό banner ενώ βλέπεις: λογότυπο, αριθμός και όνομα καναλιού, εκπομπή, πρόοδος, τι ακολουθεί"></td>
