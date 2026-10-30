@@ -48,6 +48,11 @@ final class Lang {
         }
     }
 
+    /** The same, short enough for the Control Center tile. */
+    static String shortLabel(Txt t, String choice) {
+        return AUTO.equals(choice) ? t.s(R.string.language_auto_short) : label(t, choice);
+    }
+
     /** Save the choice and restart the app so every screen picks it up. */
     static void apply(Activity a, String choice) {
         if (choice.equals(choice(a))) return;

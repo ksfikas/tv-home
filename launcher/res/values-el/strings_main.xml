@@ -62,12 +62,12 @@
     <string name="main_cancel">Ακύρωση</string>
     <string name="main_save">Αποθήκευση</string>
     <string name="main_top_shelf">Top Shelf</string>
-    <string name="main_shelf_films">Προτάσεις: ταινίες %1$s</string>
-    <string name="main_shelf_news">Προτάσεις: ειδήσεις %1$s</string>
+    <string name="main_shelf_films">Ταινίες στις προτάσεις: %1$s</string>
+    <string name="main_shelf_news">Ειδήσεις στις προτάσεις: %1$s</string>
     <string name="main_news_from_item">Ειδήσεις από: %1$s</string>
     <string name="main_news_from">Ειδήσεις από</string>
-    <string name="main_state_on">ενεργό</string>
-    <string name="main_state_off">ανενεργό</string>
+    <string name="main_state_on">ναι</string>
+    <string name="main_state_off">όχι</string>
     <string name="main_off">Ανενεργό</string>
 
     <!-- Μενού προφύλαξης οθόνης -->
@@ -104,14 +104,14 @@
         <item quantity="other">σε %1$d λεπτά</item>
     </plurals>
     <string name="main_bluetooth_state">Τηλεχειριστήρια, ηχεία</string>
-    <string name="main_tv_guide">Οδηγός προγράμματος</string>
+    <string name="main_tv_guide">Οδηγός TV</string>
     <string name="main_whats_on">Τι παίζει</string>
     <string name="main_needs_tvh">Απαιτεί Tvheadend</string>
     <string name="main_set_city">Ορίστε πόλη</string>
     <string name="main_next_days">Επόμενες ημέρες</string>
-    <string name="main_phone_remote">Τηλεχειριστήριο κινητού</string>
+    <string name="main_phone_remote">Τηλεχειριστήριο</string>
     <string name="main_remote_on_qr">Ενεργό · QR</string>
-    <string name="main_photos_info">Φωτογραφίες &amp; πληροφορίες</string>
+    <string name="main_photos_info">Φωτο &amp; πληροφορίες</string>
     <string name="main_voice_search">Φωνητική αναζήτηση</string>
     <string name="main_volume_down">Μείωση έντασης</string>
     <string name="main_volume_up">Αύξηση έντασης</string>

@@ -282,7 +282,8 @@ treats that as a different app, so the new release installs *next to* the old on
 it, and nothing carries over (Tvheadend login, favourites, dock, reminders). To switch:
 
 1. Install the new APK and repeat step 3 above. That makes the new app the home screen and
-   grants its permissions.
+   grants its permissions. (If `adb install` is refused with `INSTALL_FAILED_VERIFICATION_FAILURE`,
+   Google's package verifier hiccuped on the new app ID: run the same command again.)
 2. Check that it works, then remove the old one:
 
    ```bash

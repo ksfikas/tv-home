@@ -3,6 +3,7 @@
     <!-- Επιλογή γλώσσας (Κέντρο ελέγχου → Γλώσσα) -->
     <string name="language_title">Γλώσσα</string>
     <string name="language_auto">Αυτόματα (γλώσσα τηλεόρασης)</string>
+    <string name="language_auto_short">Αυτόματα</string>
 
     <!-- Καιρικές συνθήκες -->
     <string name="weather_sunny">Ηλιοφάνεια</string>

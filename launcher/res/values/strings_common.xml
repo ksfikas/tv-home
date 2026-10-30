@@ -3,6 +3,7 @@
     <!-- Language choice (Control Center → Language) -->
     <string name="language_title">Language</string>
     <string name="language_auto">Automatic (TV language)</string>
+    <string name="language_auto_short">Automatic</string>
 
     <!-- Weather conditions (WMO weather codes) -->
     <string name="weather_sunny">Sunny</string>

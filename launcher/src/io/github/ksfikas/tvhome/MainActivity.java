@@ -1724,7 +1724,7 @@ public class MainActivity extends Activity {
                 {"☁", getString(R.string.main_weather), getString(weatherNow == null ? R.string.main_set_city : R.string.main_next_days), (Runnable) this::showWeatherDetails},
                 {"▯", getString(R.string.main_phone_remote), getString(RemoteServer.enabled(this) ? R.string.main_remote_on_qr : R.string.main_off), (Runnable) this::showRemoteSetup},
                 {"▣", getString(R.string.main_screensaver), getString(R.string.main_photos_info), (Runnable) this::pickScreensaver},
-                {"🌐", getString(R.string.language_title), Lang.label(Txt.of(this), Lang.choice(this)), (Runnable) this::pickLanguage},
+                {"🌐", getString(R.string.language_title), Lang.shortLabel(Txt.of(this), Lang.choice(this)), (Runnable) this::pickLanguage},
         };
         for (int i = 0; i < pairs.length; i += 2) {
             LinearLayout r = new LinearLayout(this);
