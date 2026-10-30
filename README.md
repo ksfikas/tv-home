@@ -110,6 +110,10 @@ separate TV client.
 
 <table>
 <tr>
+<td><img src="docs/screenshots/home-top-shelf.jpg" alt="Home screen with the Top Shelf above the dock: a popular film with its poster, Apple TV and Where to watch buttons"></td>
+<td><img src="docs/screenshots/control-center.jpg" alt="Control Center: frosted capsules for Sleep, Wi-Fi, Bluetooth, Inputs, Settings, Top shelf, TV guide, Weather, Phone remote, Screensaver and Language"></td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/guide.jpg" alt="TV guide grid with channel logos, programmes over two hours, a red now line and the selected programme's description"></td>
 <td><img src="docs/screenshots/radio.jpg" alt="Radio now-playing screen with a mirrored white spectrum above the station name, current show and next show"></td>
 </tr>
