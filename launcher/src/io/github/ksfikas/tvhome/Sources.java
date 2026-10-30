@@ -55,6 +55,7 @@ final class Sources {
     static List<Tvh.Channel> load(Context c) throws IOException {
         List<Tvh.Channel> tvh = Collections.emptyList(), extra = new ArrayList<>();
         IOException error = null;
+        Txt t = Txt.of(c);
         Tvh server = Tvh.get(c);
         if (server != null) {
             try { tvh = server.loadChannels(); } catch (IOException e) { error = e; }
@@ -62,8 +63,8 @@ final class Sources {
         String h = hdhr(c);
         if (!h.isEmpty()) {
             try {
-                for (String base : "auto".equalsIgnoreCase(h) ? discover(1500) : Collections.singletonList(baseUrl(h))) {
-                    extra.addAll(hdhomerun(base));
+                for (String base : "auto".equalsIgnoreCase(h) ? discover(1500, t) : Collections.singletonList(baseUrl(h))) {
+                    extra.addAll(hdhomerun(base, t));
                 }
             } catch (IOException e) { if (error == null) error = e; }
         }
@@ -105,7 +106,7 @@ final class Sources {
     }
 
     /** Ask the local network who's a tuner (HDHomeRun discovery, UDP 65001); their base URLs. */
-    static List<String> discover(int timeoutMs) throws IOException {
+    static List<String> discover(int timeoutMs, Txt t) throws IOException {
         Set<String> found = new LinkedHashSet<>();
         try (DatagramSocket s = new DatagramSocket()) {
             s.setBroadcast(true);
@@ -123,7 +124,7 @@ final class Sources {
                 if (base != null) found.add(base);
             }
         }
-        if (found.isEmpty()) throw new IOException("No network tuner found");
+        if (found.isEmpty()) throw new IOException(t.s(R.string.sources_no_tuner));
         return new ArrayList<>(found);
     }
 
@@ -167,13 +168,13 @@ final class Sources {
     }
 
     /** A tuner's channels: discover.json gives the device id and the lineup link. */
-    static List<Tvh.Channel> hdhomerun(String base) throws IOException {
+    static List<Tvh.Channel> hdhomerun(String base, Txt t) throws IOException {
         try {
-            JSONObject dev = new JSONObject(http(base + "/discover.json"));
+            JSONObject dev = new JSONObject(http(base + "/discover.json", t));
             String lineup = dev.optString("LineupURL", base + "/lineup.json");
-            return parseLineup(http(lineup), dev.optString("DeviceID", base));
+            return parseLineup(http(lineup, t), dev.optString("DeviceID", base));
         } catch (JSONException e) {
-            throw new IOException("Unexpected reply from the network tuner");
+            throw new IOException(t.s(R.string.sources_bad_reply));
         }
     }
 
@@ -197,12 +198,12 @@ final class Sources {
         return out;
     }
 
-    private static String http(String url) throws IOException {
+    private static String http(String url, Txt t) throws IOException {
         HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
         con.setConnectTimeout(4000);
         con.setReadTimeout(8000);
         try {
-            if (con.getResponseCode() != 200) throw new IOException("Network tuner replied HTTP " + con.getResponseCode());
+            if (con.getResponseCode() != 200) throw new IOException(t.s(R.string.sources_http_error, con.getResponseCode()));
             try (InputStream in = con.getInputStream()) {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 byte[] b = new byte[8192];
@@ -210,7 +211,7 @@ final class Sources {
                 return new String(out.toByteArray(), StandardCharsets.UTF_8);
             }
         } catch (java.net.ConnectException | SocketTimeoutException e) {
-            throw new IOException("Can't reach the network tuner at " + url);
+            throw new IOException(t.s(R.string.sources_unreachable, url));
         } finally {
             con.disconnect();
         }
@@ -236,7 +237,7 @@ final class Sources {
                 ch.tifId = cur.getLong(0);
                 ch.inputId = cur.getString(1);
                 ch.uuid = "tif:" + ch.tifId;
-                ch.name = cur.getString(2) == null ? "Channel " + cur.getString(3) : cur.getString(2);
+                ch.name = cur.getString(2) == null ? c.getString(R.string.sources_channel_n, cur.getString(3)) : cur.getString(2);
                 try { ch.number = Double.parseDouble(cur.getString(3)); } catch (Exception ignored) { }
                 ch.radio = TvContract.Channels.SERVICE_TYPE_AUDIO.equals(cur.getString(4));
                 ch.icon = TvContract.buildChannelLogoUri(ch.tifId).toString();

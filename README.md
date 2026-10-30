@@ -7,8 +7,12 @@ separate TV client.
 
 ![Home screen: a dock of streaming apps, a Live TV row with Guide, Recordings and channel logos showing what's on, and a Radio row](docs/screenshots/home-live-tv.jpg)
 
+*Also in Greek: [README.el.md](README.el.md).*
+
 ## Highlights
 
+- **In English and Greek.** The whole app, the phone remote page and the screensaver follow the TV's
+  language, and *Control → Language* switches between Automatic, English and Ελληνικά.
 - **Live TV where your apps are.** Channels with logos and a "what's on" progress bar sit right on
   the home screen and play on the box's hardware decoders. Tvheadend, HDHomeRun-style network
   tuners and tuner apps on the box all feed the same rows.
@@ -92,8 +96,11 @@ separate TV client.
 - **Control Center** (Control, top right), tvOS style: frosted capsules over a blurred screen.
   Sleep timer for the whole box, Wi-Fi, Bluetooth (Android TV's accessory pairing screen), Inputs,
   Settings, Top shelf, TV guide, weather details (feels like, next hours, 3 days, sunrise/sunset,
-  UV, rain, air quality), phone remote, Screensaver options, and round buttons for voice search,
-  volume, Box status and Turn off.
+  UV, rain, air quality), phone remote, Screensaver options, Language, and round buttons for voice
+  search, volume, Box status and Turn off.
+- **English and Greek.** The app follows the TV's language (Settings → System → Language). To force
+  one, use *Control → Language*: Automatic, English or Ελληνικά (the app restarts to apply it). The
+  phone remote page follows the phone's language, and dates and weekdays follow the chosen language.
 - **Frosted glass** behind every menu and dialog (a one-off blurred snapshot, so it costs nothing
   while idle), and clean line icons throughout (Material Symbols Rounded).
 - **Wallpapers from your phone**: in the phone remote, *Send a photo*; it's resized on the phone and

@@ -105,7 +105,7 @@ public class GuideActivity extends Activity {
             runOnUiThread(() -> {
                 loading = false;
                 if (res == null || isDestroyed()) {
-                    if (res == null) Toast.makeText(this, "Can't reach Tvheadend", Toast.LENGTH_SHORT).show();
+                    if (res == null) Toast.makeText(this, getString(R.string.guide_cant_reach), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 merge(res);
@@ -214,7 +214,7 @@ public class GuideActivity extends Activity {
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
         if (ev.isOn(now) && ch != null) {
-            labels.add("Watch on " + ch.name);
+            labels.add(a.getString(R.string.guide_watch_on, ch.name));
             actions.add(() -> {
                 a.startActivity(new Intent(a, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_CHANNEL, ch.uuid)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -223,20 +223,21 @@ public class GuideActivity extends Activity {
         }
         if (ev.recordingSet()) {
             boolean running = ev.dvrState.startsWith("recording");
-            labels.add(running ? "Stop recording (keeps what's recorded)" : "Cancel the recording");
-            actions.add(() -> dvr(a, () -> tvh.stopOrCancel(ev.dvrUuid, running), running ? "Recording stopped" : "Recording cancelled", after));
+            labels.add(a.getString(running ? R.string.guide_stop_recording : R.string.guide_cancel_recording));
+            actions.add(() -> dvr(a, () -> tvh.stopOrCancel(ev.dvrUuid, running),
+                    a.getString(running ? R.string.guide_recording_stopped : R.string.guide_recording_cancelled), after));
         } else {
-            labels.add(ev.isOn(now) ? "Record (from now)" : "Record");
-            actions.add(() -> dvr(a, () -> tvh.record(ev.id), "Will record", after));
+            labels.add(a.getString(ev.isOn(now) ? R.string.guide_record_from_now : R.string.guide_record));
+            actions.add(() -> dvr(a, () -> tvh.record(ev.id), a.getString(R.string.guide_will_record), after));
         }
-        labels.add("Record every episode");
+        labels.add(a.getString(R.string.guide_record_series));
         actions.add(() -> PlayerActivity.recordSeries(a, tvh, ev, after));
         if (ev.start > now) {
             boolean set = Reminders.isSet(a, ev.id);
-            labels.add(set ? "Cancel reminder" : "Remind me when it starts");
+            labels.add(a.getString(set ? R.string.guide_cancel_reminder : R.string.guide_remind_me));
             actions.add(() -> {
                 if (set) Reminders.remove(a, ev.id); else Reminders.add(a, ev);
-                Toast.makeText(a, set ? "Reminder cancelled" : "Reminder set for " + Ui.time(a, ev.start), Toast.LENGTH_SHORT).show();
+                Toast.makeText(a, set ? a.getString(R.string.guide_reminder_cancelled) : a.getString(R.string.guide_reminder_set, Ui.time(a, ev.start)), Toast.LENGTH_SHORT).show();
                 if (after != null) after.run();
             });
         }
@@ -450,10 +451,11 @@ public class GuideActivity extends Activity {
                 text.setTextSize(Ui.dp(ctx, 13));
                 text.setColor(0xB3FFFFFF);
                 String meta = ch.name + "   " + Ui.day(sel.start) + "  " + Ui.time(ctx, sel.start) + " – " + Ui.time(ctx, sel.stop)
-                        + (sel.recordingSet() ? "   ● Recording set" : Reminders.isSet(ctx, sel.id) ? "   ○ Reminder set" : "")
-                        + (sel.isOn(now) ? "   OK to watch · hold OK to record and more"
-                           : sel.start > now ? "   OK to record or set a reminder" : "")
-                        + "   ·   Menu to search";
+                        + (sel.recordingSet() ? "   ● " + ctx.getString(R.string.guide_meta_recording_set)
+                           : Reminders.isSet(ctx, sel.id) ? "   ○ " + ctx.getString(R.string.guide_meta_reminder_set) : "")
+                        + (sel.isOn(now) ? "   " + ctx.getString(R.string.guide_hint_on_now)
+                           : sel.start > now ? "   " + ctx.getString(R.string.guide_hint_later) : "")
+                        + "   ·   " + ctx.getString(R.string.guide_hint_search);
                 c.drawText(meta, pad, iy + Ui.dp(ctx, 44), text);
                 if (sel.description != null) {
                     text.setColor(0x99FFFFFF);
@@ -467,7 +469,7 @@ public class GuideActivity extends Activity {
             } else if (channels.isEmpty() || loading) {
                 text.setTextSize(Ui.dp(ctx, 16));
                 text.setColor(0xB3FFFFFF);
-                c.drawText(loading ? "Loading guide…" : "No guide data", pad, iy + Ui.dp(ctx, 20), text);
+                c.drawText(ctx.getString(loading ? R.string.guide_loading : R.string.guide_no_data), pad, iy + Ui.dp(ctx, 20), text);
             }
         }
     }

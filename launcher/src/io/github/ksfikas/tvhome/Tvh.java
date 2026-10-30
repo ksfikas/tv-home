@@ -142,6 +142,8 @@ final class Tvh {
     };
 
     private final String base, user, pass;
+    /** Text for messages shown to the user; refreshed on every {@link #get(Context)}. */
+    private volatile Txt txt;
     private String scheme, realm, nonce, opaque, qop, algorithm;
     private int nc;
 
@@ -162,6 +164,7 @@ final class Tvh {
                 || !instance.user.equals(user) || !instance.pass.equals(pass)) {
             instance = new Tvh(url, user, pass);
         }
+        instance.txt = Txt.of(c);
         return instance;
     }
 
@@ -308,7 +311,7 @@ final class Tvh {
             r.title = o.optString("name", "");
             if (r.title.isEmpty()) r.title = o.optString("title", "").replace("\\", "");
             Channel ch = find(o.optString("channel", ""));
-            r.channel = ch == null ? "Any channel" : ch.name;
+            r.channel = ch == null ? txt.s(R.string.tvh_any_channel) : ch.name;
             out.add(r);
         }
         return out;
@@ -434,7 +437,7 @@ final class Tvh {
      */
     String streamUrl(String channelUuid) throws IOException {
         String url = firstStream(new String(get("/playlist/ticket/channel/" + enc(channelUuid) + "?profile=pass"), StandardCharsets.UTF_8));
-        if (url == null) throw new IOException("Tvheadend returned no stream for this channel");
+        if (url == null) throw new IOException(txt.s(R.string.tvh_no_stream));
         return url;
     }
 
@@ -521,7 +524,7 @@ final class Tvh {
         try {
             return new JSONObject(new String(get(path), StandardCharsets.UTF_8));
         } catch (org.json.JSONException e) {
-            throw new IOException("Unexpected reply from Tvheadend");
+            throw new IOException(txt.s(R.string.tvh_bad_reply));
         }
     }
 
@@ -540,20 +543,20 @@ final class Tvh {
                     // 401: no nonce yet, or ours expired. Take the fresh one and retry; twice, since right after
                     // a server restart the first fresh nonce can be refused too.
                     parseChallenge(con.getHeaderField("WWW-Authenticate"));
-                    if (user.isEmpty()) throw new IOException("Tvheadend needs a username and password");
+                    if (user.isEmpty()) throw new IOException(txt.s(R.string.tvh_needs_login));
                     if (attempt < 2) continue;
-                    throw new IOException("Tvheadend rejected the username or password");
+                    throw new IOException(txt.s(R.string.tvh_rejected_login));
                 }
-                if (code == 403) throw new IOException("This Tvheadend user isn't allowed to do that");
-                if (code != 200) throw new IOException("Tvheadend replied HTTP " + code);
+                if (code == 403) throw new IOException(txt.s(R.string.tvh_forbidden));
+                if (code != 200) throw new IOException(txt.s(R.string.tvh_http_error, code));
                 return readAll(con.getInputStream());
             } catch (java.net.ConnectException | java.net.SocketTimeoutException e) {
-                throw new IOException("Can't reach Tvheadend at " + base);
+                throw new IOException(txt.s(R.string.tvh_unreachable, base));
             } finally {
                 con.disconnect();
             }
         }
-        throw new IOException("Tvheadend rejected the username or password");
+        throw new IOException(txt.s(R.string.tvh_rejected_login));
     }
 
     private static byte[] download(String url) throws IOException {

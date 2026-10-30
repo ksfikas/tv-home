@@ -95,7 +95,7 @@ final class Ui {
                 .setTitle(title)
                 .setMessage(message)
                 .setPositiveButton(yes, (d, w) -> onYes.run())
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(R.string.ui_cancel, null)
                 .show());
     }
 

@@ -63,15 +63,15 @@ final class BoxHealth {
 
     static void show(Activity a) {
         AlertDialog d = new AlertDialog.Builder(a, R.style.Glass)
-                .setTitle("Box status")
-                .setMessage("Checking…")
-                .setPositiveButton("Tidy launcher cache", null)
-                .setNegativeButton("Close", null)
+                .setTitle(a.getString(R.string.box_title))
+                .setMessage(a.getString(R.string.box_checking))
+                .setPositiveButton(a.getString(R.string.box_tidy), null)
+                .setNegativeButton(a.getString(R.string.box_close), null)
                 .create();
         Ui.frost(d).show();
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> Tvh.IO.execute(() -> {
             long freed = tidyAll(a);
-            a.runOnUiThread(() -> refresh(a, d, "\n\nFreed " + Formatter.formatShortFileSize(a, freed) + "."));
+            a.runOnUiThread(() -> refresh(a, d, "\n\n" + a.getString(R.string.box_freed, Formatter.formatShortFileSize(a, freed))));
         }));
         refresh(a, d, "");
     }
@@ -104,19 +104,19 @@ final class BoxHealth {
         StatFs data = new StatFs(c.getFilesDir().getAbsolutePath());
         long up = SystemClock.elapsedRealtime() / 60_000;
         StringBuilder s = new StringBuilder()
-                .append("Memory free:   ").append(Formatter.formatShortFileSize(c, mi.availMem))
-                .append(" of ").append(Formatter.formatShortFileSize(c, mi.totalMem))
-                .append(mi.lowMemory ? "   (low: Android is closing apps)" : "").append('\n')
-                .append("Storage free:   ").append(Formatter.formatShortFileSize(c, data.getAvailableBytes()))
-                .append(" of ").append(Formatter.formatShortFileSize(c, data.getTotalBytes())).append('\n')
-                .append("Running for:   ").append(up >= 1440 ? up / 1440 + " d " : "").append(up / 60 % 24).append(" h ").append(up % 60).append(" min\n")
-                .append("Launcher cache:   ").append(Formatter.formatShortFileSize(c, dirSize(c.getCacheDir())));
+                .append(c.getString(mi.lowMemory ? R.string.box_memory_low : R.string.box_memory,
+                        Formatter.formatShortFileSize(c, mi.availMem), Formatter.formatShortFileSize(c, mi.totalMem))).append('\n')
+                .append(c.getString(R.string.box_storage, Formatter.formatShortFileSize(c, data.getAvailableBytes()),
+                        Formatter.formatShortFileSize(c, data.getTotalBytes()))).append('\n')
+                .append(up >= 1440 ? c.getString(R.string.box_uptime_d, up / 1440, up / 60 % 24, up % 60)
+                        : c.getString(R.string.box_uptime, up / 60 % 24, up % 60)).append('\n')
+                .append(c.getString(R.string.box_cache, Formatter.formatShortFileSize(c, dirSize(c.getCacheDir()))));
         if (tvhDisk != null) {
-            s.append("\nTvheadend recordings disk:   ").append(Formatter.formatShortFileSize(c, tvhDisk[0]))
-                    .append(" free of ").append(Formatter.formatShortFileSize(c, tvhDisk[1]));
+            s.append('\n').append(c.getString(R.string.box_tvh_disk, Formatter.formatShortFileSize(c, tvhDisk[0]),
+                    Formatter.formatShortFileSize(c, tvhDisk[1])));
             if (diskWarning(Txt.of(c), tvhDisk) != null) s.append("   ⚠");
         }
-        if (mi.availMem < 300L << 20) s.append("\n\nMemory is tight. A restart (Settings → System → Restart) clears it.");
+        if (mi.availMem < 300L << 20) s.append("\n\n").append(c.getString(R.string.box_memory_tight));
         return s.toString();
     }
 }

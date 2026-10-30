@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Phone remote: messages the TV sends to the phone page (the page also translates them by code) -->
+    <string name="remote_wrong_pin">Wrong PIN</string>
+    <string name="remote_pair_needed">Pair with the PIN shown on the TV</string>
+    <string name="remote_sleep_perm">The sleep timer needs the sleep permission (see the README)</string>
+    <string name="remote_off_perm">Turning off needs the sleep permission (see the README)</string>
+    <string name="remote_open_fail">Can\'t open that app</string>
+    <string name="remote_needs_tvh_search">Search needs Tvheadend</string>
+    <string name="remote_needs_tvh_guide">The guide needs Tvheadend</string>
+    <string name="remote_needs_tvh_record">Recording needs Tvheadend</string>
+    <string name="remote_unknown">Unknown request</string>
+    <string name="remote_photo_large">Photo too large</string>
+    <string name="remote_upload_interrupted">Upload interrupted</string>
+    <string name="remote_not_photo">That isn\'t a photo the TV can show</string>
+</resources>

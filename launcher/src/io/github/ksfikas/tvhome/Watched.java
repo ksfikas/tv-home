@@ -195,7 +195,7 @@ final class Watched {
                 if (e.subtitle != null && !e.subtitle.equals(e.title)) s.append("  ·  ").append(e.subtitle);
                 if (e.dur > 0 && e.pos > 0 && e.pos < e.dur) s.append("  ·  ").append(left(Txt.of(c), e.dur - e.pos));
             } else {
-                s.append(e.paused ? "Paused at " : "Stopped at ").append(Ui.duration(e.pos));
+                s.append(c.getString(e.paused ? R.string.watched_paused_at : R.string.watched_stopped_at, Ui.duration(e.pos)));
             }
             if (now - e.at > 6 * 3600_000L) s.append("  ·  ").append(ago(Txt.of(c), now - e.at));
             l.text = s;
@@ -204,7 +204,7 @@ final class Watched {
         }
         Long used = lastUsed.get(pkg);
         if (used != null && now - used < USAGE_WINDOW) {
-            l.text = "Last opened " + ago(Txt.of(c), now - used);
+            l.text = c.getString(R.string.watched_last_opened, ago(Txt.of(c), now - used));
             return l;
         }
         return null;

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tvheadend connection errors (shown on the setup screen and in the player) -->
+    <string name="tvh_any_channel">Any channel</string>
+    <string name="tvh_no_stream">Tvheadend returned no stream for this channel</string>
+    <string name="tvh_bad_reply">Unexpected reply from Tvheadend</string>
+    <string name="tvh_needs_login">Tvheadend needs a username and password</string>
+    <string name="tvh_rejected_login">Tvheadend rejected the username or password</string>
+    <string name="tvh_forbidden">This Tvheadend user isn\'t allowed to do that</string>
+    <string name="tvh_http_error">Tvheadend replied HTTP %1$d</string>
+    <string name="tvh_unreachable">Can\'t reach Tvheadend at %1$s</string>
+
+    <!-- Network tuner and tuner apps -->
+    <string name="sources_no_tuner">No network tuner found</string>
+    <string name="sources_bad_reply">Unexpected reply from the network tuner</string>
+    <string name="sources_http_error">Network tuner replied HTTP %1$d</string>
+    <string name="sources_unreachable">Can\'t reach the network tuner at %1$s</string>
+    <string name="sources_channel_n">Channel %1$s</string>
+
+    <!-- Under an app in the dock, and on the shelf -->
+    <string name="watched_paused_at">Paused at %1$s</string>
+    <string name="watched_stopped_at">Stopped at %1$s</string>
+    <string name="watched_last_opened">Last opened %1$s</string>
+    <string name="shelf_paused_at">paused at %1$s</string>
+    <string name="shelf_stopped_at">stopped at %1$s</string>
+
+    <!-- Box status -->
+    <string name="box_title">Box status</string>
+    <string name="box_checking">Checking…</string>
+    <string name="box_tidy">Tidy launcher cache</string>
+    <string name="box_close">Close</string>
+    <string name="box_freed">Freed %1$s.</string>
+    <string name="box_memory">Memory free: %1$s of %2$s</string>
+    <string name="box_memory_low">Memory free: %1$s of %2$s (low: Android is closing apps)</string>
+    <string name="box_storage">Storage free: %1$s of %2$s</string>
+    <string name="box_uptime_d">Running for: %1$d d %2$d h %3$d min</string>
+    <string name="box_uptime">Running for: %1$d h %2$d min</string>
+    <string name="box_cache">Launcher cache: %1$s</string>
+    <string name="box_tvh_disk">Tvheadend recordings disk: %1$s free of %2$s</string>
+    <string name="box_memory_tight">Memory is tight. A restart (Settings → System → Restart) clears it.</string>
+
+    <!-- Weather -->
+    <string name="weather_city_not_found">Can\'t find “%1$s”</string>
+    <string name="weather_unreachable">Can\'t reach the weather service</string>
+    <string name="weather_feels_like">feels like %1$d°</string>
+    <string name="weather_feels_like_cap">Feels like %1$d°</string>
+    <string name="weather_humidity">humidity %1$d%%</string>
+    <string name="weather_wind">wind %1$d km/h</string>
+    <string name="weather_rain_pct">rain %1$d%%</string>
+    <string name="weather_next_hours">NEXT HOURS</string>
+    <string name="weather_next_days">NEXT DAYS</string>
+    <string name="weather_sunrise">Sunrise %1$s</string>
+    <string name="weather_sunset">sunset %1$s</string>
+    <string name="weather_uv">UV %1$s</string>
+    <string name="weather_air_quality">Air quality %1$s (%2$d)</string>
+    <string name="weather_today">Today</string>
+    <string name="weather_tomorrow">Tomorrow</string>
+
+    <!-- Screensaver slides -->
+    <string name="ss_weather_title">Weather</string>
+    <string name="ss_on_tv">On TV now</string>
+    <string name="ss_next">Next: %1$s</string>
+    <string name="ss_until">until %1$s</string>
+    <string name="ss_popular_films">Popular films this week</string>
+    <string name="ss_news_label">News</string>
+</resources>

@@ -133,14 +133,18 @@ final class Reminders {
             Reminder r = parse(getIntent().getStringExtra("r"));
             if (r == null) { finish(); return; }
             long nowSec = System.currentTimeMillis() / 1000;
-            String when = r.start <= nowSec ? "Starting now" : "Starts at " + Ui.time(this, r.start);
+            boolean onCh = !r.channelName.isEmpty();
+            String msg = r.start <= nowSec
+                    ? (onCh ? getString(R.string.remind_starting_now_on, r.channelName) : getString(R.string.remind_starting_now))
+                    : (onCh ? getString(R.string.remind_starts_at_on, Ui.time(this, r.start), r.channelName)
+                            : getString(R.string.remind_starts_at, Ui.time(this, r.start)));
             AlertDialog d = new AlertDialog.Builder(this, R.style.Glass)
                     .setTitle(r.title)
-                    .setMessage(when + (r.channelName.isEmpty() ? "" : " on " + r.channelName))
-                    .setPositiveButton("Watch", (x, w) -> startActivity(new Intent(this, PlayerActivity.class)
+                    .setMessage(msg)
+                    .setPositiveButton(R.string.remind_watch, (x, w) -> startActivity(new Intent(this, PlayerActivity.class)
                             .putExtra(PlayerActivity.EXTRA_CHANNEL, r.channelUuid)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)))
-                    .setNegativeButton("Dismiss", null)
+                    .setNegativeButton(R.string.remind_dismiss, null)
                     .create();
             d.setOnDismissListener(x -> finish());
             d.show();

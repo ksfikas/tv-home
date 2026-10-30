@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Κοινά παράθυρα διαλόγου -->
+    <string name="ui_cancel">Ακύρωση</string>
+
+    <!-- Οδηγός προγράμματος -->
+    <string name="guide_cant_reach">Δεν είναι δυνατή η σύνδεση με το Tvheadend</string>
+    <string name="guide_watch_on">Παρακολούθηση στο %1$s</string>
+    <string name="guide_stop_recording">Διακοπή εγγραφής (κρατά ό,τι έχει εγγραφεί)</string>
+    <string name="guide_cancel_recording">Ακύρωση εγγραφής</string>
+    <string name="guide_recording_stopped">Η εγγραφή σταμάτησε</string>
+    <string name="guide_recording_cancelled">Η εγγραφή ακυρώθηκε</string>
+    <string name="guide_record_from_now">Εγγραφή (από τώρα)</string>
+    <string name="guide_record">Εγγραφή</string>
+    <string name="guide_will_record">Θα εγγραφεί</string>
+    <string name="guide_record_series">Εγγραφή όλων των επεισοδίων</string>
+    <string name="guide_cancel_reminder">Ακύρωση υπενθύμισης</string>
+    <string name="guide_remind_me">Υπενθύμιση όταν ξεκινήσει</string>
+    <string name="guide_reminder_cancelled">Η υπενθύμιση ακυρώθηκε</string>
+    <string name="guide_reminder_set">Υπενθύμιση για τις %1$s</string>
+    <string name="guide_meta_recording_set">Έχει οριστεί εγγραφή</string>
+    <string name="guide_meta_reminder_set">Έχει οριστεί υπενθύμιση</string>
+    <string name="guide_hint_on_now">OK για παρακολούθηση · παρατεταμένο OK για εγγραφή και άλλα</string>
+    <string name="guide_hint_later">OK για εγγραφή ή υπενθύμιση</string>
+    <string name="guide_hint_search">Μενού για αναζήτηση</string>
+    <string name="guide_loading">Φόρτωση οδηγού…</string>
+    <string name="guide_no_data">Δεν υπάρχουν δεδομένα οδηγού</string>
+
+    <!-- Εγγραφές -->
+    <string name="rec_title">Εγγραφές</string>
+    <string name="rec_hint">OK για αναπαραγωγή · παρατεταμένο OK για διαγραφή · εγγραφές, σειρές και υπενθυμίσεις από τον οδηγό ή την αναζήτηση</string>
+    <string name="rec_loading">Φόρτωση…</string>
+    <string name="rec_empty">Καμία εγγραφή ακόμα. Ανοίξτε τον οδηγό και πατήστε OK σε μια εκπομπή για να την εγγράψετε.</string>
+    <string name="rec_section_now">ΕΓΓΡΑΦΗ ΤΩΡΑ</string>
+    <string name="rec_section_scheduled">ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΕΣ</string>
+    <string name="rec_section_recorded">ΟΛΟΚΛΗΡΩΜΕΝΕΣ</string>
+    <string name="rec_section_failed">ΑΠΕΤΥΧΑΝ</string>
+    <string name="rec_section_series">ΣΕΙΡΕΣ</string>
+    <string name="rec_section_reminders">ΥΠΕΝΘΥΜΙΣΕΙΣ</string>
+    <string name="rec_every_episode">όλα τα επεισόδια</string>
+    <string name="rec_series_stop_message">Διακοπή εγγραφής αυτής της σειράς; Τα προγραμματισμένα επεισόδια ακυρώνονται· τα ήδη εγγεγραμμένα μένουν.</string>
+    <string name="rec_series_stop_button">Διακοπή σειράς</string>
+    <string name="rec_series_stopped">Η σειρά σταμάτησε</string>
+    <string name="rec_reminder_cancel_message">Ακύρωση αυτής της υπενθύμισης;</string>
+    <string name="rec_reminder_cancel_button">Ακύρωση υπενθύμισης</string>
+    <string name="rec_untitled">(χωρίς τίτλο)</string>
+    <string name="rec_badge_rec">REC</string>
+    <string name="rec_percent_watched">%1$d%% προβλήθηκε</string>
+    <string name="rec_cancel_scheduled_message">Ακύρωση αυτής της προγραμματισμένης εγγραφής;</string>
+    <string name="rec_cancel_scheduled_button">Ακύρωση εγγραφής</string>
+    <string name="rec_cancelled">Η εγγραφή ακυρώθηκε</string>
+    <string name="rec_delete_running_message">Διακοπή και διαγραφή αυτής της εγγραφής;</string>
+    <string name="rec_delete_message">Διαγραφή αυτής της εγγραφής από τον διακομιστή;</string>
+    <string name="rec_delete_button">Διαγραφή</string>
+    <string name="rec_deleted">Διαγράφηκε</string>
+
+    <!-- Αναζήτηση -->
+    <string name="search_title">Αναζήτηση στον οδηγό</string>
+    <string name="search_hint">Τίτλος εκπομπής, π.χ. ειδήσεις, ποδόσφαιρο, ταινία…</string>
+    <string name="search_say_title">Πείτε τον τίτλο μιας εκπομπής</string>
+    <string name="search_voice_missing">Η φωνητική εισαγωγή δεν είναι διαθέσιμη σε αυτή τη συσκευή· πληκτρολογήστε</string>
+    <string name="search_searching">Αναζήτηση…</string>
+    <string name="search_none">Δεν προβάλλεται κάτι με αυτόν τον τίτλο</string>
+    <plurals name="search_upcoming">
+        <item quantity="one">%1$d προσεχής</item>
+        <item quantity="other">%1$d προσεχείς</item>
+    </plurals>
+    <string name="search_on_now_until">Τώρα, έως τις %1$s</string>
+    <string name="search_badge_recording">Εγγραφή</string>
+    <string name="search_badge_reminder">Υπενθύμιση</string>
+
+    <!-- Παράθυρο υπενθύμισης -->
+    <string name="remind_starting_now">Ξεκινά τώρα</string>
+    <string name="remind_starts_at">Ξεκινά στις %1$s</string>
+    <string name="remind_starting_now_on">Ξεκινά τώρα στο %1$s</string>
+    <string name="remind_starts_at_on">Ξεκινά στις %1$s στο %2$s</string>
+    <string name="remind_watch">Παρακολούθηση</string>
+    <string name="remind_dismiss">Παράβλεψη</string>
+</resources>

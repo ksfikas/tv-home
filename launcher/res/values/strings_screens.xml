@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared dialog helpers -->
+    <string name="ui_cancel">Cancel</string>
+
+    <!-- TV guide -->
+    <string name="guide_cant_reach">Can\'t reach Tvheadend</string>
+    <string name="guide_watch_on">Watch on %1$s</string>
+    <string name="guide_stop_recording">Stop recording (keeps what\'s recorded)</string>
+    <string name="guide_cancel_recording">Cancel the recording</string>
+    <string name="guide_recording_stopped">Recording stopped</string>
+    <string name="guide_recording_cancelled">Recording cancelled</string>
+    <string name="guide_record_from_now">Record (from now)</string>
+    <string name="guide_record">Record</string>
+    <string name="guide_will_record">Will record</string>
+    <string name="guide_record_series">Record every episode</string>
+    <string name="guide_cancel_reminder">Cancel reminder</string>
+    <string name="guide_remind_me">Remind me when it starts</string>
+    <string name="guide_reminder_cancelled">Reminder cancelled</string>
+    <string name="guide_reminder_set">Reminder set for %1$s</string>
+    <string name="guide_meta_recording_set">Recording set</string>
+    <string name="guide_meta_reminder_set">Reminder set</string>
+    <string name="guide_hint_on_now">OK to watch · hold OK to record and more</string>
+    <string name="guide_hint_later">OK to record or set a reminder</string>
+    <string name="guide_hint_search">Menu to search</string>
+    <string name="guide_loading">Loading guide…</string>
+    <string name="guide_no_data">No guide data</string>
+
+    <!-- Recordings -->
+    <string name="rec_title">Recordings</string>
+    <string name="rec_hint">OK to play · hold OK to delete · record, series and reminders from the TV guide or search</string>
+    <string name="rec_loading">Loading…</string>
+    <string name="rec_empty">Nothing recorded yet. Open the TV guide and press OK on a programme to record it.</string>
+    <string name="rec_section_now">RECORDING NOW</string>
+    <string name="rec_section_scheduled">SCHEDULED</string>
+    <string name="rec_section_recorded">RECORDED</string>
+    <string name="rec_section_failed">FAILED</string>
+    <string name="rec_section_series">SERIES</string>
+    <string name="rec_section_reminders">REMINDERS</string>
+    <string name="rec_every_episode">every episode</string>
+    <string name="rec_series_stop_message">Stop recording this series? Scheduled episodes are cancelled; recorded ones stay.</string>
+    <string name="rec_series_stop_button">Stop series</string>
+    <string name="rec_series_stopped">Series stopped</string>
+    <string name="rec_reminder_cancel_message">Cancel this reminder?</string>
+    <string name="rec_reminder_cancel_button">Cancel reminder</string>
+    <string name="rec_untitled">(untitled)</string>
+    <string name="rec_badge_rec">REC</string>
+    <string name="rec_percent_watched">%1$d%% watched</string>
+    <string name="rec_cancel_scheduled_message">Cancel this scheduled recording?</string>
+    <string name="rec_cancel_scheduled_button">Cancel recording</string>
+    <string name="rec_cancelled">Recording cancelled</string>
+    <string name="rec_delete_running_message">Stop and delete this recording?</string>
+    <string name="rec_delete_message">Delete this recording from the server?</string>
+    <string name="rec_delete_button">Delete</string>
+    <string name="rec_deleted">Deleted</string>
+
+    <!-- Search -->
+    <string name="search_title">Search the guide</string>
+    <string name="search_hint">Programme title, e.g. news, football, a film…</string>
+    <string name="search_say_title">Say a programme title</string>
+    <string name="search_voice_missing">Voice input isn\'t available on this box; type instead</string>
+    <string name="search_searching">Searching…</string>
+    <string name="search_none">Nothing coming up with that title</string>
+    <plurals name="search_upcoming">
+        <item quantity="one">%1$d upcoming</item>
+        <item quantity="other">%1$d upcoming</item>
+    </plurals>
+    <string name="search_on_now_until">On now, until %1$s</string>
+    <string name="search_badge_recording">Recording</string>
+    <string name="search_badge_reminder">Reminder</string>
+
+    <!-- Reminder popup -->
+    <string name="remind_starting_now">Starting now</string>
+    <string name="remind_starts_at">Starts at %1$s</string>
+    <string name="remind_starting_now_on">Starting now on %1$s</string>
+    <string name="remind_starts_at_on">Starts at %1$s on %2$s</string>
+    <string name="remind_watch">Watch</string>
+    <string name="remind_dismiss">Dismiss</string>
+</resources>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Σφάλματα σύνδεσης με το Tvheadend -->
+    <string name="tvh_any_channel">Οποιοδήποτε κανάλι</string>
+    <string name="tvh_no_stream">Το Tvheadend δεν επέστρεψε ροή για αυτό το κανάλι</string>
+    <string name="tvh_bad_reply">Μη αναμενόμενη απάντηση από το Tvheadend</string>
+    <string name="tvh_needs_login">Το Tvheadend απαιτεί όνομα χρήστη και κωδικό πρόσβασης</string>
+    <string name="tvh_rejected_login">Το Tvheadend απέρριψε το όνομα χρήστη ή τον κωδικό πρόσβασης</string>
+    <string name="tvh_forbidden">Αυτός ο χρήστης του Tvheadend δεν έχει δικαίωμα για αυτή την ενέργεια</string>
+    <string name="tvh_http_error">Το Tvheadend απάντησε με HTTP %1$d</string>
+    <string name="tvh_unreachable">Αδυναμία σύνδεσης με το Tvheadend στη διεύθυνση %1$s</string>
+
+    <!-- Δέκτης δικτύου και εφαρμογές δέκτη -->
+    <string name="sources_no_tuner">Δεν βρέθηκε δέκτης δικτύου</string>
+    <string name="sources_bad_reply">Μη αναμενόμενη απάντηση από τον δέκτη δικτύου</string>
+    <string name="sources_http_error">Ο δέκτης δικτύου απάντησε με HTTP %1$d</string>
+    <string name="sources_unreachable">Αδυναμία σύνδεσης με τον δέκτη δικτύου στη διεύθυνση %1$s</string>
+    <string name="sources_channel_n">Κανάλι %1$s</string>
+
+    <!-- Κάτω από μια εφαρμογή στη γραμμή εφαρμογών και στο Top Shelf -->
+    <string name="watched_paused_at">Παύση στο %1$s</string>
+    <string name="watched_stopped_at">Διακοπή στο %1$s</string>
+    <string name="watched_last_opened">Άνοιξε %1$s</string>
+    <string name="shelf_paused_at">παύση στο %1$s</string>
+    <string name="shelf_stopped_at">διακοπή στο %1$s</string>
+
+    <!-- Κατάσταση συσκευής -->
+    <string name="box_title">Κατάσταση συσκευής</string>
+    <string name="box_checking">Έλεγχος…</string>
+    <string name="box_tidy">Εκκαθάριση μνήμης εφαρμογής</string>
+    <string name="box_close">Κλείσιμο</string>
+    <string name="box_freed">Ελευθερώθηκαν %1$s.</string>
+    <string name="box_memory">Ελεύθερη μνήμη: %1$s από %2$s</string>
+    <string name="box_memory_low">Ελεύθερη μνήμη: %1$s από %2$s (χαμηλή: το Android κλείνει εφαρμογές)</string>
+    <string name="box_storage">Ελεύθερος χώρος: %1$s από %2$s</string>
+    <string name="box_uptime_d">Σε λειτουργία: %1$d μ. %2$d ώ. %3$d λ.</string>
+    <string name="box_uptime">Σε λειτουργία: %1$d ώ. %2$d λ.</string>
+    <string name="box_cache">Προσωρινή μνήμη εφαρμογής: %1$s</string>
+    <string name="box_tvh_disk">Δίσκος εγγραφών Tvheadend: %1$s ελεύθερα από %2$s</string>
+    <string name="box_memory_tight">Η μνήμη είναι περιορισμένη. Η επανεκκίνηση (Ρυθμίσεις → Σύστημα → Επανεκκίνηση) την ελευθερώνει.</string>
+
+    <!-- Καιρός -->
+    <string name="weather_city_not_found">Δεν βρέθηκε η πόλη “%1$s”</string>
+    <string name="weather_unreachable">Αδυναμία σύνδεσης με την υπηρεσία καιρού</string>
+    <string name="weather_feels_like">αίσθηση %1$d°</string>
+    <string name="weather_feels_like_cap">Αίσθηση %1$d°</string>
+    <string name="weather_humidity">υγρασία %1$d%%</string>
+    <string name="weather_wind">άνεμος %1$d km/h</string>
+    <string name="weather_rain_pct">βροχή %1$d%%</string>
+    <string name="weather_next_hours">ΕΠΟΜΕΝΕΣ ΩΡΕΣ</string>
+    <string name="weather_next_days">ΕΠΟΜΕΝΕΣ ΗΜΕΡΕΣ</string>
+    <string name="weather_sunrise">Ανατολή %1$s</string>
+    <string name="weather_sunset">δύση %1$s</string>
+    <string name="weather_uv">UV %1$s</string>
+    <string name="weather_air_quality">Ποιότητα αέρα: %1$s (%2$d)</string>
+    <string name="weather_today">Σήμερα</string>
+    <string name="weather_tomorrow">Αύριο</string>
+
+    <!-- Διαφάνειες προφύλαξης οθόνης -->
+    <string name="ss_weather_title">Καιρός</string>
+    <string name="ss_on_tv">Τώρα στην τηλεόραση</string>
+    <string name="ss_next">Επόμενο: %1$s</string>
+    <string name="ss_until">έως %1$s</string>
+    <string name="ss_popular_films">Δημοφιλείς ταινίες της εβδομάδας</string>
+    <string name="ss_news_label">Ειδήσεις</string>
+</resources>

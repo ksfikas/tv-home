@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Top pills -->
+    <string name="main_pill_inputs">Inputs</string>
+    <string name="main_pill_settings">Settings</string>
+    <string name="main_pill_control">Control</string>
+
+    <!-- Section captions (shown in capitals) and header -->
+    <string name="main_live_tv_caps">LIVE TV</string>
+    <string name="main_radio_caps">RADIO</string>
+    <string name="main_all_apps_caps">ALL APPS</string>
+    <string name="main_greeting_night">GOOD NIGHT</string>
+    <string name="main_greeting_morning">GOOD MORNING</string>
+    <string name="main_greeting_afternoon">GOOD AFTERNOON</string>
+    <string name="main_greeting_evening">GOOD EVENING</string>
+    <string name="main_am">AM</string>
+    <string name="main_pm">PM</string>
+    <string name="main_offline">Offline</string>
+
+    <!-- Hold OK on an app -->
+    <string name="main_open">Open</string>
+    <string name="main_move_left">Move left</string>
+    <string name="main_move_right">Move right</string>
+    <string name="main_remove_from_dock">Remove from dock</string>
+    <string name="main_add_to_dock">Add to dock</string>
+    <string name="main_add_to_dock_replace">Add to dock (replaces the last one)</string>
+    <string name="main_hide_from_all_apps">Hide from All Apps</string>
+    <string name="main_app_info">App info</string>
+    <string name="main_uninstall">Uninstall</string>
+
+    <!-- Inputs menu -->
+    <string name="main_live_tv">Live TV</string>
+    <string name="main_live_tv_setup">Live TV setup…</string>
+    <string name="main_weather_menu">Weather…</string>
+    <string name="main_box_status_menu">Box status…</string>
+    <string name="main_phone_remote_menu">Phone remote…</string>
+    <string name="main_show_hidden_apps">Show hidden apps</string>
+    <string name="main_all_sources">All sources…</string>
+
+    <!-- Live TV row -->
+    <string name="main_loading_channels">Loading channels…</string>
+    <string name="main_no_channels">No channels on the Tvheadend server</string>
+    <string name="main_set_up_live_tv">Set up Live TV</string>
+    <string name="main_hide_live_tv">Hide Live TV (bring back in Inputs → Live TV setup…)</string>
+    <string name="main_retry_hint">OK to retry · hold OK for setup</string>
+    <string name="main_guide">Guide</string>
+    <string name="main_search">Search</string>
+    <string name="main_recordings">Recordings</string>
+    <string name="main_recording">Recording</string>
+    <string name="main_continue">Continue  %1$s  ·  %2$d%%</string>
+    <string name="main_fav_remove">Remove from favourites</string>
+    <string name="main_fav_add">Add to favourites</string>
+    <string name="main_fav_clear">Show all channels (clear favourites)</string>
+
+    <!-- Top Shelf cards -->
+    <string name="main_shelf_resume">Resume</string>
+    <string name="main_shelf_remove">Remove</string>
+    <string name="main_shelf_where">Where to watch</string>
+    <string name="main_shelf_phone">Read on phone</string>
+    <string name="main_scan_phone">Scan with your phone\'s camera to read it.</string>
+    <string name="main_close">Close</string>
+    <string name="main_cancel">Cancel</string>
+    <string name="main_save">Save</string>
+    <string name="main_top_shelf">Top shelf</string>
+    <string name="main_shelf_films">Recommendations: films %1$s</string>
+    <string name="main_shelf_news">Recommendations: news %1$s</string>
+    <string name="main_news_from_item">News from: %1$s</string>
+    <string name="main_news_from">News from</string>
+    <string name="main_state_on">on</string>
+    <string name="main_state_off">off</string>
+    <string name="main_off">Off</string>
+
+    <!-- Screensaver menu -->
+    <string name="main_screensaver">Screensaver</string>
+    <string name="main_weather">Weather</string>
+    <string name="main_on_tv_now">On TV now</string>
+    <string name="main_popular_films">Popular films</string>
+    <string name="main_news_slides">News slides</string>
+    <string name="main_news_ticker">News ticker</string>
+    <string name="main_start_now">Start now</string>
+    <string name="main_name_state">%1$s: %2$s</string>
+    <plurals name="main_each_slide">
+        <item quantity="one">Each slide: %1$d second</item>
+        <item quantity="other">Each slide: %1$d seconds</item>
+    </plurals>
+    <string name="main_ss_choose_first">Choose it first: Settings → Device Preferences → Screen saver</string>
+    <string name="main_ss_cant_start">This TV can\'t start the screensaver from here</string>
+
+    <!-- Live TV setup dialog -->
+    <string name="main_f_tvh_address">Tvheadend address (empty for none)</string>
+    <string name="main_f_username">Username</string>
+    <string name="main_f_password">Password</string>
+    <string name="main_f_hdhr">Network tuner (HDHomeRun): auto, an address, or empty for none</string>
+    <string name="main_cb_tif">Channels from tuner apps on this box (e.g. a USB tuner)</string>
+    <string name="main_cb_autoplay">Start the last channel after the box restarts</string>
+    <string name="main_remove_all">Remove all</string>
+    <string name="main_checking">Checking…</string>
+    <string name="main_no_channels_found">No channels found from these sources</string>
+
+    <!-- Control Center -->
+    <string name="main_sleep">Sleep</string>
+    <plurals name="main_sleep_in_min">
+        <item quantity="one">in %1$d min</item>
+        <item quantity="other">in %1$d min</item>
+    </plurals>
+    <string name="main_bluetooth_state">Remotes, speakers</string>
+    <string name="main_tv_guide">TV guide</string>
+    <string name="main_whats_on">What\'s on</string>
+    <string name="main_needs_tvh">Needs Tvheadend</string>
+    <string name="main_set_city">Set a city</string>
+    <string name="main_next_days">Next days</string>
+    <string name="main_phone_remote">Phone remote</string>
+    <string name="main_remote_on_qr">On · QR</string>
+    <string name="main_photos_info">Photos &amp; info</string>
+    <string name="main_voice_search">Voice search</string>
+    <string name="main_volume_down">Volume down</string>
+    <string name="main_volume_up">Volume up</string>
+    <string name="main_box_status">Box status</string>
+    <string name="main_turn_off">Turn off</string>
+    <string name="main_turn_on">Turn on</string>
+    <string name="main_turn_off_needs_perm">Turning off needs the sleep permission (see the README)</string>
+
+    <!-- Sleep timer -->
+    <string name="main_sleep_timer">Sleep timer</string>
+    <string name="main_sleep_needs_perm">The sleep timer needs the sleep permission (see the README)</string>
+    <string name="main_sleep_15">15 minutes</string>
+    <string name="main_sleep_30">30 minutes</string>
+    <string name="main_sleep_60">1 hour</string>
+    <string name="main_sleep_90">1½ hours</string>
+    <string name="main_sleep_120">2 hours</string>
+    <string name="main_sleep_off_toast">Sleep timer off</string>
+    <string name="main_sleep_standby_in">Going to standby in %1$s</string>
+
+    <!-- Weather dialogs -->
+    <string name="main_loading">Loading…</string>
+    <string name="main_change_city">Change city</string>
+    <string name="main_weather_unreachable">Can\'t reach the weather service</string>
+    <string name="main_f_city">City (leave empty for no weather)</string>
+    <string name="main_looking_up">Looking it up…</string>
+
+    <!-- Phone remote dialog -->
+    <string name="main_remote_scan">Point your phone\'s camera at the code (same Wi-Fi).\n\nOr open\n%1$s\nand enter the PIN  %2$s\n\nAdd it to your home screen for one-tap access. Turning it off forgets paired phones.</string>
+    <string name="main_remote_no_network">No network: connect the box to Wi-Fi first.</string>
+    <string name="main_remote_intro">Control Live TV, the guide, recordings, apps and volume from your phone\'s browser, on your home network only.</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Τηλεχειριστήριο κινητού: μηνύματα της τηλεόρασης προς τη σελίδα του κινητού -->
+    <string name="remote_wrong_pin">Λάθος PIN</string>
+    <string name="remote_pair_needed">Συνδεθείτε με το PIN που εμφανίζεται στην τηλεόραση</string>
+    <string name="remote_sleep_perm">Ο χρονοδιακόπτης ύπνου χρειάζεται την άδεια ύπνου (δείτε το README)</string>
+    <string name="remote_off_perm">Η απενεργοποίηση χρειάζεται την άδεια ύπνου (δείτε το README)</string>
+    <string name="remote_open_fail">Δεν είναι δυνατό το άνοιγμα της εφαρμογής</string>
+    <string name="remote_needs_tvh_search">Η αναζήτηση χρειάζεται το Tvheadend</string>
+    <string name="remote_needs_tvh_guide">Ο οδηγός χρειάζεται το Tvheadend</string>
+    <string name="remote_needs_tvh_record">Η εγγραφή χρειάζεται το Tvheadend</string>
+    <string name="remote_unknown">Άγνωστο αίτημα</string>
+    <string name="remote_photo_large">Η φωτογραφία είναι πολύ μεγάλη</string>
+    <string name="remote_upload_interrupted">Η αποστολή διακόπηκε</string>
+    <string name="remote_not_photo">Αυτό δεν είναι φωτογραφία που μπορεί να εμφανίσει η τηλεόραση</string>
+</resources>

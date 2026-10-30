@@ -89,7 +89,7 @@ final class Shelf {
             StringBuilder s = new StringBuilder(label);
             if (w.subtitle != null && w.title != null) s.append("  ·  ").append(w.subtitle);
             if (w.dur > 0 && w.pos > 0 && w.pos < w.dur) s.append("  ·  ").append(Watched.left(t, w.dur - w.pos));
-            else if (w.title == null) s.append("  ·  ").append(w.paused ? "paused at " : "stopped at ").append(Ui.duration(w.pos));
+            else if (w.title == null) s.append("  ·  ").append(c.getString(w.paused ? R.string.shelf_paused_at : R.string.shelf_stopped_at, Ui.duration(w.pos)));
             s.append("  ·  ").append(Watched.ago(t, System.currentTimeMillis() - w.at));
             it.sub = s.toString();
             if (w.dur > 0 && w.pos > 0) it.progress = Math.min(1f, w.pos / (float) w.dur);

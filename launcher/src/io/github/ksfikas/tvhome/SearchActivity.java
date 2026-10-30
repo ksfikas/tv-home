@@ -59,12 +59,12 @@ public class SearchActivity extends Activity {
         root.setBackgroundColor(0xFF0E0E10);
         root.setPadding(Ui.dp(this, 64), Ui.dp(this, 40), Ui.dp(this, 64), 0);
         TextView title = Ui.text(this, 28, "sans-serif-light", Color.WHITE);
-        title.setText("Search the guide");
+        title.setText(R.string.search_title);
         root.addView(title);
 
         query = new EditText(this);
         query.setSingleLine(true);
-        query.setHint("Programme title, e.g. news, football, a film…");
+        query.setHint(R.string.search_hint);
         query.setHintTextColor(0x66FFFFFF);
         query.setTextColor(Color.WHITE);
         query.setInputType(InputType.TYPE_CLASS_TEXT);
@@ -133,7 +133,7 @@ public class SearchActivity extends Activity {
     private void listen() {
         android.content.Intent i = new android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                 .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Say a programme title");
+                .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, getString(R.string.search_say_title));
         try {
             // Google TV's own voice input (the remote's microphone), so Android doesn't ask which app.
             startActivityForResult(new android.content.Intent(i).setPackage("com.google.android.katniss"), VOICE);
@@ -143,7 +143,7 @@ public class SearchActivity extends Activity {
     }
 
     private void voiceMissing() {
-        message.setText("Voice input isn't available on this box; type instead");
+        message.setText(R.string.search_voice_missing);
         query.requestFocus();
     }
 
@@ -180,7 +180,7 @@ public class SearchActivity extends Activity {
         String q = query.getText().toString().trim();
         int mine = ++seq;
         if (q.length() < 2) { show(null, null, mine); return; }
-        message.setText("Searching…");
+        message.setText(R.string.search_searching);
         Tvh.IO.execute(() -> {
             List<Tvh.Event> found = null;
             String err = null;
@@ -204,7 +204,8 @@ public class SearchActivity extends Activity {
         results.addView(message);
         if (err != null) { message.setText(err); return; }
         if (found == null) { message.setText(""); return; }
-        message.setText(found.isEmpty() ? "Nothing coming up with that title" : found.size() + " upcoming");
+        message.setText(found.isEmpty() ? getString(R.string.search_none)
+                : getResources().getQuantityString(R.plurals.search_upcoming, found.size(), found.size()));
         long nowSec = System.currentTimeMillis() / 1000;
         for (Tvh.Event ev : found) {
             TextView row = Ui.row(this, label(ev, nowSec));
@@ -222,10 +223,10 @@ public class SearchActivity extends Activity {
         int meta = s.length();
         Tvh.Channel ch = Tvh.find(ev.channelUuid);
         s.append("\n").append(ch == null ? "" : ch.name + "   ")
-                .append(ev.isOn(nowSec) ? "On now, until " + Ui.time(this, ev.stop)
+                .append(ev.isOn(nowSec) ? getString(R.string.search_on_now_until, Ui.time(this, ev.stop))
                         : Ui.day(ev.start) + "  " + Ui.time(this, ev.start) + " – " + Ui.time(this, ev.stop));
-        if (ev.recordingSet()) s.append("   ● Recording");
-        else if (Reminders.isSet(this, ev.id)) s.append("   ○ Reminder");
+        if (ev.recordingSet()) s.append("   ● ").append(getString(R.string.search_badge_recording));
+        else if (Reminders.isSet(this, ev.id)) s.append("   ○ ").append(getString(R.string.search_badge_reminder));
         s.setSpan(new RelativeSizeSpan(0.8f), meta, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         s.setSpan(new ForegroundColorSpan(0x99888888), meta, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return s;

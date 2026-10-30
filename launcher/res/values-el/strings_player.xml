@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Γραμμή κατάστασης και μηνύματα -->
+    <string name="player_loading_channels">Φόρτωση καναλιών…</string>
+    <string name="player_no_channels">Δεν υπάρχουν κανάλια στον διακομιστή Tvheadend</string>
+    <string name="player_sleep_off_toast">Ο χρονοδιακόπτης ύπνου απενεργοποιήθηκε</string>
+    <string name="player_continuing">Συνέχεια από %1$s</string>
+    <string name="player_stream_ended">Η ροή τερματίστηκε</string>
+    <string name="player_weak_signal">Ασθενές σήμα</string>
+    <string name="player_no_picture">Δεν υπάρχει εικόνα από τον δέκτη</string>
+    <string name="player_tuner_not_responding">Η εφαρμογή δέκτη δεν ανταποκρίνεται</string>
+    <string name="player_tuner_stopped">Η εφαρμογή δέκτη σταμάτησε</string>
+    <string name="player_reconnecting">Επανασύνδεση…</string>
+    <string name="player_cant_play">Η αναπαραγωγή δεν είναι δυνατή</string>
+    <string name="player_err_refused">Το Tvheadend απέρριψε τη ροή (δεν υπάρχει ελεύθερος δέκτης ή πρόσβαση)</string>
+    <string name="player_err_unreachable">Δεν είναι δυνατή η σύνδεση με το Tvheadend</string>
+    <string name="player_err_format">Η συσκευή δεν μπορεί να αποκωδικοποιήσει αυτή τη μορφή</string>
+    <string name="player_err_playback">Σφάλμα αναπαραγωγής: %1$s</string>
+    <string name="player_no_channel">Δεν υπάρχει κανάλι %1$d</string>
+
+    <!-- Ένδειξη παύσης / καθυστέρησης από το ζωντανό (μπροστά από την πρώτη μπαίνει το "❚❚") -->
+    <string name="player_paused">Παύση  %1$s</string>
+    <string name="player_behind_live">%1$s πίσω από το ζωντανό</string>
+
+    <!-- Μενού επιλογών -->
+    <string name="player_resume">Συνέχιση</string>
+    <string name="player_pause">Παύση</string>
+    <string name="player_back_to_live">Επιστροφή στο ζωντανό</string>
+    <string name="player_start_beginning">Έναρξη από την αρχή</string>
+    <string name="player_default">Προεπιλογή</string>
+    <string name="player_off">Ανενεργό</string>
+    <string name="player_menu_audio">Ήχος: %1$s</string>
+    <string name="player_menu_subtitles">Υπότιτλοι: %1$s</string>
+    <string name="player_stop_recording">Διακοπή εγγραφής «%1$s»</string>
+    <string name="player_record_title">Εγγραφή «%1$s»</string>
+    <string name="player_recording_stopped">Η εγγραφή διακόπηκε</string>
+    <string name="player_recording">Εγγραφή</string>
+    <string name="player_record_every">Εγγραφή όλων των επεισοδίων</string>
+    <string name="player_tv_guide">Οδηγός προγράμματος</string>
+    <string name="player_recordings">Εγγραφές</string>
+    <plurals name="player_sleep_left">
+        <item quantity="one">Χρονοδιακόπτης ύπνου: απομένει %1$d λεπτό</item>
+        <item quantity="other">Χρονοδιακόπτης ύπνου: απομένουν %1$d λεπτά</item>
+    </plurals>
+    <string name="player_sleep_off">Χρονοδιακόπτης ύπνου: Ανενεργός</string>
+    <string name="player_stream_info">Πληροφορίες ροής</string>
+    <string name="player_hide_stream_info">Απόκρυψη πληροφοριών ροής</string>
+
+    <!-- Επιβεβαίωση εγγραφής σειράς -->
+    <string name="player_series_confirm">Εγγράφει το «%1$s» κάθε φορά που προβάλλεται στο κανάλι %2$s, ξεκινώντας τώρα αν παίζει. Διαχειριστείτε τις σειρές στις Εγγραφές.</string>
+    <string name="player_series_confirm_this">Εγγράφει το «%1$s» κάθε φορά που προβάλλεται σε αυτό το κανάλι, ξεκινώντας τώρα αν παίζει. Διαχειριστείτε τις σειρές στις Εγγραφές.</string>
+    <string name="player_record_series">Εγγραφή σειράς</string>
+    <string name="player_series_set">Η εγγραφή σειράς ορίστηκε</string>
+
+    <!-- Χρονοδιακόπτης ύπνου -->
+    <string name="player_sleep_timer">Χρονοδιακόπτης ύπνου</string>
+    <plurals name="player_minutes">
+        <item quantity="one">%1$d λεπτό</item>
+        <item quantity="other">%1$d λεπτά</item>
+    </plurals>
+    <string name="player_end_programme">Τέλος αυτής της εκπομπής (%1$s)</string>
+    <string name="player_end_recording">Τέλος αυτής της εγγραφής</string>
+    <string name="player_going_to_sleep">Μετάβαση σε αναμονή σε %1$s</string>
+    <string name="player_sleep_badge">Μετάβαση σε αναμονή σε %1$d δ.  ·  πατήστε οποιοδήποτε κουμπί για να συνεχίσετε</string>
+
+    <!-- Πίνακας πληροφοριών ροής (οι ετικέτες συμπληρώνονται για στοίχιση, μέχρι 8 γράμματα) -->
+    <string name="player_info_video">Βίντεο</string>
+    <string name="player_info_audio">Ήχος</string>
+    <string name="player_info_stream">Ροή</string>
+    <string name="player_info_tuner">Δέκτης</string>
+    <string name="player_info_signal">Σήμα</string>
+    <string name="player_info_errors">Σφάλματα</string>
+    <string name="player_stereo">στέρεο</string>
+    <string name="player_mono">μονοφωνικό</string>
+    <string name="player_channels">%1$d κανάλια</string>
+    <string name="player_waiting_stream">Αναμονή για τη ροή…</string>
+    <string name="player_admins_only">εμφανίζεται μόνο σε διαχειριστές του Tvheadend</string>
+
+    <!-- Κομμάτια ήχου και υπότιτλων -->
+    <string name="player_track">Κομμάτι %1$d</string>
+    <string name="player_no_subtitles">Δεν υπάρχουν υπότιτλοι σε αυτό το κανάλι</string>
+    <string name="player_one_audio">Υπάρχει μόνο ένα κομμάτι ήχου</string>
+    <string name="player_subtitles">Υπότιτλοι</string>
+    <string name="player_audio">Ήχος</string>
+
+    <!-- Μπάρα πληροφοριών -->
+    <string name="player_no_programme_info">Δεν υπάρχουν πληροφορίες προγράμματος</string>
+    <string name="player_next">Επόμενο  %1$s  %2$s</string>
+    <string name="player_hint_recording">◀ ▶ 30 δ.    ▲ ▼ 5 λ.    OK παύση</string>
+</resources>

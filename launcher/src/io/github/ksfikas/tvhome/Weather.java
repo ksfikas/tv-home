@@ -36,14 +36,14 @@ final class Weather {
             JSONObject o = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=1&name="
                     + URLEncoder.encode(name, "UTF-8")));
             JSONArray r = o.optJSONArray("results");
-            if (r == null || r.length() == 0) return "Can't find “" + name + "”";
+            if (r == null || r.length() == 0) return c.getString(R.string.weather_city_not_found, name);
             JSONObject p = r.getJSONObject(0);
             prefs(c).edit().clear().putString("city", p.optString("name", name))
                     .putFloat("lat", (float) p.getDouble("latitude"))
                     .putFloat("lon", (float) p.getDouble("longitude")).apply();
             return null;
         } catch (Exception e) {
-            return "Can't reach the weather service";
+            return c.getString(R.string.weather_unreachable);
         }
     }
 
@@ -51,14 +51,17 @@ final class Weather {
     static String current(Context c, boolean fetch) {
         SharedPreferences p = prefs(c);
         if (!p.contains("lat")) return null;
-        long age = System.currentTimeMillis() - p.getLong("at", 0);
+        // The cached text is words in one language: a language change makes it stale.
+        String lang = c.getResources().getConfiguration().getLocales().get(0).getLanguage();
+        boolean sameLang = lang.equals(p.getString("text_lang", ""));
+        long age = sameLang ? System.currentTimeMillis() - p.getLong("at", 0) : Long.MAX_VALUE;
         if (fetch && age > 30 * 60_000) {
             try {
                 JSONObject cur = new JSONObject(get(String.format(Locale.ROOT,
                         "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current=temperature_2m,weather_code,is_day",
                         p.getFloat("lat", 0), p.getFloat("lon", 0)))).getJSONObject("current");
                 String s = Math.round(cur.getDouble("temperature_2m")) + "°  " + describe(Txt.of(c), cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1);
-                p.edit().putString("text", s).putLong("at", System.currentTimeMillis()).apply();
+                p.edit().putString("text", s).putString("text_lang", lang).putLong("at", System.currentTimeMillis()).apply();
                 age = 0;
             } catch (Exception ignored) { }
         }
@@ -84,37 +87,37 @@ final class Weather {
             StringBuilder s = new StringBuilder();
             s.append(Math.round(cur.getDouble("temperature_2m"))).append("°  ")
                     .append(describe(Txt.of(c), cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1))
-                    .append("   ·   feels like ").append(Math.round(cur.getDouble("apparent_temperature"))).append('°')
-                    .append("   ·   humidity ").append(cur.getInt("relative_humidity_2m")).append('%')
-                    .append("   ·   wind ").append(Math.round(cur.getDouble("wind_speed_10m"))).append(" km/h\n\n");
+                    .append("   ·   ").append(c.getString(R.string.weather_feels_like, Math.round(cur.getDouble("apparent_temperature"))))
+                    .append("   ·   ").append(c.getString(R.string.weather_humidity, cur.getInt("relative_humidity_2m")))
+                    .append("   ·   ").append(c.getString(R.string.weather_wind, Math.round(cur.getDouble("wind_speed_10m")))).append("\n\n");
 
-            s.append("NEXT HOURS\n");
+            s.append(c.getString(R.string.weather_next_hours)).append('\n');
             for (int i = 1; i < h.getJSONArray("time").length(); i++) {
                 s.append(h.getJSONArray("time").getString(i).substring(11, 16)).append("   ")
                         .append(Math.round(h.getJSONArray("temperature_2m").getDouble(i))).append("°  ")
                         .append(describe(Txt.of(c), h.getJSONArray("weather_code").getInt(i), true));
                 int rain = h.getJSONArray("precipitation_probability").optInt(i, 0);
-                if (rain >= 20) s.append("  ·  rain ").append(rain).append('%');
+                if (rain >= 20) s.append("  ·  ").append(c.getString(R.string.weather_rain_pct, rain));
                 s.append('\n');
             }
 
-            s.append("\nNEXT DAYS\n");
+            s.append('\n').append(c.getString(R.string.weather_next_days)).append('\n');
             for (int i = 0; i < d.getJSONArray("time").length(); i++) {
-                s.append(dayName(i, d.getJSONArray("time").getString(i))).append("   ").append(Math.round(d.getJSONArray("temperature_2m_max").getDouble(i))).append("° / ")
+                s.append(dayName(Txt.of(c), i, d.getJSONArray("time").getString(i))).append("   ").append(Math.round(d.getJSONArray("temperature_2m_max").getDouble(i))).append("° / ")
                         .append(Math.round(d.getJSONArray("temperature_2m_min").getDouble(i))).append("°  ")
                         .append(describe(Txt.of(c), d.getJSONArray("weather_code").getInt(i), true))
-                        .append("  ·  rain ").append(d.getJSONArray("precipitation_probability_max").optInt(i, 0)).append("%\n");
+                        .append("  ·  ").append(c.getString(R.string.weather_rain_pct, d.getJSONArray("precipitation_probability_max").optInt(i, 0))).append('\n');
             }
 
-            s.append("\nSunrise ").append(d.getJSONArray("sunrise").getString(0).substring(11, 16))
-                    .append("   ·   sunset ").append(d.getJSONArray("sunset").getString(0).substring(11, 16))
-                    .append("   ·   UV ").append(uv(Txt.of(c), d.getJSONArray("uv_index_max").optDouble(0, 0)));
+            s.append('\n').append(c.getString(R.string.weather_sunrise, d.getJSONArray("sunrise").getString(0).substring(11, 16)))
+                    .append("   ·   ").append(c.getString(R.string.weather_sunset, d.getJSONArray("sunset").getString(0).substring(11, 16)))
+                    .append("   ·   ").append(c.getString(R.string.weather_uv, uv(Txt.of(c), d.getJSONArray("uv_index_max").optDouble(0, 0))));
             try {
                 JSONObject aq = new JSONObject(get(String.format(Locale.ROOT,
                         "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.3f&longitude=%.3f&current=european_aqi", lat, lon)))
                         .getJSONObject("current");
                 int aqi = aq.getInt("european_aqi");
-                s.append("\nAir quality ").append(airQuality(Txt.of(c), aqi)).append(" (").append(aqi).append(')');
+                s.append('\n').append(c.getString(R.string.weather_air_quality, airQuality(Txt.of(c), aqi), aqi));
             } catch (Exception ignored) { } // air quality is a nice-to-have
             return s.toString();
         } catch (Exception e) {
@@ -130,7 +133,9 @@ final class Weather {
     static String[] glance(Context c) {
         SharedPreferences p = prefs(c);
         if (!p.contains("lat")) return null;
-        long age = System.currentTimeMillis() - p.getLong("glance_at", 0);
+        String lang = c.getResources().getConfiguration().getLocales().get(0).getLanguage();
+        boolean sameLang = lang.equals(p.getString("glance_lang", ""));
+        long age = sameLang ? System.currentTimeMillis() - p.getLong("glance_at", 0) : Long.MAX_VALUE;
         if (!p.contains("glance") || age > 30 * 60_000) {
             try {
                 JSONObject f = new JSONObject(get(String.format(Locale.ROOT,
@@ -142,15 +147,16 @@ final class Weather {
                 JSONArray out = new JSONArray();
                 out.put(Math.round(cur.getDouble("temperature_2m")) + "°");
                 out.put(describe(Txt.of(c), cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1));
-                out.put("Feels like " + Math.round(cur.getDouble("apparent_temperature")) + "°   ·   humidity "
-                        + cur.getInt("relative_humidity_2m") + "%   ·   wind " + Math.round(cur.getDouble("wind_speed_10m")) + " km/h");
+                out.put(c.getString(R.string.weather_feels_like_cap, Math.round(cur.getDouble("apparent_temperature")))
+                        + "   ·   " + c.getString(R.string.weather_humidity, cur.getInt("relative_humidity_2m"))
+                        + "   ·   " + c.getString(R.string.weather_wind, Math.round(cur.getDouble("wind_speed_10m"))));
                 for (int i = 0; i < d.getJSONArray("time").length(); i++) {
-                    out.put(dayName(i, d.getJSONArray("time").getString(i)) + "\t"
+                    out.put(dayName(Txt.of(c), i, d.getJSONArray("time").getString(i)) + "\t"
                             + Math.round(d.getJSONArray("temperature_2m_max").getDouble(i)) + "° / "
                             + Math.round(d.getJSONArray("temperature_2m_min").getDouble(i)) + "°\t"
                             + describe(Txt.of(c), d.getJSONArray("weather_code").getInt(i), true));
                 }
-                p.edit().putString("glance", out.toString()).putLong("glance_at", System.currentTimeMillis()).apply();
+                p.edit().putString("glance", out.toString()).putString("glance_lang", lang).putLong("glance_at", System.currentTimeMillis()).apply();
                 age = 0;
             } catch (Exception ignored) { }
         }
@@ -166,9 +172,9 @@ final class Weather {
     }
 
     /** "Today", "Tomorrow", then the weekday; iso is the day as yyyy-MM-dd. */
-    static String dayName(int i, String iso) {
-        if (i == 0) return "Today";
-        if (i == 1) return "Tomorrow";
+    static String dayName(Txt t, int i, String iso) {
+        if (i == 0) return t.s(R.string.weather_today);
+        if (i == 1) return t.s(R.string.weather_tomorrow);
         try {
             return new java.text.SimpleDateFormat("EEEE", Locale.getDefault())
                     .format(new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).parse(iso));

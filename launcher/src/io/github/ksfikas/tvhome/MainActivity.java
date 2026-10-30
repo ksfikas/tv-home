@@ -362,7 +362,7 @@ public class MainActivity extends Activity {
         liveSection.setClipChildren(false);
         liveSection.setClipToPadding(false);
         liveLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
-        liveLabel.setText("LIVE TV");
+        liveLabel.setText(getString(R.string.main_live_tv_caps));
         liveLabel.setLetterSpacing(0.22f);
         liveSection.addView(liveLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
         channelScroll = rowScroller();
@@ -376,7 +376,7 @@ public class MainActivity extends Activity {
         radioSection.setClipChildren(false);
         radioSection.setClipToPadding(false);
         TextView radioLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
-        radioLabel.setText("RADIO");
+        radioLabel.setText(getString(R.string.main_radio_caps));
         radioLabel.setLetterSpacing(0.22f);
         radioSection.addView(radioLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
         radioScroll = rowScroller();
@@ -386,7 +386,7 @@ public class MainActivity extends Activity {
         content.addView(radioSection, llp(-1, -2, 0, 0, 0, dp(30)));
 
         appsLabel = text(11, "sans-serif-medium", 0x99FFFFFF);
-        appsLabel.setText("ALL APPS");
+        appsLabel.setText(getString(R.string.main_all_apps_caps));
         appsLabel.setLetterSpacing(0.22f);
         content.addView(appsLabel, llp(-2, -2, dp(68), dp(8), 0, dp(18)));
 
@@ -434,13 +434,13 @@ public class MainActivity extends Activity {
         LinearLayout right = new LinearLayout(this);
         right.setGravity(Gravity.CENTER_VERTICAL);
         right.setClipChildren(false);
-        TextView inputs = pill("Inputs", R.drawable.sym_input);
+        TextView inputs = pill(getString(R.string.main_pill_inputs), R.drawable.sym_input);
         inputs.setOnClickListener(v -> showInputs(v));
         wifiPill = pill("Wi-Fi", R.drawable.sym_wifi);
         wifiPill.setOnClickListener(v -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS)));
-        TextView settings = pill("Settings", R.drawable.sym_settings);
+        TextView settings = pill(getString(R.string.main_pill_settings), R.drawable.sym_settings);
         settings.setOnClickListener(v -> launch(new Intent(Settings.ACTION_SETTINGS)));
-        TextView control = pill("Control", R.drawable.sym_tune);
+        TextView control = pill(getString(R.string.main_pill_control), R.drawable.sym_tune);
         control.setOnClickListener(v -> showControlCenter());
         for (TextView p : new TextView[]{control, inputs, wifiPill, settings}) {
             right.addView(p, llp(-2, dp(30), dp(10), 0, 0, 0));
@@ -571,21 +571,21 @@ public class MainActivity extends Activity {
         int i = dock.indexOf(app.pkg);
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
-        labels.add("Open");
+        labels.add(getString(R.string.main_open));
         actions.add(() -> launch(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
                 .setComponent(app.component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)));
         if (inDock) {
-            if (i > 0) { labels.add("Move left"); actions.add(() -> { dock.remove(i); dock.add(i - 1, app.pkg); setDock(dock, app); }); }
-            if (i >= 0 && i < dock.size() - 1) { labels.add("Move right"); actions.add(() -> { dock.remove(i); dock.add(i + 1, app.pkg); setDock(dock, app); }); }
-            if (dock.size() > 1) { labels.add("Remove from dock"); actions.add(() -> { dock.remove(app.pkg); setDock(dock, app); }); }
+            if (i > 0) { labels.add(getString(R.string.main_move_left)); actions.add(() -> { dock.remove(i); dock.add(i - 1, app.pkg); setDock(dock, app); }); }
+            if (i >= 0 && i < dock.size() - 1) { labels.add(getString(R.string.main_move_right)); actions.add(() -> { dock.remove(i); dock.add(i + 1, app.pkg); setDock(dock, app); }); }
+            if (dock.size() > 1) { labels.add(getString(R.string.main_remove_from_dock)); actions.add(() -> { dock.remove(app.pkg); setDock(dock, app); }); }
         } else {
-            labels.add(dock.size() < DOCK_MAX ? "Add to dock" : "Add to dock (replaces the last one)");
+            labels.add(getString(dock.size() < DOCK_MAX ? R.string.main_add_to_dock : R.string.main_add_to_dock_replace));
             actions.add(() -> {
                 if (dock.size() >= DOCK_MAX) dock.remove(dock.size() - 1);
                 dock.add(app.pkg);
                 setDock(dock, app);
             });
-            labels.add("Hide from All Apps");
+            labels.add(getString(R.string.main_hide_from_all_apps));
             actions.add(() -> {
                 Set<String> h = new HashSet<>(Tvh.prefs(this).getStringSet("hidden_user", new HashSet<>()));
                 h.add(app.pkg);
@@ -594,10 +594,10 @@ public class MainActivity extends Activity {
                 buildApps();
             });
         }
-        labels.add("App info");
+        labels.add(getString(R.string.main_app_info));
         actions.add(() -> launch(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:" + app.pkg))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
-        labels.add("Uninstall");
+        labels.add(getString(R.string.main_uninstall));
         actions.add(() -> launch(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + app.pkg))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
         Ui.menu(this, app.label, labels.toArray(new String[0]), k -> actions.get(k).run());
@@ -790,7 +790,7 @@ public class MainActivity extends Activity {
         bg.setStroke(dp(1), 0x26FFFFFF);
         list.setBackground(bg);
 
-        PopupWindow pw = new PopupWindow(list, dp(200), -2, true);
+        PopupWindow pw = new PopupWindow(list, dp(240), -2, true);
         List<TextView> rows = new ArrayList<>();
 
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
@@ -806,18 +806,18 @@ public class MainActivity extends Activity {
                 if (!launch(i)) openPackage(inputPickerPkg);
             }));
         }
-        if (isInstalled(liveTvPkg)) rows.add(inputRow("Live TV", () -> openPackage(liveTvPkg)));
-        rows.add(inputRow("Live TV setup…", this::showLiveSetup));
-        rows.add(inputRow("Weather…", this::showWeatherSetup));
-        rows.add(inputRow("Box status…", () -> BoxHealth.show(this)));
-        rows.add(inputRow("Phone remote…", this::showRemoteSetup));
+        if (isInstalled(liveTvPkg)) rows.add(inputRow(getString(R.string.main_live_tv), () -> openPackage(liveTvPkg)));
+        rows.add(inputRow(getString(R.string.main_live_tv_setup), this::showLiveSetup));
+        rows.add(inputRow(getString(R.string.main_weather_menu), this::showWeatherSetup));
+        rows.add(inputRow(getString(R.string.main_box_status_menu),() -> BoxHealth.show(this)));
+        rows.add(inputRow(getString(R.string.main_phone_remote_menu), this::showRemoteSetup));
         if (!Tvh.prefs(this).getStringSet("hidden_user", Collections.emptySet()).isEmpty()) {
-            rows.add(inputRow("Show hidden apps", () -> {
+            rows.add(inputRow(getString(R.string.main_show_hidden_apps),() -> {
                 Tvh.prefs(this).edit().remove("hidden_user").apply();
                 buildApps();
             }));
         }
-        if (inputs.isEmpty() && isInstalled(inputPickerPkg)) rows.add(inputRow("All sources…", () -> openPackage(inputPickerPkg)));
+        if (inputs.isEmpty() && isInstalled(inputPickerPkg)) rows.add(inputRow(getString(R.string.main_all_sources),() -> openPackage(inputPickerPkg)));
 
         for (TextView r : rows) {
             r.setOnClickListener(v -> { pw.dismiss(); ((Runnable) v.getTag()).run(); });
@@ -877,7 +877,7 @@ public class MainActivity extends Activity {
         if (!needChannels && now - nowLoadedAt < NOW_TTL_MS) return;
         handler.removeCallbacks(retryLive);
         liveLoading = true;
-        if (noChannels) showLiveState("Loading channels…");
+        if (noChannels) showLiveState(getString(R.string.main_loading_channels));
         Tvh.IO.execute(() -> {
             String error = null;
             List<Tvh.Channel> list = null;
@@ -909,7 +909,7 @@ public class MainActivity extends Activity {
                 long t = SystemClock.elapsedRealtime();
                 nowLoadedAt = t;
                 if (needChannels) channelsLoadedAt = t;
-                if (result.isEmpty()) { showLiveState("No channels on the Tvheadend server"); return; }
+                if (result.isEmpty()) { showLiveState(getString(R.string.main_no_channels)); return; }
                 showChannels(result);
             });
         });
@@ -944,7 +944,7 @@ public class MainActivity extends Activity {
         }
         android.content.SharedPreferences resume = Tvh.resume(this);
         String cont = resume.getString("last", null);
-        liveLabel.setText(diskWarning == null ? "LIVE TV" : "LIVE TV    ·    " + diskWarning);
+        liveLabel.setText(diskWarning == null ? getString(R.string.main_live_tv_caps) : getString(R.string.main_live_tv_caps) + "    ·    " + diskWarning);
         liveLabel.setTextColor(diskWarning == null ? 0x99FFFFFF : 0xE6FFB74D);
         List<String> ids = new ArrayList<>();
         ids.add("c:" + cont + resume.getInt("last_pct", 0));
@@ -964,17 +964,17 @@ public class MainActivity extends Activity {
             List<String[]> labels = new ArrayList<>();
             List<View.OnClickListener> clicks = new ArrayList<>();
             if (Tvh.get(this) != null) { // guide, search and recordings come from Tvheadend
-                labels.add(new String[]{"☰", "Guide"});
+                labels.add(new String[]{"☰", getString(R.string.main_guide)});
                 clicks.add(v -> launch(new Intent(this, GuideActivity.class)));
-                labels.add(new String[]{"⌕", "Search"});
+                labels.add(new String[]{"⌕", getString(R.string.main_search)});
                 clicks.add(v -> launch(new Intent(this, SearchActivity.class)));
-                labels.add(new String[]{"●", "Recordings"});
+                labels.add(new String[]{"●", getString(R.string.main_recordings)});
                 clicks.add(v -> launch(new Intent(this, RecordingsActivity.class)));
             }
             if (cont != null) {
                 // Continue watching: the recording last stopped part-way.
-                String t = resume.getString("last_title", "Recording");
-                labels.add(new String[]{"▶", "Continue  " + t + "  ·  " + resume.getInt("last_pct", 0) + "%"});
+                String t = resume.getString("last_title", getString(R.string.main_recording));
+                labels.add(new String[]{"▶", getString(R.string.main_continue, t, resume.getInt("last_pct", 0))});
                 clicks.add(v -> launch(new Intent(this, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_RECORDING, cont)
                         .putExtra(PlayerActivity.EXTRA_TITLE, t)));
             }
@@ -1037,12 +1037,12 @@ public class MainActivity extends Activity {
         TextView t = text(13, "sans-serif-medium", Color.WHITE);
         t.setGravity(Gravity.CENTER);
         t.setPadding(dp(14), 0, dp(14), 0);
-        t.setText(!configured ? "▶  Set up Live TV" : message != null ? message : "Loading channels…");
+        t.setText(!configured ? "▶  " + getString(R.string.main_set_up_live_tv) : message != null ? message : getString(R.string.main_loading_channels));
         card.addView(t, new FrameLayout.LayoutParams(-1, -1));
         card.setOnClickListener(v -> { if (configured) refreshLive(true); else showLiveSetup(); });
         card.setOnLongClickListener(v -> {
             if (configured) { showLiveSetup(); return true; }
-            Ui.menu(this, "Live TV", new String[]{"Set up Live TV…", "Hide Live TV (bring back in Inputs → Live TV setup…)"}, i -> {
+            Ui.menu(this, getString(R.string.main_live_tv), new String[]{getString(R.string.main_set_up_live_tv) + "…", getString(R.string.main_hide_live_tv)}, i -> {
                 if (i == 0) showLiveSetup();
                 else { Tvh.prefs(this).edit().putBoolean("live_hidden", true).apply(); showLiveState(null); }
             });
@@ -1054,9 +1054,9 @@ public class MainActivity extends Activity {
             if (has) onChannelFocus(v);
         });
         box.addView(card, new LinearLayout.LayoutParams(-1, -2));
-        if (configured && message != null && !message.startsWith("Loading")) {
+        if (configured && message != null && !message.equals(getString(R.string.main_loading_channels))) {
             TextView hint = text(11, "sans-serif", 0x99FFFFFF);
-            hint.setText("OK to retry · hold OK for setup");
+            hint.setText(getString(R.string.main_retry_hint));
             hint.setGravity(Gravity.CENTER);
             box.addView(hint, llp(-1, -2, 0, dp(10), 0, 0));
         }
@@ -1125,7 +1125,7 @@ public class MainActivity extends Activity {
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
         if (!ch.radio) {
-            labels.add(fav ? "Remove from favourites" : "Add to favourites");
+            labels.add(getString(fav ? R.string.main_fav_remove : R.string.main_fav_add));
             actions.add(() -> {
                 if (fav) favs.remove(ch.uuid); else favs.add(ch.uuid);
                 Tvh.setFavourites(this, favs);
@@ -1133,15 +1133,15 @@ public class MainActivity extends Activity {
             });
             if (fav && favs.size() > 1) {
                 int i = favs.indexOf(ch.uuid);
-                if (i > 0) { labels.add("Move left"); actions.add(() -> moveFavourite(favs, i, -1)); }
-                if (i < favs.size() - 1) { labels.add("Move right"); actions.add(() -> moveFavourite(favs, i, +1)); }
+                if (i > 0) { labels.add(getString(R.string.main_move_left)); actions.add(() -> moveFavourite(favs, i, -1)); }
+                if (i < favs.size() - 1) { labels.add(getString(R.string.main_move_right)); actions.add(() -> moveFavourite(favs, i, +1)); }
             }
             if (!favs.isEmpty()) {
-                labels.add("Show all channels (clear favourites)");
+                labels.add(getString(R.string.main_fav_clear));
                 actions.add(() -> { Tvh.setFavourites(this, new ArrayList<>()); showChannels(Tvh.channels); });
             }
         }
-        labels.add("Live TV setup…");
+        labels.add(getString(R.string.main_live_tv_setup));
         actions.add(this::showLiveSetup);
         Ui.menu(this, ch.name, labels.toArray(new String[0]), i -> actions.get(i).run());
     }
@@ -1376,18 +1376,18 @@ public class MainActivity extends Activity {
         List<Runnable> actions = new ArrayList<>();
         switch (it.kind) {
             case "watch":
-                buttons.add(new String[]{"Resume", "play"}); actions.add(() -> resumeApp(it.pkg));
-                buttons.add(new String[]{"Remove", "close"}); actions.add(() -> { Watched.remove(this, it.pkg); refreshShelf(); });
+                buttons.add(new String[]{getString(R.string.main_shelf_resume), "play"}); actions.add(() -> resumeApp(it.pkg));
+                buttons.add(new String[]{getString(R.string.main_shelf_remove), "close"}); actions.add(() -> { Watched.remove(this, it.pkg); refreshShelf(); });
                 break;
             case "film":
                 if (it.link != null && isInstalled("com.apple.atve.androidtv.appletv")) {
                     buttons.add(new String[]{"Apple TV", "play"}); actions.add(() -> openInAppleTv(it.link));
                 }
-                buttons.add(new String[]{"Where to watch", "search"});
+                buttons.add(new String[]{getString(R.string.main_shelf_where), "search"});
                 actions.add(() -> shelfDetails(it, "https://www.justwatch.com/gr/search?q=" + android.net.Uri.encode(it.title)));
                 break;
             default:
-                buttons.add(new String[]{"Read on phone", "phone"}); actions.add(() -> shelfDetails(it, it.link));
+                buttons.add(new String[]{getString(R.string.main_shelf_phone), "phone"}); actions.add(() -> shelfDetails(it, it.link));
         }
         for (int i = 0; i < buttons.size(); i++) {
             TextView b = text(14, "sans-serif-medium", Color.WHITE);
@@ -1481,12 +1481,12 @@ public class MainActivity extends Activity {
         t.setLineSpacing(dp(3), 1f);
         String about = it.summary == null || it.summary.isEmpty() ? "" : it.summary;
         if (about.length() > 600) about = about.substring(0, 597) + "…";
-        t.setText(it.sub + (about.isEmpty() ? "" : "\n\n" + about) + (link != null ? "\n\nScan with your phone's camera to read it." : ""));
+        t.setText(it.sub + (about.isEmpty() ? "" : "\n\n" + about) + (link != null ? "\n\n" + getString(R.string.main_scan_phone) : ""));
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
         tl.setMargins(link != null ? dp(24) : 0, 0, 0, 0);
         box.addView(t, tl);
         Ui.frost(new AlertDialog.Builder(this, R.style.Glass).setTitle(it.title).setView(box)
-                .setPositiveButton("Close", null).create()).show();
+                .setPositiveButton(getString(R.string.main_close), null).create()).show();
     }
 
     /** Control Center → Top shelf: the four modes, and what Recommendations includes. */
@@ -1495,17 +1495,17 @@ public class MainActivity extends Activity {
         String[] modes = {Shelf.APP, Shelf.ALL, Shelf.RECS, Shelf.OFF};
         List<String> labels = new ArrayList<>();
         for (String m : modes) labels.add((m.equals(mode) ? "✓  " : "      ") + Shelf.modeName(Txt.of(this), m));
-        labels.add("Recommendations: films " + (Shelf.films(this) ? "on" : "off"));
-        labels.add("Recommendations: news " + (Shelf.news(this) ? "on" : "off"));
-        labels.add("News from: " + Shelf.FEEDS[Shelf.feed(this)][0]);
-        Ui.menu(this, "Top shelf", labels.toArray(new String[0]), i -> {
+        labels.add(getString(R.string.main_shelf_films, getString(Shelf.films(this) ? R.string.main_state_on : R.string.main_state_off)));
+        labels.add(getString(R.string.main_shelf_news, getString(Shelf.news(this) ? R.string.main_state_on : R.string.main_state_off)));
+        labels.add(getString(R.string.main_news_from_item, Shelf.FEEDS[Shelf.feed(this)][0]));
+        Ui.menu(this, getString(R.string.main_top_shelf),labels.toArray(new String[0]), i -> {
             if (i < modes.length) { Shelf.setMode(this, modes[i]); shelfIndex = 0; refreshShelf(); return; }
             if (i == modes.length) Tvh.prefs(this).edit().putBoolean("shelf_films", !Shelf.films(this)).apply();
             else if (i == modes.length + 1) Tvh.prefs(this).edit().putBoolean("shelf_news", !Shelf.news(this)).apply();
             else {
                 String[] names = new String[Shelf.FEEDS.length];
                 for (int k = 0; k < names.length; k++) names[k] = Shelf.FEEDS[k][0];
-                Ui.menu(this, "News from", names, k -> { Tvh.prefs(this).edit().putInt("shelf_feed", k).apply(); refreshShelf(); });
+                Ui.menu(this, getString(R.string.main_news_from), names, k -> { Tvh.prefs(this).edit().putInt("shelf_feed", k).apply(); refreshShelf(); });
                 return;
             }
             refreshShelf();
@@ -1525,12 +1525,12 @@ public class MainActivity extends Activity {
     /** Control Center → Screensaver: start it now, which slides to show, and how long each stays. */
     private void pickScreensaver() {
         String[] keys = {Screensaver.WEATHER, Screensaver.TV, Screensaver.FILMS, Screensaver.NEWS, Screensaver.TICKER};
-        String[] names = {"Weather", "On TV now", "Popular films", "News slides", "News ticker"};
+        String[] names = {getString(R.string.main_weather), getString(R.string.main_on_tv_now), getString(R.string.main_popular_films), getString(R.string.main_news_slides), getString(R.string.main_news_ticker)};
         List<String> labels = new ArrayList<>();
-        labels.add("Start now");
-        for (int i = 0; i < keys.length; i++) labels.add(names[i] + ": " + (Screensaver.option(this, keys[i]) ? "on" : "off"));
-        labels.add("Each slide: " + Screensaver.seconds(this) + " seconds");
-        Ui.menu(this, "Screensaver", labels.toArray(new String[0]), i -> {
+        labels.add(getString(R.string.main_start_now));
+        for (int i = 0; i < keys.length; i++) labels.add(getString(R.string.main_name_state, names[i], getString(Screensaver.option(this, keys[i]) ? R.string.main_state_on : R.string.main_state_off)));
+        labels.add(getResources().getQuantityString(R.plurals.main_each_slide, Screensaver.seconds(this), Screensaver.seconds(this)));
+        Ui.menu(this, getString(R.string.main_screensaver),labels.toArray(new String[0]), i -> {
             if (i == 0) { startScreensaver(); return; }
             if (i <= keys.length) Screensaver.toggle(this, keys[i - 1]);
             else Screensaver.nextSeconds(this);
@@ -1545,11 +1545,11 @@ public class MainActivity extends Activity {
     private void startScreensaver() {
         String chosen = Settings.Secure.getString(getContentResolver(), "screensaver_components");
         if (chosen == null || !chosen.contains(getPackageName())) {
-            android.widget.Toast.makeText(this, "Choose it first: Settings → Device Preferences → Screen saver", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(this, getString(R.string.main_ss_choose_first), android.widget.Toast.LENGTH_LONG).show();
             return;
         }
         if (!launch(new Intent("com.google.android.pano.action.SLEEP"))) {
-            android.widget.Toast.makeText(this, "This TV can't start the screensaver from here", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(this, getString(R.string.main_ss_cant_start), android.widget.Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1596,19 +1596,19 @@ public class MainActivity extends Activity {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(24), dp(8), dp(24), dp(8));
-        EditText url = field(form, "Tvheadend address (empty for none)", prefs.getString("url", "http://192.168.1.10:9981"),
+        EditText url = field(form, getString(R.string.main_f_tvh_address), prefs.getString("url", "http://192.168.1.10:9981"),
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        EditText user = field(form, "Username", prefs.getString("user", ""), InputType.TYPE_CLASS_TEXT);
-        EditText pass = field(form, "Password", prefs.getString("pass", ""),
+        EditText user = field(form, getString(R.string.main_f_username), prefs.getString("user", ""), InputType.TYPE_CLASS_TEXT);
+        EditText pass = field(form, getString(R.string.main_f_password), prefs.getString("pass", ""),
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        EditText hdhr = field(form, "Network tuner (HDHomeRun): auto, an address, or empty for none",
+        EditText hdhr = field(form, getString(R.string.main_f_hdhr),
                 prefs.getString("hdhr", ""), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         CheckBox tif = new CheckBox(this);
-        tif.setText("Channels from tuner apps on this box (e.g. a USB tuner)");
+        tif.setText(getString(R.string.main_cb_tif));
         tif.setChecked(prefs.getBoolean("tif", false));
         form.addView(tif, llp(-1, -2, 0, dp(8), 0, 0));
         CheckBox autoplay = new CheckBox(this);
-        autoplay.setText("Start the last channel after the box restarts");
+        autoplay.setText(getString(R.string.main_cb_autoplay));
         autoplay.setChecked(prefs.getBoolean("autoplay", false));
         form.addView(autoplay, llp(-1, -2, 0, dp(4), 0, 0));
         TextView result = text(13, "sans-serif", 0xFFFF8A80);
@@ -1617,11 +1617,11 @@ public class MainActivity extends Activity {
         sv.addView(form);
 
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.Glass)
-                .setTitle("Live TV")
+                .setTitle(getString(R.string.main_live_tv))
                 .setView(sv)
-                .setPositiveButton("Save", null)
-                .setNegativeButton("Cancel", null)
-                .setNeutralButton("Remove all", (d, w) -> {
+                .setPositiveButton(getString(R.string.main_save), null)
+                .setNegativeButton(getString(R.string.main_cancel), null)
+                .setNeutralButton(getString(R.string.main_remove_all), (d, w) -> {
                     prefs.edit().remove("url").remove("user").remove("pass").remove("hdhr").remove("tif").apply();
                     Tvh.channels = Collections.emptyList();
                     showLiveState(null);
@@ -1634,7 +1634,7 @@ public class MainActivity extends Activity {
                 if (!u.isEmpty() && !u.startsWith("http")) u = "http://" + u;
                 String address = u;
                 result.setTextColor(0xB3FFFFFF);
-                result.setText("Checking…");
+                result.setText(getString(R.string.main_checking));
                 save.setEnabled(false);
                 android.content.SharedPreferences.Editor e = prefs.edit()
                         .remove("live_hidden") // saving setup brings a hidden Live TV row back
@@ -1661,7 +1661,7 @@ public class MainActivity extends Activity {
                         save.setEnabled(true);
                         if (er != null || none) {
                             result.setTextColor(0xFFFF8A80);
-                            result.setText(er != null ? er : "No channels found from these sources");
+                            result.setText(er != null ? er : getString(R.string.main_no_channels_found));
                             return;
                         }
                         dialog.dismiss();
@@ -1704,12 +1704,12 @@ public class MainActivity extends Activity {
         // Sleep square, with Wi-Fi and Bluetooth capsules stacked beside it.
         LinearLayout r1 = new LinearLayout(this);
         int square = pill * 2 + gap;
-        View sleepTile = ccTile("◷", "Sleep", sleep > 0 ? "in " + sleep + " min" : "Off", true, dialog, this::pickSleepTimer);
+        View sleepTile = ccTile("◷", getString(R.string.main_sleep), sleep > 0 ? getResources().getQuantityString(R.plurals.main_sleep_in_min, sleep, sleep) : getString(R.string.main_off), true, dialog, this::pickSleepTimer);
         r1.addView(sleepTile, new LinearLayout.LayoutParams(square, square));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         col.addView(ccTile("◉", "Wi-Fi", net, false, dialog, () -> launch(new Intent(Settings.ACTION_WIFI_SETTINGS))), new LinearLayout.LayoutParams(-1, pill));
-        col.addView(ccTile("ᛒ", "Bluetooth", "Remotes, speakers", false, dialog, this::openBluetooth), llp(-1, pill, 0, gap, 0, 0));
+        col.addView(ccTile("ᛒ", "Bluetooth", getString(R.string.main_bluetooth_state), false, dialog, this::openBluetooth), llp(-1, pill, 0, gap, 0, 0));
         LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, square, 1f);
         cl.setMargins(gap, 0, 0, 0);
         r1.addView(col, cl);
@@ -1717,13 +1717,13 @@ public class MainActivity extends Activity {
 
         // Pairs of capsules.
         Object[][] pairs = {
-                {"⇥", "Inputs", "Live TV", (Runnable) () -> showInputs(pills.get(1))},
-                {"⚙", "Settings", "Android TV", (Runnable) () -> launch(new Intent(Settings.ACTION_SETTINGS))},
-                {"▤", "Top shelf", Shelf.modeName(Txt.of(this), Shelf.mode(this)), (Runnable) this::pickShelf},
-                {"☰", "TV guide", Tvh.get(this) == null ? "Needs Tvheadend" : "What's on", (Runnable) () -> { if (Tvh.get(this) != null) launch(new Intent(this, GuideActivity.class)); }},
-                {"☁", "Weather", weatherNow == null ? "Set a city" : "Next days", (Runnable) this::showWeatherDetails},
-                {"▯", "Phone remote", RemoteServer.enabled(this) ? "On · QR" : "Off", (Runnable) this::showRemoteSetup},
-                {"▣", "Screensaver", "Photos & info", (Runnable) this::pickScreensaver},
+                {"⇥", getString(R.string.main_pill_inputs), getString(R.string.main_live_tv), (Runnable) () -> showInputs(pills.get(1))},
+                {"⚙", getString(R.string.main_pill_settings), "Android TV", (Runnable) () -> launch(new Intent(Settings.ACTION_SETTINGS))},
+                {"▤", getString(R.string.main_top_shelf), Shelf.modeName(Txt.of(this), Shelf.mode(this)), (Runnable) this::pickShelf},
+                {"☰", getString(R.string.main_tv_guide), getString(Tvh.get(this) == null ? R.string.main_needs_tvh : R.string.main_whats_on), (Runnable) () -> { if (Tvh.get(this) != null) launch(new Intent(this, GuideActivity.class)); }},
+                {"☁", getString(R.string.main_weather), getString(weatherNow == null ? R.string.main_set_city : R.string.main_next_days), (Runnable) this::showWeatherDetails},
+                {"▯", getString(R.string.main_phone_remote), getString(RemoteServer.enabled(this) ? R.string.main_remote_on_qr : R.string.main_off), (Runnable) this::showRemoteSetup},
+                {"▣", getString(R.string.main_screensaver), getString(R.string.main_photos_info), (Runnable) this::pickScreensaver},
                 {"🌐", getString(R.string.language_title), Lang.label(Txt.of(this), Lang.choice(this)), (Runnable) this::pickLanguage},
         };
         for (int i = 0; i < pairs.length; i += 2) {
@@ -1742,13 +1742,13 @@ public class MainActivity extends Activity {
         LinearLayout r4 = new LinearLayout(this);
         r4.setGravity(Gravity.CENTER_VERTICAL);
         Object[][] round = {
-                {"🎙", "Voice search", (Runnable) () -> launch(new Intent(this, SearchActivity.class))},
-                {"−", "Volume down", (Runnable) () -> volume(android.media.AudioManager.ADJUST_LOWER)},
-                {"+", "Volume up", (Runnable) () -> volume(android.media.AudioManager.ADJUST_RAISE)},
-                {"ⓘ", "Box status", (Runnable) () -> BoxHealth.show(this)},
-                {"⏻", "Turn off", (Runnable) () -> {
+                {"🎙", getString(R.string.main_voice_search), (Runnable) () -> launch(new Intent(this, SearchActivity.class))},
+                {"−", getString(R.string.main_volume_down), (Runnable) () -> volume(android.media.AudioManager.ADJUST_LOWER)},
+                {"+", getString(R.string.main_volume_up), (Runnable) () -> volume(android.media.AudioManager.ADJUST_RAISE)},
+                {"ⓘ", getString(R.string.main_box_status), (Runnable) () -> BoxHealth.show(this)},
+                {"⏻", getString(R.string.main_turn_off), (Runnable) () -> {
                     if (SleepTimer.canSleep(this)) SleepTimer.sleepNow(this);
-                    else android.widget.Toast.makeText(this, "Turning off needs the sleep permission (see the README)", android.widget.Toast.LENGTH_LONG).show();
+                    else android.widget.Toast.makeText(this, getString(R.string.main_turn_off_needs_perm), android.widget.Toast.LENGTH_LONG).show();
                 }},
         };
         int rs = dp(40);
@@ -1878,14 +1878,14 @@ public class MainActivity extends Activity {
 
     private void pickSleepTimer() {
         if (!SleepTimer.canSleep(this)) {
-            android.widget.Toast.makeText(this, "The sleep timer needs the sleep permission (see the README)", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(this, getString(R.string.main_sleep_needs_perm), android.widget.Toast.LENGTH_LONG).show();
             return;
         }
         int[] mins = {0, 15, 30, 60, 90, 120};
-        String[] labels = {"Off", "15 minutes", "30 minutes", "1 hour", "1½ hours", "2 hours"};
-        Ui.menu(this, "Sleep timer", labels, i -> {
+        String[] labels = {getString(R.string.main_off), getString(R.string.main_sleep_15), getString(R.string.main_sleep_30), getString(R.string.main_sleep_60), getString(R.string.main_sleep_90), getString(R.string.main_sleep_120)};
+        Ui.menu(this, getString(R.string.main_sleep_timer), labels, i -> {
             SleepTimer.set(this, mins[i]);
-            android.widget.Toast.makeText(this, mins[i] == 0 ? "Sleep timer off" : "Going to standby in " + labels[i], android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(this, mins[i] == 0 ? getString(R.string.main_sleep_off_toast) : getString(R.string.main_sleep_standby_in, labels[i]), android.widget.Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -1893,14 +1893,14 @@ public class MainActivity extends Activity {
         if (Weather.city(this).isEmpty()) { showWeatherSetup(); return; }
         AlertDialog d = new AlertDialog.Builder(this, R.style.Glass)
                 .setTitle(Weather.city(this))
-                .setMessage("Loading…")
-                .setPositiveButton("Close", null)
-                .setNeutralButton("Change city", (x, w) -> showWeatherSetup())
+                .setMessage(getString(R.string.main_loading))
+                .setPositiveButton(getString(R.string.main_close), null)
+                .setNeutralButton(getString(R.string.main_change_city), (x, w) -> showWeatherSetup())
                 .create();
         Ui.frost(d).show();
         Tvh.IO.execute(() -> {
             String s = Weather.details(this);
-            runOnUiThread(() -> { if (d.isShowing()) d.setMessage(s == null ? "Can't reach the weather service" : s); });
+            runOnUiThread(() -> { if (d.isShowing()) d.setMessage(s == null ? getString(R.string.main_weather_unreachable) : s); });
         });
     }
 
@@ -1909,7 +1909,7 @@ public class MainActivity extends Activity {
         boolean on = RemoteServer.enabled(this);
         String addr = RemoteServer.address();
         AlertDialog.Builder b = new AlertDialog.Builder(this, R.style.Glass)
-                .setTitle("Phone remote");
+                .setTitle(getString(R.string.main_phone_remote));
         if (on && addr != null) {
             String pin = RemoteServer.pin(this);
             LinearLayout box = new LinearLayout(this);
@@ -1921,19 +1921,17 @@ public class MainActivity extends Activity {
             box.addView(qr, new LinearLayout.LayoutParams(dp(200), dp(200)));
             TextView t = text(15, "sans-serif", 0xE6FFFFFF);
             t.setLineSpacing(dp(4), 1f);
-            t.setText("Point your phone's camera at the code (same Wi-Fi).\n\nOr open\n" + addr + "\nand enter the PIN  " + pin
-                    + "\n\nAdd it to your home screen for one-tap access. Turning it off forgets paired phones.");
+            t.setText(getString(R.string.main_remote_scan, addr, pin));
             box.addView(t, llp(0, -2, dp(24), 0, 0, 0));
             ((LinearLayout.LayoutParams) t.getLayoutParams()).weight = 1f;
             b.setView(box);
         } else {
-            b.setMessage(on ? "No network: connect the box to Wi-Fi first."
-                    : "Control Live TV, the guide, recordings, apps and volume from your phone's browser, on your home network only.");
+            b.setMessage(getString(on ? R.string.main_remote_no_network : R.string.main_remote_intro));
         }
-        b.setPositiveButton(on ? "Turn off" : "Turn on", (d, w) -> {
+        b.setPositiveButton(getString(on ? R.string.main_turn_off : R.string.main_turn_on), (d, w) -> {
             RemoteServer.setEnabled(this, !on);
             if (!on) showRemoteSetup();
-        }).setNegativeButton("Close", null);
+        }).setNegativeButton(getString(R.string.main_close), null);
         Ui.frost(b.create()).show();
     }
 
@@ -1955,19 +1953,19 @@ public class MainActivity extends Activity {
         LinearLayout form = new LinearLayout(this);
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(dp(24), dp(8), dp(24), 0);
-        EditText city = field(form, "City (leave empty for no weather)", Weather.city(this), InputType.TYPE_CLASS_TEXT);
+        EditText city = field(form, getString(R.string.main_f_city), Weather.city(this), InputType.TYPE_CLASS_TEXT);
         TextView result = text(13, "sans-serif", 0xFFFF8A80);
         form.addView(result, llp(-1, -2, 0, dp(6), 0, 0));
         AlertDialog dialog = new AlertDialog.Builder(this, R.style.Glass)
-                .setTitle("Weather")
+                .setTitle(getString(R.string.main_weather))
                 .setView(form)
-                .setPositiveButton("Save", null)
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton(getString(R.string.main_save), null)
+                .setNegativeButton(getString(R.string.main_cancel), null)
                 .create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String name = city.getText().toString();
             result.setTextColor(0xB3FFFFFF);
-            result.setText("Looking it up…");
+            result.setText(getString(R.string.main_looking_up));
             Tvh.IO.execute(() -> {
                 String err = Weather.setCity(this, name);
                 runOnUiThread(() -> {
@@ -2008,10 +2006,10 @@ public class MainActivity extends Activity {
     private void updateClock() {
         Calendar now = Calendar.getInstance();
         int h = now.get(Calendar.HOUR_OF_DAY);
-        greeting.setText(h < 5 ? "GOOD NIGHT" : h < 12 ? "GOOD MORNING" : h < 17 ? "GOOD AFTERNOON" : "GOOD EVENING");
+        greeting.setText(getString(h < 5 ? R.string.main_greeting_night : h < 12 ? R.string.main_greeting_morning : h < 17 ? R.string.main_greeting_afternoon : R.string.main_greeting_evening));
         boolean is24 = android.text.format.DateFormat.is24HourFormat(this);
         clock.setText(new SimpleDateFormat(is24 ? "H:mm" : "h:mm", Locale.getDefault()).format(now.getTime()));
-        ampm.setText(is24 ? "" : (h < 12 ? "AM" : "PM"));
+        ampm.setText(is24 ? "" : getString(h < 12 ? R.string.main_am : R.string.main_pm));
         date.setText(new SimpleDateFormat("EEEE  d MMMM", Locale.getDefault()).format(now.getTime()).toUpperCase(Locale.getDefault()));
     }
 
@@ -2022,7 +2020,7 @@ public class MainActivity extends Activity {
             if (wm != null && wm.getConnectionInfo() != null) {
                 String s = wm.getConnectionInfo().getSSID();
                 if (s != null && !s.contains("unknown ssid")) name = s.replace("\"", "");
-                if (wm.getConnectionInfo().getNetworkId() == -1) name = "Offline";
+                if (wm.getConnectionInfo().getNetworkId() == -1) name = getString(R.string.main_offline);
             }
         } catch (SecurityException ignored) { }
         wifiPill.setText(name);

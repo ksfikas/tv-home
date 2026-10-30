@@ -370,7 +370,7 @@ public class Screensaver extends DreamService {
 
     private Slide weatherSlide(String[] w) {
         LinearLayout v = column();
-        v.addView(label("Weather  ·  " + Weather.city(this)));
+        v.addView(label(getString(R.string.ss_weather_title) + "  ·  " + Weather.city(this)));
         v.addView(text(w[0], 72, "sans-serif-thin", Color.WHITE));
         v.addView(text(w[1], 26, "sans-serif-light", Color.WHITE));
         TextView extra = text(w[2], 14, "sans-serif", 0xCCFFFFFF);
@@ -399,7 +399,7 @@ public class Screensaver extends DreamService {
 
     private Slide tvSlide(List<Row> rows) {
         LinearLayout v = column();
-        v.addView(label("On TV now"));
+        v.addView(label(getString(R.string.ss_on_tv)));
         for (int i = 0; i < rows.size() && i < 5; i++) {
             Row r = rows.get(i);
             LinearLayout row = new LinearLayout(this);
@@ -413,13 +413,13 @@ public class Screensaver extends DreamService {
             title.setEllipsize(TextUtils.TruncateAt.END);
             titles.addView(title);
             if (r.next != null) {
-                TextView next = text("Next: " + r.next, 13, "sans-serif", 0x99FFFFFF);
+                TextView next = text(getString(R.string.ss_next, r.next), 13, "sans-serif", 0x99FFFFFF);
                 next.setSingleLine(true);
                 next.setEllipsize(TextUtils.TruncateAt.END);
                 titles.addView(next);
             }
             row.addView(titles);
-            row.addView(text("until " + Ui.time(this, r.stop), 15, "sans-serif", 0xB3FFFFFF));
+            row.addView(text(getString(R.string.ss_until, Ui.time(this, r.stop)), 15, "sans-serif", 0xB3FFFFFF));
             v.addView(row);
         }
         return new Slide(v);
@@ -427,7 +427,7 @@ public class Screensaver extends DreamService {
 
     private Slide filmsSlide(List<Shelf.Item> films, Map<String, Bitmap> pics) {
         LinearLayout v = column();
-        v.addView(label("Popular films this week"));
+        v.addView(label(getString(R.string.ss_popular_films)));
         LinearLayout posters = new LinearLayout(this);
         int shown = 0;
         for (Shelf.Item f : films) {
@@ -458,7 +458,7 @@ public class Screensaver extends DreamService {
         v.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout words = column();
         words.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
-        words.addView(label(n.sub == null ? "News" : n.sub));
+        words.addView(label(n.sub == null ? getString(R.string.ss_news_label) : n.sub));
         TextView head = text(n.title, 28, "sans-serif-light", Color.WHITE);
         head.setMaxLines(4);
         head.setEllipsize(TextUtils.TruncateAt.END);

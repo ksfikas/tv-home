@@ -152,13 +152,13 @@ final class RemoteServer {
                     prefs(c).edit().putStringSet("tokens", tokens).apply();
                     sendJson(out, new JSONObject().put("token", token));
                 } else {
-                    send(out, 403, "application/json", "{\"error\":\"Wrong PIN\"}");
+                    send(out, 403, "application/json", err(c, "wrong_pin", R.string.remote_wrong_pin).toString());
                 }
                 return;
             }
             String token = headers.get("x-token");
             if (token == null || !prefs(c).getStringSet("tokens", new HashSet<>()).contains(token)) {
-                send(out, 401, "application/json", "{\"error\":\"Pair with the PIN shown on the TV\"}");
+                send(out, 401, "application/json", err(c, "pair_needed", R.string.remote_pair_needed).toString());
                 return;
             }
             if (path.equals("/api/wallpaper") && image) {
@@ -247,7 +247,7 @@ final class RemoteServer {
                 start(c, new Intent(c, MainActivity.class));
                 return ok();
             case "/api/sleep":
-                if (!SleepTimer.canSleep(c)) return err("The sleep timer needs the sleep permission (see the README)");
+                if (!SleepTimer.canSleep(c)) return err(c, "sleep_perm", R.string.remote_sleep_perm);
                 SleepTimer.set(c, Integer.parseInt(p.get("min")));
                 return ok();
             case "/api/wallpapers": {
@@ -265,7 +265,7 @@ final class RemoteServer {
             case "/api/power": {
                 if ("off".equals(p.get("do"))) {
                     // Standby, like the sleep timer; HDMI-CEC usually turns the TV off with it.
-                    if (!SleepTimer.canSleep(c)) return err("Turning off needs the sleep permission (see the README)");
+                    if (!SleepTimer.canSleep(c)) return err(c, "off_perm", R.string.remote_off_perm);
                     ui.post(() -> SleepTimer.sleepNow(c));
                 } else {
                     // Wake from standby (and, over HDMI-CEC, usually the TV): WakeActivity turns the screen on.
@@ -295,12 +295,12 @@ final class RemoteServer {
             case "/api/open": {
                 Intent i = c.getPackageManager().getLeanbackLaunchIntentForPackage(String.valueOf(p.get("pkg")));
                 if (i == null) i = c.getPackageManager().getLaunchIntentForPackage(String.valueOf(p.get("pkg")));
-                if (i == null) return err("Can't open that app");
+                if (i == null) return err(c, "open_fail", R.string.remote_open_fail);
                 start(c, i);
                 return ok();
             }
             case "/api/search": {
-                if (tvh == null) return err("Search needs Tvheadend");
+                if (tvh == null) return err(c, "needs_tvh_search", R.string.remote_needs_tvh_search);
                 if (Tvh.channels.isEmpty()) Sources.load(c);
                 JSONArray a = new JSONArray();
                 long now = System.currentTimeMillis() / 1000;
@@ -316,7 +316,7 @@ final class RemoteServer {
             }
             case "/api/guide": {
                 // What's on now and next on every channel: the Guide tab before you search.
-                if (tvh == null) return err("The guide needs Tvheadend");
+                if (tvh == null) return err(c, "needs_tvh_guide", R.string.remote_needs_tvh_guide);
                 if (Tvh.channels.isEmpty()) Sources.load(c);
                 Map<String, Tvh.Event[]> nn = tvh.nowNext();
                 JSONArray a = new JSONArray();
@@ -331,7 +331,7 @@ final class RemoteServer {
                 return a;
             }
             case "/api/record":
-                if (tvh == null) return err("Recording needs Tvheadend");
+                if (tvh == null) return err(c, "needs_tvh_record", R.string.remote_needs_tvh_record);
                 if ("series".equals(p.get("kind"))) tvh.recordSeries(Long.parseLong(p.get("id")));
                 else tvh.record(Long.parseLong(p.get("id")));
                 return ok();
@@ -345,7 +345,7 @@ final class RemoteServer {
                 return ok();
             }
             default:
-                return err("Unknown request");
+                return err(c, "unknown", R.string.remote_unknown);
         }
     }
 
@@ -353,15 +353,15 @@ final class RemoteServer {
 
     /** A photo from the phone (already shrunk there to TV size) becomes a wallpaper, shown at once. */
     private static JSONObject saveWallpaper(Context c, InputStream in, int len) throws IOException, JSONException {
-        if (len <= 0 || len > MAX_PHOTO) return err("Photo too large");
+        if (len <= 0 || len > MAX_PHOTO) return err(c, "photo_large", R.string.remote_photo_large);
         byte[] data = new byte[len];
         int got = 0;
         while (got < len) { int n = in.read(data, got, len - got); if (n < 0) break; got += n; }
-        if (got != len) return err("Upload interrupted");
+        if (got != len) return err(c, "upload_interrupted", R.string.remote_upload_interrupted);
         android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
         o.inJustDecodeBounds = true;
         android.graphics.BitmapFactory.decodeByteArray(data, 0, len, o);
-        if (o.outWidth <= 0) return err("That isn't a photo the TV can show");
+        if (o.outWidth <= 0) return err(c, "not_photo", R.string.remote_not_photo);
         java.io.File dir = new java.io.File(c.getFilesDir(), "wallpapers");
         dir.mkdirs();
         java.io.File[] have = MainActivity.userWallpapers(c);
@@ -392,5 +392,8 @@ final class RemoteServer {
 
     private static JSONObject ok() throws JSONException { return new JSONObject().put("ok", true); }
 
-    private static JSONObject err(String m) throws JSONException { return new JSONObject().put("error", m); }
+    /** An error for the page: text in the TV language plus a short code the page translates into the phone language. */
+    private static JSONObject err(Context c, String code, int res) throws JSONException {
+        return new JSONObject().put("error", c.getString(res)).put("code", code);
+    }
 }

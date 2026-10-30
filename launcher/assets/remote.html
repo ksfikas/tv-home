@@ -16,7 +16,7 @@
   body { margin: 0; background: var(--bg); color: var(--text); padding: env(safe-area-inset-top) 16px calc(76px + env(safe-area-inset-bottom)); }
   h1 { font-weight: 300; font-size: 28px; margin: 18px 0 4px; }
   .sub { color: var(--dim); font-size: 14px; margin-bottom: 18px; }
-  button { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer; }
+  button { overflow-wrap: anywhere; font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; cursor: pointer; }
   button:active { background: var(--text); color: #111; }
   .grid { display: grid; gap: 10px; }
   .g3 { grid-template-columns: repeat(3, 1fr); }
@@ -48,82 +48,193 @@
 <body>
 
 <section id="pair" class="hide pin">
-  <h1>Pair with the TV</h1>
-  <div class="sub">Enter the 4-digit PIN shown on the TV under Inputs → Phone remote.</div>
-  <input id="pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code">
-  <p><button style="width:100%" onclick="pair()">Pair</button></p>
+  <h1 data-i18n="pair_title">Pair with the TV</h1>
+  <div class="sub" data-i18n="pair_sub">Enter the 4-digit PIN shown on the TV under Inputs → Phone remote.</div>
+  <input id="pin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" data-i18n-aria="pin_aria">
+  <p><button style="width:100%" onclick="pair()" data-i18n="pair_btn">Pair</button></p>
 </section>
 
 <section id="tab-remote" class="hide">
-  <h1>Remote</h1>
-  <div class="now" id="now"><span class="sub">Nothing playing</span></div>
-  <div class="label">Channel</div>
+  <h1 data-i18n="remote_title">Remote</h1>
+  <div class="now" id="now"><span class="sub" data-i18n="nothing_playing_short">Nothing playing</span></div>
+  <div class="label" data-i18n="lbl_channel">Channel</div>
   <div class="grid g3">
-    <button class="big" onclick="player('down')">▼ CH</button>
-    <button class="big" onclick="player('prev')">↺ Prev</button>
-    <button class="big" onclick="player('up')">CH ▲</button>
+    <button class="big" onclick="player('down')" data-i18n="ch_down">▼ CH</button>
+    <button class="big" onclick="player('prev')" data-i18n="ch_prev">↺ Prev</button>
+    <button class="big" onclick="player('up')" data-i18n="ch_up">CH ▲</button>
   </div>
-  <div class="label">Playback</div>
+  <div class="label" data-i18n="lbl_playback">Playback</div>
   <div class="grid g3">
-    <button onclick="player('pause')">❚❚ Pause</button>
-    <button onclick="player('live')">● Live</button>
-    <button onclick="player('info')">ⓘ Info</button>
+    <button onclick="player('pause')" data-i18n="pause">❚❚ Pause</button>
+    <button onclick="player('live')" data-i18n="live">● Live</button>
+    <button onclick="player('info')" data-i18n="info">ⓘ Info</button>
   </div>
-  <div class="label">Volume</div>
+  <div class="label" data-i18n="lbl_volume">Volume</div>
   <div class="grid g3">
-    <button class="big" onclick="call('volume',{do:'down'})">−</button>
-    <button class="big" onclick="call('volume',{do:'mute'})">🔇</button>
-    <button class="big" onclick="call('volume',{do:'up'})">+</button>
+    <button class="big" onclick="call('volume',{do:'down'})" data-i18n-aria="vol_down">−</button>
+    <button class="big" onclick="call('volume',{do:'mute'})" data-i18n-aria="vol_mute">🔇</button>
+    <button class="big" onclick="call('volume',{do:'up'})" data-i18n-aria="vol_up">+</button>
   </div>
-  <div class="label">Sleep timer</div>
+  <div class="label" data-i18n="lbl_sleep">Sleep timer</div>
   <div class="grid g3">
-    <button onclick="sleepIn(30)">30 min</button>
-    <button onclick="sleepIn(60)">1 h</button>
-    <button onclick="sleepIn(0)">Off</button>
+    <button onclick="sleepIn(30)" data-i18n="sleep_30">30 min</button>
+    <button onclick="sleepIn(60)" data-i18n="sleep_60">1 h</button>
+    <button onclick="sleepIn(0)" data-i18n="sleep_off">Off</button>
   </div>
-  <div class="label">Wallpaper</div>
+  <div class="label" data-i18n="lbl_wallpaper">Wallpaper</div>
   <div class="grid g2">
-    <button onclick="$('photo').click()">🖼 Send a photo</button>
-    <button id="wallmode" onclick="wallMode()">Mix with built-in</button>
+    <button onclick="$('photo').click()" data-i18n="send_photo">🖼 Send a photo</button>
+    <button id="wallmode" onclick="wallMode()" data-i18n="wall_mix">Mix with built-in</button>
   </div>
   <input id="photo" type="file" accept="image/*" multiple class="hide">
   <div class="sub" id="wallinfo" style="margin:8px 4px 0"></div>
-  <div class="label">TV</div>
+  <div class="label" data-i18n="lbl_tv">TV</div>
   <div class="grid g2">
-    <button onclick="call('home')">⌂ Home</button>
-    <button onclick="player('stop')">■ Stop watching</button>
-    <button onclick="power('on')">⏻ Turn on</button>
-    <button onclick="power('off')">⏻ Turn off</button>
+    <button onclick="call('home')" data-i18n="home">⌂ Home</button>
+    <button onclick="player('stop')" data-i18n="stop_watching">■ Stop watching</button>
+    <button onclick="power('on')" data-i18n="turn_on">⏻ Turn on</button>
+    <button onclick="power('off')" data-i18n="turn_off">⏻ Turn off</button>
   </div>
 </section>
 
 <section id="tab-channels" class="hide">
-  <h1>Channels</h1>
-  <div class="sub">Tap to watch on the TV</div>
+  <h1 data-i18n="channels_title">Channels</h1>
+  <div class="sub" data-i18n="channels_sub">Tap to watch on the TV</div>
   <div id="channels"></div>
 </section>
 
 <section id="tab-guide" class="hide">
-  <h1>Guide</h1>
-  <input id="q" type="search" placeholder="Search, or browse what's on below" enterkeyhint="search">
+  <h1 data-i18n="guide_title">Guide</h1>
+  <input id="q" type="search" data-i18n-ph="search_ph" placeholder="Search, or browse what's on below" enterkeyhint="search">
   <div id="results" style="margin-top:12px"></div>
 </section>
 
 <section id="tab-apps" class="hide">
-  <h1>Apps</h1>
-  <div class="sub">Opens on the TV</div>
+  <h1 data-i18n="apps_title">Apps</h1>
+  <div class="sub" data-i18n="apps_sub">Opens on the TV</div>
   <div class="grid g2" id="apps"></div>
 </section>
 
 <nav id="nav" class="hide">
-  <button data-tab="remote" class="sel">Remote</button>
-  <button data-tab="channels">Channels</button>
-  <button data-tab="guide">Guide</button>
-  <button data-tab="apps">Apps</button>
+  <button data-tab="remote" class="sel" data-i18n="nav_remote">Remote</button>
+  <button data-tab="channels" data-i18n="nav_channels">Channels</button>
+  <button data-tab="guide" data-i18n="nav_guide">Guide</button>
+  <button data-tab="apps" data-i18n="nav_apps">Apps</button>
 </nav>
 <div class="toast" id="toast"></div>
 
 <script>
+// Language: follows the phone. Greek if its preferred language is Greek, English otherwise.
+const LANGS = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']);
+const LANG = String(LANGS[0] || 'en').toLowerCase().startsWith('el') ? 'el' : 'en';
+const DICT = {
+  en: {
+    title: 'TV Remote',
+    pin_aria: 'PIN',
+    nothing_playing: 'Nothing playing on the TV',
+    vol_down: 'Volume down', vol_mute: 'Mute', vol_up: 'Volume up',
+    wall_mine: 'Only my photos ✓',
+    pair_title: 'Pair with the TV',
+    pair_sub: 'Enter the 4-digit PIN shown on the TV under Inputs → Phone remote.',
+    pair_btn: 'Pair',
+    remote_title: 'Remote', nothing_playing_short: 'Nothing playing',
+    lbl_channel: 'Channel', ch_down: '▼ CH', ch_prev: '↺ Prev', ch_up: 'CH ▲',
+    lbl_playback: 'Playback', pause: '❚❚ Pause', live: '● Live', info: 'ⓘ Info',
+    lbl_volume: 'Volume',
+    lbl_sleep: 'Sleep timer', sleep_30: '30 min', sleep_60: '1 h', sleep_off: 'Off',
+    lbl_wallpaper: 'Wallpaper', send_photo: '🖼 Send a photo', wall_mix: 'Mix with built-in',
+    lbl_tv: 'TV', home: '⌂ Home', stop_watching: '■ Stop watching', turn_on: '⏻ Turn on', turn_off: '⏻ Turn off',
+    channels_title: 'Channels', channels_sub: 'Tap to watch on the TV',
+    guide_title: 'Guide', search_ph: 'Search, or browse what\'s on below',
+    apps_title: 'Apps', apps_sub: 'Opens on the TV',
+    nav_remote: 'Remote', nav_channels: 'Channels', nav_guide: 'Guide', nav_apps: 'Apps',
+    confirm_off: 'Turn the TV off?', turning_off: 'Turning off', turning_on: 'Turning on',
+    standby_in: m => 'Standby in ' + m + ' min', sleep_cancelled: 'Sleep timer off',
+    wall_count: n => n + ' of your photos on the TV', wall_remove: 'remove them', wall_builtin: 'Using the built-in photos',
+    confirm_remove: 'Remove your photos from the TV?',
+    sending: 'Sending…', on_tv_now: 'On the TV now', send_failed: 'Couldn\'t send that photo',
+    wrong_pin: 'Wrong PIN',
+    watching: 'Watching', until: 'until {0}', watching_on_tv: 'Watching on the TV', opening_on_tv: 'Opening on the TV',
+    no_guide: 'No guide data',
+    a_watch: 'Watch', a_record: 'Record', a_series: 'Every episode', a_remind: 'Remind me', a_reminder_set: 'Reminder set',
+    will_record: 'Will record', series_set: 'Series recording set', reminder_cancelled: 'Reminder cancelled',
+    confirm_series: 'Record every episode of “{0}” on {1}?',
+    on_now_until: 'on now, until {0}', nothing_found: 'Nothing coming up with that title',
+    err_wrong_pin: 'Wrong PIN',
+    err_pair_needed: 'Pair with the PIN shown on the TV',
+    err_sleep_perm: 'The sleep timer needs the sleep permission (see the README)',
+    err_off_perm: 'Turning off needs the sleep permission (see the README)',
+    err_open_fail: 'Can\'t open that app',
+    err_needs_tvh_search: 'Search needs Tvheadend',
+    err_needs_tvh_guide: 'The guide needs Tvheadend',
+    err_needs_tvh_record: 'Recording needs Tvheadend',
+    err_unknown: 'Unknown request',
+    err_photo_large: 'Photo too large',
+    err_upload_interrupted: 'Upload interrupted',
+    err_not_photo: 'That isn\'t a photo the TV can show'
+  },
+  el: {
+    title: 'Τηλεχειριστήριο TV',
+    pin_aria: 'PIN',
+    nothing_playing: 'Καμία αναπαραγωγή στην τηλεόραση',
+    vol_down: 'Μείωση έντασης', vol_mute: 'Σίγαση', vol_up: 'Αύξηση έντασης',
+    wall_mine: 'Μόνο οι δικές μου ✓',
+    pair_title: 'Σύνδεση με την τηλεόραση',
+    pair_sub: 'Εισαγάγετε το PIN 4 ψηφίων που εμφανίζεται στην τηλεόραση, στις Εισόδους → Τηλεχειριστήριο κινητού.',
+    pair_btn: 'Σύνδεση',
+    remote_title: 'Τηλεχειριστήριο', nothing_playing_short: 'Καμία αναπαραγωγή',
+    lbl_channel: 'Κανάλι', ch_down: '▼ CH', ch_prev: '↺ Προηγ.', ch_up: 'CH ▲',
+    lbl_playback: 'Αναπαραγωγή', pause: '❚❚ Παύση', live: '● Ζωντανά', info: 'ⓘ Πληροφ.',
+    lbl_volume: 'Ένταση',
+    lbl_sleep: 'Χρονοδιακόπτης ύπνου', sleep_30: '30 λεπτά', sleep_60: '1 ώρα', sleep_off: 'Ανενεργό',
+    lbl_wallpaper: 'Ταπετσαρία', send_photo: '🖼 Αποστολή φωτογραφίας', wall_mix: 'Μίξη με τις ενσωματωμένες',
+    lbl_tv: 'TV', home: '⌂ Αρχική', stop_watching: '■ Διακοπή προβολής', turn_on: '⏻ Ενεργοποίηση', turn_off: '⏻ Απενεργοποίηση',
+    channels_title: 'Κανάλια', channels_sub: 'Πατήστε για προβολή στην τηλεόραση',
+    guide_title: 'Οδηγός', search_ph: 'Αναζήτηση ή περιήγηση παρακάτω',
+    apps_title: 'Εφαρμογές', apps_sub: 'Ανοίγει στην τηλεόραση',
+    nav_remote: 'Έλεγχος', nav_channels: 'Κανάλια', nav_guide: 'Οδηγός', nav_apps: 'Εφαρμογές',
+    confirm_off: 'Απενεργοποίηση της τηλεόρασης;', turning_off: 'Απενεργοποίηση', turning_on: 'Ενεργοποίηση',
+    standby_in: m => 'Αναμονή σε ' + m + ' λεπτά', sleep_cancelled: 'Ο χρονοδιακόπτης ύπνου απενεργοποιήθηκε',
+    wall_count: n => n === 1 ? '1 φωτογραφία σας στην τηλεόραση' : n + ' φωτογραφίες σας στην τηλεόραση', wall_remove: 'κατάργηση', wall_builtin: 'Χρήση των ενσωματωμένων φωτογραφιών',
+    confirm_remove: 'Κατάργηση των φωτογραφιών σας από την τηλεόραση;',
+    sending: 'Αποστολή…', on_tv_now: 'Στην τηλεόραση τώρα', send_failed: 'Η φωτογραφία δεν στάλθηκε',
+    wrong_pin: 'Λάθος PIN',
+    watching: 'Παρακολούθηση', until: 'έως {0}', watching_on_tv: 'Προβολή στην τηλεόραση', opening_on_tv: 'Άνοιγμα στην τηλεόραση',
+    no_guide: 'Δεν υπάρχουν δεδομένα οδηγού',
+    a_watch: 'Παρακολούθηση', a_record: 'Εγγραφή', a_series: 'Όλα τα επεισόδια', a_remind: 'Υπενθύμιση', a_reminder_set: 'Υπενθύμιση ορίστηκε',
+    will_record: 'Θα εγγραφεί', series_set: 'Ορίστηκε εγγραφή σειράς', reminder_cancelled: 'Η υπενθύμιση ακυρώθηκε',
+    confirm_series: 'Εγγραφή όλων των επεισοδίων του «{0}» στο κανάλι {1};',
+    on_now_until: 'τώρα, έως {0}', nothing_found: 'Δεν βρέθηκε προσεχής εκπομπή με αυτόν τον τίτλο',
+    err_wrong_pin: 'Λάθος PIN',
+    err_pair_needed: 'Συνδεθείτε με το PIN που εμφανίζεται στην τηλεόραση',
+    err_sleep_perm: 'Ο χρονοδιακόπτης ύπνου χρειάζεται την άδεια ύπνου (δείτε το README)',
+    err_off_perm: 'Η απενεργοποίηση χρειάζεται την άδεια ύπνου (δείτε το README)',
+    err_open_fail: 'Δεν είναι δυνατό το άνοιγμα της εφαρμογής',
+    err_needs_tvh_search: 'Η αναζήτηση χρειάζεται το Tvheadend',
+    err_needs_tvh_guide: 'Ο οδηγός χρειάζεται το Tvheadend',
+    err_needs_tvh_record: 'Η εγγραφή χρειάζεται το Tvheadend',
+    err_unknown: 'Άγνωστο αίτημα',
+    err_photo_large: 'Η φωτογραφία είναι πολύ μεγάλη',
+    err_upload_interrupted: 'Η αποστολή διακόπηκε',
+    err_not_photo: 'Αυτό δεν είναι φωτογραφία που μπορεί να εμφανίσει η τηλεόραση'
+  }
+};
+// t('key', a, b): looks the text up (English if missing) and fills {0}, {1}; function entries are called with the arguments.
+function t(key, ...a) {
+  let v = DICT[LANG][key]; if (v === undefined) v = DICT.en[key]; if (v === undefined) return key;
+  if (typeof v === 'function') return v(...a);
+  return v.replace(/\{(\d)\}/g, (m, i) => a[+i] == null ? '' : a[+i]);
+}
+const errText = j => (j.code && DICT[LANG]['err_' + j.code]) || j.error;
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(e => { e.placeholder = t(e.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(e => { e.setAttribute('aria-label', t(e.dataset.i18nAria)); e.title = t(e.dataset.i18nAria); });
+}
+applyLang();
+
 let token = null;
 try { token = localStorage.getItem('tvToken'); } catch (e) {}
 const $ = id => document.getElementById(id);
@@ -138,24 +249,24 @@ async function call(path, params = {}) {
     body: new URLSearchParams(params)});
   if (r.status === 401) { showPair(); throw new Error('pair'); }
   const j = await r.json();
-  if (j.error) { toast(j.error); throw new Error(j.error); }
+  if (j.error) { toast(errText(j)); throw new Error(j.error); }
   return j;
 }
 const player = (d, arg) => call('player', {do: d, arg: arg || ''}).then(() => setTimeout(state, 700));
-const power = d => (d === 'off' && !confirm('Turn the TV off?')) ? null
-  : call('power', {do: d}).then(() => toast(d === 'off' ? 'Turning off' : 'Turning on'));
-const sleepIn = m => call('sleep', {min: m}).then(() => toast(m ? 'Standby in ' + m + ' min' : 'Sleep timer off'));
+const power = d => (d === 'off' && !confirm(t('confirm_off'))) ? null
+  : call('power', {do: d}).then(() => toast(d === 'off' ? t('turning_off') : t('turning_on')));
+const sleepIn = m => call('sleep', {min: m}).then(() => toast(m ? t('standby_in', m) : t('sleep_cancelled')));
 
 // Wallpapers: shrink to TV size on the phone (fast upload), then send; the TV shows it at once.
 let wall = {count: 0, mineOnly: false};
 function showWall(w) {
   wall = w;
-  $('wallinfo').innerHTML = w.count ? `${w.count} of your photos on the TV · <a href="#" onclick="clearWalls();return false" style="color:#fff">remove them</a>` : 'Using the built-in photos';
-  $('wallmode').textContent = w.mineOnly ? 'Only my photos ✓' : 'Mix with built-in';
+  $('wallinfo').innerHTML = w.count ? `${esc(t('wall_count', w.count))} · <a href="#" onclick="clearWalls();return false" style="color:#fff">${esc(t('wall_remove'))}</a>` : esc(t('wall_builtin'));
+  $('wallmode').textContent = w.mineOnly ? t('wall_mine') : t('wall_mix');
   $('wallmode').disabled = !w.count;
 }
 const wallMode = () => call('wallpapers', {do: wall.mineOnly ? 'all' : 'mine'}).then(showWall);
-const clearWalls = () => confirm('Remove your photos from the TV?') && call('wallpapers', {do: 'clear'}).then(showWall);
+const clearWalls = () => confirm(t('confirm_remove')) && call('wallpapers', {do: 'clear'}).then(showWall);
 function shrink(file) {
   return new Promise((ok, fail) => {
     const img = new Image();
@@ -172,14 +283,14 @@ function shrink(file) {
 }
 $('photo').addEventListener('change', async e => {
   for (const f of e.target.files) {
-    toast('Sending…');
+    toast(t('sending'));
     try {
       const blob = await shrink(f);
       const r = await fetch('/api/wallpaper', {method: 'POST', headers: {'X-Token': token, 'Content-Type': 'image/jpeg'}, body: blob});
       const j = await r.json();
-      if (j.error) { toast(j.error); break; }
-      toast('On the TV now');
-    } catch (err) { toast('Couldn\'t send that photo'); }
+      if (j.error) { toast(errText(j)); break; }
+      toast(t('on_tv_now'));
+    } catch (err) { toast(t('send_failed')); }
   }
   e.target.value = '';
   call('wallpapers').then(showWall);
@@ -189,7 +300,7 @@ function showPair() { $('pair').classList.remove('hide'); $('nav').classList.add
 async function pair() {
   const r = await fetch('/api/pair', {method: 'POST', body: new URLSearchParams({pin: $('pin').value})});
   const j = await r.json();
-  if (!j.token) { toast(j.error || 'Wrong PIN'); return; }
+  if (!j.token) { toast(j.error ? errText(j) : t('wrong_pin')); return; }
   token = j.token;
   try { localStorage.setItem('tvToken', token); } catch (e) {}
   $('pair').classList.add('hide'); start();
@@ -208,23 +319,23 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => tab(b.dat
 async function state() {
   const s = await call('state');
   const p = s.playing;
-  $('now').innerHTML = p ? `<div class="sub" style="margin:0 0 4px">Watching</div><b>${esc(p.number)} ${esc(p.name)}</b>` +
-    (p.now ? `<div class="sub" style="margin:6px 0 0">${esc(p.now)} · until ${hhmm(p.stop)}</div>` : '')
-    : '<span class="sub">Nothing playing on the TV</span>';
+  $('now').innerHTML = p ? `<div class="sub" style="margin:0 0 4px">${esc(t('watching'))}</div><b>${esc(p.number)} ${esc(p.name)}</b>` +
+    (p.now ? `<div class="sub" style="margin:6px 0 0">${esc(p.now)} · ${esc(t('until', hhmm(p.stop)))}</div>` : '')
+    : `<span class="sub">${esc(t('nothing_playing'))}</span>`;
 }
 
 async function channels() {
   const list = await call('channels');
   $('channels').innerHTML = list.map(c => `<div class="row" data-ch="${esc(c.uuid)}"><div class="num">${esc(c.number)}</div>
     <div class="main"><div class="t">${c.radio ? '♪ ' : ''}${esc(c.name)}</div><div class="m">${esc(c.now || '')}</div></div></div>`).join('');
-  $('channels').querySelectorAll('.row').forEach(r => r.onclick = () => call('watch', {ch: r.dataset.ch}).then(() => toast('Watching on the TV')));
+  $('channels').querySelectorAll('.row').forEach(r => r.onclick = () => call('watch', {ch: r.dataset.ch}).then(() => toast(t('watching_on_tv'))));
 }
 
 async function apps() {
   const list = await call('apps');
   list.sort((a, b) => a.name.localeCompare(b.name));
   $('apps').innerHTML = list.map(a => `<button data-pkg="${esc(a.pkg)}">${esc(a.name)}</button>`).join('');
-  $('apps').querySelectorAll('button').forEach(b => b.onclick = () => call('open', {pkg: b.dataset.pkg}).then(() => toast('Opening on the TV')));
+  $('apps').querySelectorAll('button').forEach(b => b.onclick = () => call('open', {pkg: b.dataset.pkg}).then(() => toast(t('opening_on_tv'))));
 }
 
 let searchTimer;
@@ -236,22 +347,22 @@ async function guide() {
   const prog = e => e ? Math.max(0, Math.min(100, (now - e.start) * 100 / (e.stop - e.start))) : 0;
   $('results').innerHTML = list.map((c, i) => `<div class="row" style="display:block">
     <div class="t"><span class="num" style="display:inline-block;width:34px;color:var(--dim)">${esc(c.number)}</span>${esc(c.name)}</div>
-    ${c.nowEv ? `<div class="m" data-i="${i}" data-w="now" style="color:var(--text);margin-top:6px">${c.nowEv.rec ? '<span class="rec">● </span>' : ''}${esc(c.nowEv.title)} · until ${hhmm(c.nowEv.stop)}</div>
-      <div style="height:3px;background:#ffffff26;border-radius:2px;margin:6px 0"><div style="height:3px;width:${prog(c.nowEv)}%;background:#fff;border-radius:2px"></div></div>` : '<div class="m">No guide data</div>'}
+    ${c.nowEv ? `<div class="m" data-i="${i}" data-w="now" style="color:var(--text);margin-top:6px">${c.nowEv.rec ? '<span class="rec">● </span>' : ''}${esc(c.nowEv.title)} · ${esc(t('until', hhmm(c.nowEv.stop)))}</div>
+      <div style="height:3px;background:#ffffff26;border-radius:2px;margin:6px 0"><div style="height:3px;width:${prog(c.nowEv)}%;background:#fff;border-radius:2px"></div></div>` : `<div class="m">${esc(t('no_guide'))}</div>`}
     ${c.nextEv ? `<div class="m" data-i="${i}" data-w="next">${c.nextEv.rec ? '<span class="rec">● </span>' : c.nextEv.remind ? '○ ' : ''}${hhmm(c.nextEv.start)} ${esc(c.nextEv.title)}</div>` : ''}
     <div class="acts hide" id="acts${i}"></div></div>`).join('');
   $('results').querySelectorAll('[data-w]').forEach(el => el.onclick = () => {
     const c = list[+el.dataset.i], e = el.dataset.w === 'now' ? c.nowEv : c.nextEv, box = $('acts' + el.dataset.i);
     box.classList.toggle('hide');
-    box.innerHTML = (el.dataset.w === 'now' ? `<button data-a="watch">Watch</button>` : '')
-      + (e.rec ? '' : `<button data-a="record">Record</button>`) + `<button data-a="series">Every episode</button>`
-      + (el.dataset.w === 'next' ? `<button data-a="remind" class="${e.remind ? 'on' : ''}">${e.remind ? 'Reminder set' : 'Remind me'}</button>` : '');
+    box.innerHTML = (el.dataset.w === 'now' ? `<button data-a="watch">${esc(t('a_watch'))}</button>` : '')
+      + (e.rec ? '' : `<button data-a="record">${esc(t('a_record'))}</button>`) + `<button data-a="series">${esc(t('a_series'))}</button>`
+      + (el.dataset.w === 'next' ? `<button data-a="remind" class="${e.remind ? 'on' : ''}">${esc(e.remind ? t('a_reminder_set') : t('a_remind'))}</button>` : '');
     box.querySelectorAll('button').forEach(b => b.onclick = () => {
       const done = m => () => { toast(m); guide(); };
-      if (b.dataset.a === 'watch') call('watch', {ch: c.uuid}).then(() => toast('Watching on the TV'));
-      if (b.dataset.a === 'record') call('record', {id: e.id}).then(done('Will record'));
-      if (b.dataset.a === 'series' && confirm('Record every episode of “' + e.title + '” on ' + c.name + '?')) call('record', {id: e.id, kind: 'series'}).then(done('Series recording set'));
-      if (b.dataset.a === 'remind') call('remind', {id: e.id, ch: c.uuid, title: e.title, start: e.start}).then(done(e.remind ? 'Reminder cancelled' : 'Reminder set'));
+      if (b.dataset.a === 'watch') call('watch', {ch: c.uuid}).then(() => toast(t('watching_on_tv')));
+      if (b.dataset.a === 'record') call('record', {id: e.id}).then(done(t('will_record')));
+      if (b.dataset.a === 'series' && confirm(t('confirm_series', e.title, c.name))) call('record', {id: e.id, kind: 'series'}).then(done(t('series_set')));
+      if (b.dataset.a === 'remind') call('remind', {id: e.id, ch: c.uuid, title: e.title, start: e.start}).then(done(e.remind ? t('reminder_cancelled') : t('a_reminder_set')));
     });
   });
 }
@@ -262,19 +373,19 @@ async function search() {
   const list = await call('search', {q});
   $('results').innerHTML = list.length ? list.map((e, i) => `<div class="row" style="display:block">
     <div class="t">${e.rec ? '<span class="rec">● </span>' : ''}${esc(e.title)}${e.subtitle ? ' · ' + esc(e.subtitle) : ''}</div>
-    <div class="m">${esc(e.channel)} · ${e.on ? 'on now, until ' + hhmm(e.stop) : day(e.start) + ' ' + hhmm(e.start)}</div>
-    <div class="acts">${e.on ? `<button data-i="${i}" data-a="watch">Watch</button>` : ''}
-      ${e.rec ? '' : `<button data-i="${i}" data-a="record">Record</button>`}
-      <button data-i="${i}" data-a="series">Every episode</button>
-      ${e.on ? '' : `<button data-i="${i}" data-a="remind" class="${e.remind ? 'on' : ''}">${e.remind ? 'Reminder set' : 'Remind me'}</button>`}</div></div>`).join('')
-    : '<div class="sub">Nothing coming up with that title</div>';
+    <div class="m">${esc(e.channel)} · ${e.on ? esc(t('on_now_until', hhmm(e.stop))) : day(e.start) + ' ' + hhmm(e.start)}</div>
+    <div class="acts">${e.on ? `<button data-i="${i}" data-a="watch">${esc(t('a_watch'))}</button>` : ''}
+      ${e.rec ? '' : `<button data-i="${i}" data-a="record">${esc(t('a_record'))}</button>`}
+      <button data-i="${i}" data-a="series">${esc(t('a_series'))}</button>
+      ${e.on ? '' : `<button data-i="${i}" data-a="remind" class="${e.remind ? 'on' : ''}">${esc(e.remind ? t('a_reminder_set') : t('a_remind'))}</button>`}</div></div>`).join('')
+    : `<div class="sub">${esc(t('nothing_found'))}</div>`;
   $('results').querySelectorAll('button').forEach(b => b.onclick = () => {
     const e = list[+b.dataset.i];
     const done = m => () => { toast(m); search(); };
-    if (b.dataset.a === 'watch') call('watch', {ch: e.ch}).then(() => toast('Watching on the TV'));
-    if (b.dataset.a === 'record') call('record', {id: e.id}).then(done('Will record'));
-    if (b.dataset.a === 'series') { if (confirm('Record every episode of “' + e.title + '” on ' + e.channel + '?')) call('record', {id: e.id, kind: 'series'}).then(done('Series recording set')); }
-    if (b.dataset.a === 'remind') call('remind', {id: e.id, ch: e.ch, title: e.title, start: e.start}).then(done(e.remind ? 'Reminder cancelled' : 'Reminder set'));
+    if (b.dataset.a === 'watch') call('watch', {ch: e.ch}).then(() => toast(t('watching_on_tv')));
+    if (b.dataset.a === 'record') call('record', {id: e.id}).then(done(t('will_record')));
+    if (b.dataset.a === 'series') { if (confirm(t('confirm_series', e.title, e.channel))) call('record', {id: e.id, kind: 'series'}).then(done(t('series_set'))); }
+    if (b.dataset.a === 'remind') call('remind', {id: e.id, ch: e.ch, title: e.title, start: e.start}).then(done(e.remind ? t('reminder_cancelled') : t('a_reminder_set')));
   });
 }
 

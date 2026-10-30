@@ -49,10 +49,10 @@ public class RecordingsActivity extends Activity {
         root.setBackgroundColor(0xFF0E0E10);
         root.setPadding(Ui.dp(this, 64), Ui.dp(this, 40), Ui.dp(this, 64), 0);
         TextView title = Ui.text(this, 28, "sans-serif-light", Color.WHITE);
-        title.setText("Recordings");
+        title.setText(R.string.rec_title);
         root.addView(title);
         TextView hint = Ui.text(this, 12, "sans-serif", 0x80FFFFFF);
-        hint.setText("OK to play · hold OK to delete · record, series and reminders from the TV guide or search");
+        hint.setText(R.string.rec_hint);
         root.addView(hint, new LinearLayout.LayoutParams(-2, -2));
 
         ScrollView sv = new ScrollView(this);
@@ -74,7 +74,7 @@ public class RecordingsActivity extends Activity {
     }
 
     private void load() {
-        empty.setText("Loading…");
+        empty.setText(R.string.rec_loading);
         Tvh.IO.execute(() -> {
             List<Tvh.Recording> all = null;
             List<Tvh.SeriesRule> series = Collections.emptyList();
@@ -108,13 +108,14 @@ public class RecordingsActivity extends Activity {
         Collections.sort(sched, (a, b) -> Long.compare(a.start, b.start));
         Collections.sort(done, (a, b) -> Long.compare(b.start, a.start));
         Collections.sort(failed, (a, b) -> Long.compare(b.start, a.start));
-        empty.setText(nothing ? "Nothing recorded yet. Open the TV guide and press OK on a programme to record it." : "");
+        empty.setText(nothing ? getString(R.string.rec_empty) : "");
         empty.setVisibility(nothing ? View.VISIBLE : View.GONE);
         View first = null, refocus = null;
         // The recording you were last watching goes first.
         String last = Tvh.resume(this).getString("last", null);
         for (Tvh.Recording r : done) if (r.uuid.equals(last)) { done.remove(r); done.add(0, r); break; }
-        for (Object[] section : new Object[][]{{"RECORDING NOW", now}, {"SCHEDULED", sched}, {"RECORDED", done}, {"FAILED", failed}}) {
+        for (Object[] section : new Object[][]{{getString(R.string.rec_section_now), now}, {getString(R.string.rec_section_scheduled), sched},
+                {getString(R.string.rec_section_recorded), done}, {getString(R.string.rec_section_failed), failed}}) {
             @SuppressWarnings("unchecked") List<Tvh.Recording> rs = (List<Tvh.Recording>) section[1];
             if (rs.isEmpty()) continue;
             list.addView(header((String) section[0]));
@@ -129,21 +130,21 @@ public class RecordingsActivity extends Activity {
             }
         }
         if (!series.isEmpty()) {
-            list.addView(header("SERIES"));
+            list.addView(header(getString(R.string.rec_section_series)));
             for (Tvh.SeriesRule s : series) {
-                TextView row = Ui.row(this, twoLine(s.title, s.channel + "   every episode"));
+                TextView row = Ui.row(this, twoLine(s.title, s.channel + "   " + getString(R.string.rec_every_episode)));
                 row.setOnClickListener(v -> Ui.confirm(this, s.title,
-                        "Stop recording this series? Scheduled episodes are cancelled; recorded ones stay.", "Stop series",
-                        () -> run(() -> tvh.deleteSeries(s.uuid), "Series stopped")));
+                        getString(R.string.rec_series_stop_message), getString(R.string.rec_series_stop_button),
+                        () -> run(() -> tvh.deleteSeries(s.uuid), getString(R.string.rec_series_stopped))));
                 list.addView(row, new LinearLayout.LayoutParams(-1, -2));
                 if (first == null) first = row;
             }
         }
         if (!reminders.isEmpty()) {
-            list.addView(header("REMINDERS"));
+            list.addView(header(getString(R.string.rec_section_reminders)));
             for (Reminders.Reminder r : reminders) {
                 TextView row = Ui.row(this, twoLine(r.title, r.channelName + "   " + Ui.day(r.start) + "  " + Ui.time(this, r.start)));
-                row.setOnClickListener(v -> Ui.confirm(this, r.title, "Cancel this reminder?", "Cancel reminder", () -> {
+                row.setOnClickListener(v -> Ui.confirm(this, r.title, getString(R.string.rec_reminder_cancel_message), getString(R.string.rec_reminder_cancel_button), () -> {
                     Reminders.remove(this, r.id);
                     load();
                 }));
@@ -174,16 +175,16 @@ public class RecordingsActivity extends Activity {
 
     private CharSequence label(Tvh.Recording r) {
         SpannableStringBuilder s = new SpannableStringBuilder();
-        s.append(r.title.isEmpty() ? "(untitled)" : r.title);
+        s.append(r.title.isEmpty() ? getString(R.string.rec_untitled) : r.title);
         if (r.subtitle != null) s.append("  ·  ").append(r.subtitle);
         int metaStart = s.length();
         s.append("\n").append(r.channel).append("   ").append(Ui.day(r.start)).append("  ")
                 .append(Ui.time(this, r.start)).append(" – ").append(Ui.time(this, r.stop))
                 .append("   ").append(Ui.duration((r.stop - r.start) * 1000));
         if (r.size > 0) s.append("   ").append(String.valueOf(r.size / (1024 * 1024))).append(" MB");
-        if (r.recording()) s.append("   ● REC");
+        if (r.recording()) s.append("   ● ").append(getString(R.string.rec_badge_rec));
         long pos = Tvh.resume(this).getLong(r.uuid, 0);
-        if (pos > 0 && r.stop > r.start) s.append("   ▶ ").append(String.valueOf(Math.min(99, pos / 10 / (r.stop - r.start)))).append("% watched");
+        if (pos > 0 && r.stop > r.start) s.append("   ▶ ").append(getString(R.string.rec_percent_watched, (int) Math.min(99, pos / 10 / (r.stop - r.start))));
         if (r.failed()) s.append("   ").append(r.status);
         s.setSpan(new RelativeSizeSpan(0.8f), metaStart, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         s.setSpan(new ForegroundColorSpan(0x99888888), metaStart, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -196,8 +197,8 @@ public class RecordingsActivity extends Activity {
                     .putExtra(PlayerActivity.EXTRA_RECORDING, r.uuid)
                     .putExtra(PlayerActivity.EXTRA_TITLE, r.title));
         } else if (r.scheduled()) {
-            Ui.confirm(this, r.title, "Cancel this scheduled recording?", "Cancel recording",
-                    () -> run(() -> tvh.stopOrCancel(r.uuid, false), "Recording cancelled"));
+            Ui.confirm(this, r.title, getString(R.string.rec_cancel_scheduled_message), getString(R.string.rec_cancel_scheduled_button),
+                    () -> run(() -> tvh.stopOrCancel(r.uuid, false), getString(R.string.rec_cancelled)));
         } else {
             delete(r);
         }
@@ -205,10 +206,10 @@ public class RecordingsActivity extends Activity {
 
     private void delete(Tvh.Recording r) {
         if (r.scheduled()) { open(r); return; }
-        Ui.confirm(this, r.title, r.recording() ? "Stop and delete this recording?" : "Delete this recording from the server?",
-                "Delete", () -> {
+        Ui.confirm(this, r.title, getString(r.recording() ? R.string.rec_delete_running_message : R.string.rec_delete_message),
+                getString(R.string.rec_delete_button), () -> {
                     Tvh.saveResume(this, r.uuid, r.title, 0, 0); // and its "continue watching" tile
-                    run(() -> tvh.deleteRecording(r.uuid), "Deleted");
+                    run(() -> tvh.deleteRecording(r.uuid), getString(R.string.rec_deleted));
                 });
     }
 

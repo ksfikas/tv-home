@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Πάνω κουμπιά -->
+    <string name="main_pill_inputs">Είσοδοι</string>
+    <string name="main_pill_settings">Ρυθμίσεις</string>
+    <string name="main_pill_control">Έλεγχος</string>
+
+    <!-- Τίτλοι ενοτήτων (σε κεφαλαία) και κεφαλίδα -->
+    <string name="main_live_tv_caps">ΖΩΝΤΑΝΗ TV</string>
+    <string name="main_radio_caps">ΡΑΔΙΟΦΩΝΟ</string>
+    <string name="main_all_apps_caps">ΟΛΕΣ ΟΙ ΕΦΑΡΜΟΓΕΣ</string>
+    <string name="main_greeting_night">ΚΑΛΗΝΥΧΤΑ</string>
+    <string name="main_greeting_morning">ΚΑΛΗΜΕΡΑ</string>
+    <string name="main_greeting_afternoon">ΚΑΛΟ ΜΕΣΗΜΕΡΙ</string>
+    <string name="main_greeting_evening">ΚΑΛΗΣΠΕΡΑ</string>
+    <string name="main_am">ΠΜ</string>
+    <string name="main_pm">ΜΜ</string>
+    <string name="main_offline">Εκτός σύνδεσης</string>
+
+    <!-- Παρατεταμένο OK σε εφαρμογή -->
+    <string name="main_open">Άνοιγμα</string>
+    <string name="main_move_left">Μετακίνηση αριστερά</string>
+    <string name="main_move_right">Μετακίνηση δεξιά</string>
+    <string name="main_remove_from_dock">Κατάργηση από τη γραμμή εφαρμογών</string>
+    <string name="main_add_to_dock">Προσθήκη στη γραμμή εφαρμογών</string>
+    <string name="main_add_to_dock_replace">Προσθήκη στη γραμμή (αντικαθιστά την τελευταία)</string>
+    <string name="main_hide_from_all_apps">Απόκρυψη από τις Όλες οι εφαρμογές</string>
+    <string name="main_app_info">Πληροφορίες εφαρμογής</string>
+    <string name="main_uninstall">Απεγκατάσταση</string>
+
+    <!-- Μενού εισόδων -->
+    <string name="main_live_tv">Ζωντανή TV</string>
+    <string name="main_live_tv_setup">Ρύθμιση ζωντανής TV…</string>
+    <string name="main_weather_menu">Καιρός…</string>
+    <string name="main_box_status_menu">Κατάσταση συσκευής…</string>
+    <string name="main_phone_remote_menu">Τηλεχειριστήριο κινητού…</string>
+    <string name="main_show_hidden_apps">Εμφάνιση κρυφών εφαρμογών</string>
+    <string name="main_all_sources">Όλες οι πηγές…</string>
+
+    <!-- Σειρά ζωντανής TV -->
+    <string name="main_loading_channels">Φόρτωση καναλιών…</string>
+    <string name="main_no_channels">Δεν υπάρχουν κανάλια στον διακομιστή Tvheadend</string>
+    <string name="main_set_up_live_tv">Ρύθμιση ζωντανής TV</string>
+    <string name="main_hide_live_tv">Απόκρυψη ζωντανής TV (επαναφορά από Είσοδοι → Ρύθμιση ζωντανής TV…)</string>
+    <string name="main_retry_hint">OK για επανάληψη · παρατεταμένο OK για ρύθμιση</string>
+    <string name="main_guide">Οδηγός</string>
+    <string name="main_search">Αναζήτηση</string>
+    <string name="main_recordings">Εγγραφές</string>
+    <string name="main_recording">Εγγραφή</string>
+    <string name="main_continue">Συνέχεια  %1$s  ·  %2$d%%</string>
+    <string name="main_fav_remove">Κατάργηση από τα αγαπημένα</string>
+    <string name="main_fav_add">Προσθήκη στα αγαπημένα</string>
+    <string name="main_fav_clear">Εμφάνιση όλων των καναλιών (εκκαθάριση αγαπημένων)</string>
+
+    <!-- Κάρτες Top Shelf -->
+    <string name="main_shelf_resume">Συνέχιση</string>
+    <string name="main_shelf_remove">Κατάργηση</string>
+    <string name="main_shelf_where">Πού να δείτε</string>
+    <string name="main_shelf_phone">Διαβάστε στο κινητό</string>
+    <string name="main_scan_phone">Σαρώστε με την κάμερα του κινητού για να το διαβάσετε.</string>
+    <string name="main_close">Κλείσιμο</string>
+    <string name="main_cancel">Ακύρωση</string>
+    <string name="main_save">Αποθήκευση</string>
+    <string name="main_top_shelf">Top Shelf</string>
+    <string name="main_shelf_films">Προτάσεις: ταινίες %1$s</string>
+    <string name="main_shelf_news">Προτάσεις: ειδήσεις %1$s</string>
+    <string name="main_news_from_item">Ειδήσεις από: %1$s</string>
+    <string name="main_news_from">Ειδήσεις από</string>
+    <string name="main_state_on">ενεργό</string>
+    <string name="main_state_off">ανενεργό</string>
+    <string name="main_off">Ανενεργό</string>
+
+    <!-- Μενού προφύλαξης οθόνης -->
+    <string name="main_screensaver">Προφύλαξη οθόνης</string>
+    <string name="main_weather">Καιρός</string>
+    <string name="main_on_tv_now">Τώρα στην τηλεόραση</string>
+    <string name="main_popular_films">Δημοφιλείς ταινίες</string>
+    <string name="main_news_slides">Διαφάνειες ειδήσεων</string>
+    <string name="main_news_ticker">Ειδήσεις σε κύλιση</string>
+    <string name="main_start_now">Έναρξη τώρα</string>
+    <string name="main_name_state">%1$s: %2$s</string>
+    <plurals name="main_each_slide">
+        <item quantity="one">Κάθε διαφάνεια: %1$d δευτερόλεπτο</item>
+        <item quantity="other">Κάθε διαφάνεια: %1$d δευτερόλεπτα</item>
+    </plurals>
+    <string name="main_ss_choose_first">Επιλέξτε την πρώτα: Ρυθμίσεις → Προτιμήσεις συσκευής → Προφύλαξη οθόνης</string>
+    <string name="main_ss_cant_start">Αυτή η τηλεόραση δεν μπορεί να ξεκινήσει την προφύλαξη οθόνης από εδώ</string>
+
+    <!-- Ρύθμιση ζωντανής TV -->
+    <string name="main_f_tvh_address">Διεύθυνση Tvheadend (κενό για καμία)</string>
+    <string name="main_f_username">Όνομα χρήστη</string>
+    <string name="main_f_password">Κωδικός πρόσβασης</string>
+    <string name="main_f_hdhr">Δέκτης δικτύου (HDHomeRun): auto, διεύθυνση ή κενό για κανέναν</string>
+    <string name="main_cb_tif">Κανάλια από εφαρμογές δέκτη σε αυτή τη συσκευή (π.χ. δέκτης USB)</string>
+    <string name="main_cb_autoplay">Έναρξη του τελευταίου καναλιού μετά την επανεκκίνηση</string>
+    <string name="main_remove_all">Κατάργηση όλων</string>
+    <string name="main_checking">Έλεγχος…</string>
+    <string name="main_no_channels_found">Δεν βρέθηκαν κανάλια από αυτές τις πηγές</string>
+
+    <!-- Κέντρο ελέγχου -->
+    <string name="main_sleep">Ύπνος</string>
+    <plurals name="main_sleep_in_min">
+        <item quantity="one">σε %1$d λεπτό</item>
+        <item quantity="other">σε %1$d λεπτά</item>
+    </plurals>
+    <string name="main_bluetooth_state">Τηλεχειριστήρια, ηχεία</string>
+    <string name="main_tv_guide">Οδηγός προγράμματος</string>
+    <string name="main_whats_on">Τι παίζει</string>
+    <string name="main_needs_tvh">Απαιτεί Tvheadend</string>
+    <string name="main_set_city">Ορίστε πόλη</string>
+    <string name="main_next_days">Επόμενες ημέρες</string>
+    <string name="main_phone_remote">Τηλεχειριστήριο κινητού</string>
+    <string name="main_remote_on_qr">Ενεργό · QR</string>
+    <string name="main_photos_info">Φωτογραφίες &amp; πληροφορίες</string>
+    <string name="main_voice_search">Φωνητική αναζήτηση</string>
+    <string name="main_volume_down">Μείωση έντασης</string>
+    <string name="main_volume_up">Αύξηση έντασης</string>
+    <string name="main_box_status">Κατάσταση συσκευής</string>
+    <string name="main_turn_off">Απενεργοποίηση</string>
+    <string name="main_turn_on">Ενεργοποίηση</string>
+    <string name="main_turn_off_needs_perm">Η απενεργοποίηση απαιτεί την άδεια ύπνου (δείτε το README)</string>
+
+    <!-- Χρονοδιακόπτης ύπνου -->
+    <string name="main_sleep_timer">Χρονοδιακόπτης ύπνου</string>
+    <string name="main_sleep_needs_perm">Ο χρονοδιακόπτης ύπνου απαιτεί την άδεια ύπνου (δείτε το README)</string>
+    <string name="main_sleep_15">15 λεπτά</string>
+    <string name="main_sleep_30">30 λεπτά</string>
+    <string name="main_sleep_60">1 ώρα</string>
+    <string name="main_sleep_90">1½ ώρα</string>
+    <string name="main_sleep_120">2 ώρες</string>
+    <string name="main_sleep_off_toast">Ο χρονοδιακόπτης ύπνου απενεργοποιήθηκε</string>
+    <string name="main_sleep_standby_in">Αναμονή σε %1$s</string>
+
+    <!-- Διάλογοι καιρού -->
+    <string name="main_loading">Φόρτωση…</string>
+    <string name="main_change_city">Αλλαγή πόλης</string>
+    <string name="main_weather_unreachable">Δεν είναι δυνατή η σύνδεση με την υπηρεσία καιρού</string>
+    <string name="main_f_city">Πόλη (κενό για να μην εμφανίζεται καιρός)</string>
+    <string name="main_looking_up">Αναζήτηση…</string>
+
+    <!-- Τηλεχειριστήριο κινητού -->
+    <string name="main_remote_scan">Στρέψτε την κάμερα του κινητού στον κωδικό (ίδιο Wi-Fi).\n\nΉ ανοίξτε\n%1$s\nκαι εισαγάγετε το PIN  %2$s\n\nΠροσθέστε το στην αρχική οθόνη για γρήγορη πρόσβαση. Αν το απενεργοποιήσετε, ξεχνά τα συνδεδεμένα κινητά.</string>
+    <string name="main_remote_no_network">Χωρίς δίκτυο: συνδέστε πρώτα τη συσκευή στο Wi-Fi.</string>
+    <string name="main_remote_intro">Ελέγξτε τη ζωντανή TV, τον οδηγό, τις εγγραφές, τις εφαρμογές και την ένταση από το πρόγραμμα περιήγησης του κινητού σας, μόνο στο οικιακό σας δίκτυο.</string>
+</resources>

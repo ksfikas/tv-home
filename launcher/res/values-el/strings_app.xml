@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ονόματα που εμφανίζει το σύστημα (λίστα εφαρμογών, ρυθμίσεις πρόσβασης ειδοποιήσεων και προφύλαξης οθόνης) -->
+    <string name="app_name">Αρχική</string>
+    <string name="service_media_watcher">Τελευταία προβολή</string>
+    <string name="service_screensaver">Προφύλαξη οθόνης Αρχικής</string>
+</resources>
