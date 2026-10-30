@@ -261,8 +261,9 @@ starts the chosen screensaver). Any remote key wakes it.
    ```
 
    The second makes the launcher a device admin with one power, turning the screen off. Android
-   won't uninstall a device admin, so run `adb shell dpm remove-active-admin io.github.ksfikas.tvhome/.SleepAdmin`
-   before uninstalling (updates are fine). Without it, the sleep timer just stops playback.
+   won't uninstall an app while it is a device admin, and on Android 14 `adb` can't remove the admin
+   either (`dpm remove-active-admin` only works for test admins). So if you may want to uninstall later,
+   skip this line: updates are fine, and without it the sleep timer just stops playback.
 
    Undo with `tools/windows/restore.ps1` (Windows; on macOS or Linux, run the same `adb shell pm
    enable` commands from your list by hand).
@@ -288,12 +289,16 @@ it, and nothing carries over (Tvheadend login, favourites, dock, reminders). To 
 1. Install the new APK and repeat step 3 above. That makes the new app the home screen and
    grants its permissions. (If `adb install` is refused with `INSTALL_FAILED_VERIFICATION_FAILURE`,
    Google's package verifier hiccuped on the new app ID: run the same command again.)
-2. Check that it works, then remove the old one:
+2. Check that it works, then get the old one out of the way:
 
    ```bash
-   adb shell dpm remove-active-admin com.mihir.tvhome/.SleepAdmin   # only if you had turned the sleep timer on
-   adb uninstall com.mihir.tvhome
+   adb uninstall com.mihir.tvhome                       # works if you never enabled the sleep timer
+   adb shell pm disable-user --user 0 com.mihir.tvhome   # if it fails with DELETE_FAILED_DEVICE_POLICY_MANAGER
    ```
+
+   The second command hides and stops the old app, which is all you need: Android 14 won't let `adb`
+   remove the sleep-timer admin it registered, so an old app that had it can only be disabled (or
+   uninstalled from the TV's Settings → Apps, if your TV offers that).
 
 3. Enter your Tvheadend login again (*Set up Live TV*) and pick your favourites.
 
