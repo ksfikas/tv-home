@@ -120,6 +120,11 @@ final class Reminders {
 
     /** See-through activity holding just the reminder dialog; goes away by itself after a minute. */
     public static class Popup extends Activity {
+
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
         private final Handler handler = new Handler(Looper.getMainLooper());
 
         @Override

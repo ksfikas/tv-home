@@ -69,6 +69,11 @@ import java.util.Locale;
  */
 public class PlayerActivity extends Activity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     static final String EXTRA_CHANNEL = "channel", EXTRA_RECORDING = "recording", EXTRA_TITLE = "title";
     /** Channel on screen right now, or null; reminders for it are skipped. */
     static volatile String playing;

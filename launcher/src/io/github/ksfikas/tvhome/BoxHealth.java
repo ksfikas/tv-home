@@ -46,11 +46,11 @@ final class BoxHealth {
     }
 
     /** "Recordings disk 93% full" when under 10% (or 3 GB) is left; null when fine or unknown. */
-    static String diskWarning(long[] disk) {
+    static String diskWarning(Txt t, long[] disk) {
         if (disk == null || disk[1] <= 0) return null;
         long free = disk[0], total = disk[1];
         if (free * 10 > total && free > 3L << 30) return null;
-        return "Recordings disk " + Math.round(100 - free * 100.0 / total) + "% full";
+        return t.s(R.string.box_disk_warning, (int) Math.round(100 - free * 100.0 / total));
     }
 
     private static long dirSize(File f) {
@@ -114,7 +114,7 @@ final class BoxHealth {
         if (tvhDisk != null) {
             s.append("\nTvheadend recordings disk:   ").append(Formatter.formatShortFileSize(c, tvhDisk[0]))
                     .append(" free of ").append(Formatter.formatShortFileSize(c, tvhDisk[1]));
-            if (diskWarning(tvhDisk) != null) s.append("   ⚠");
+            if (diskWarning(Txt.of(c), tvhDisk) != null) s.append("   ⚠");
         }
         if (mi.availMem < 300L << 20) s.append("\n\nMemory is tight. A restart (Settings → System → Restart) clears it.");
         return s.toString();

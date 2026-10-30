@@ -193,36 +193,36 @@ final class Watched {
             if (e.title != null) {
                 s.append("▶  ").append(e.title);
                 if (e.subtitle != null && !e.subtitle.equals(e.title)) s.append("  ·  ").append(e.subtitle);
-                if (e.dur > 0 && e.pos > 0 && e.pos < e.dur) s.append("  ·  ").append(left(e.dur - e.pos));
+                if (e.dur > 0 && e.pos > 0 && e.pos < e.dur) s.append("  ·  ").append(left(Txt.of(c), e.dur - e.pos));
             } else {
                 s.append(e.paused ? "Paused at " : "Stopped at ").append(Ui.duration(e.pos));
             }
-            if (now - e.at > 6 * 3600_000L) s.append("  ·  ").append(ago(now - e.at));
+            if (now - e.at > 6 * 3600_000L) s.append("  ·  ").append(ago(Txt.of(c), now - e.at));
             l.text = s;
             if (e.dur > 0 && e.pos > 0) l.progress = Math.min(1f, e.pos / (float) e.dur);
             return l;
         }
         Long used = lastUsed.get(pkg);
         if (used != null && now - used < USAGE_WINDOW) {
-            l.text = "Last opened " + ago(now - used);
+            l.text = "Last opened " + ago(Txt.of(c), now - used);
             return l;
         }
         return null;
     }
 
-    static String left(long ms) {
-        long m = Math.max(1, ms / 60_000);
-        return m >= 60 ? (m / 60) + " h " + (m % 60) + " min left" : m + " min left";
+    static String left(Txt t, long ms) {
+        int m = (int) Math.max(1, ms / 60_000);
+        return m >= 60 ? t.s(R.string.watched_left_h, m / 60, m % 60) : t.n(R.plurals.watched_left_min, m, m);
     }
 
-    static String ago(long ms) {
-        long m = ms / 60_000;
-        if (m < 2) return "just now";
-        if (m < 60) return m + " min ago";
-        long h = m / 60;
-        if (h < 24) return h + (h == 1 ? " hour ago" : " hours ago");
-        long d = h / 24;
-        return d == 1 ? "yesterday" : d + " days ago";
+    static String ago(Txt t, long ms) {
+        int m = (int) (ms / 60_000);
+        if (m < 2) return t.s(R.string.watched_just_now);
+        if (m < 60) return t.n(R.plurals.watched_min_ago, m, m);
+        int h = m / 60;
+        if (h < 24) return t.n(R.plurals.watched_hour_ago, h, h);
+        int d = h / 24;
+        return d == 1 ? t.s(R.string.watched_yesterday) : t.n(R.plurals.watched_days_ago, d, d);
     }
 
     /** When each app was last in front (needs usage access, granted over ADB); empty without it. */

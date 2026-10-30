@@ -32,6 +32,7 @@
 
     <!-- Tvheadend serves plain HTTP on the LAN. -->
     <application
+        android:name=".App"
         android:label="Home"
         android:icon="@drawable/ic_home"
         android:banner="@drawable/ic_home"

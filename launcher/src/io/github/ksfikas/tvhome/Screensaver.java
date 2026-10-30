@@ -46,6 +46,11 @@ import java.util.Map;
  * only about 330 dp, so every slide has to fit in that.
  */
 public class Screensaver extends DreamService {
+
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
     private static final long FADE_MS = 1_600, REFRESH_MS = 45 * 60_000L;
 
     // Options (Control Center → Screensaver). All on by default; the slide time is in seconds.
@@ -235,8 +240,8 @@ public class Screensaver extends DreamService {
         Tvh.IO.execute(() -> {
             String[] weather = wantWeather ? Weather.glance(c) : null;
             List<Row> tv = wantTv ? onTv(c) : new ArrayList<>();
-            List<Shelf.Item> films = wantFilms ? Shelf.films() : new ArrayList<>();
-            List<Shelf.Item> news = wantNews || wantTicker ? Shelf.news(Shelf.feed(c)) : new ArrayList<>();
+            List<Shelf.Item> films = wantFilms ? Shelf.films(Txt.of(c)) : new ArrayList<>();
+            List<Shelf.Item> news = wantNews || wantTicker ? Shelf.news(Txt.of(c), Shelf.feed(c)) : new ArrayList<>();
             List<String> list = photoList(c);
             Map<String, Bitmap> pics = new HashMap<>();
             int shown = 0;

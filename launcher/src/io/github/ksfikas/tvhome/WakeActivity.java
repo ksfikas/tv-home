@@ -9,6 +9,11 @@ import android.os.Bundle;
  * (turnScreenOn), which wakes the box from standby; it then hands over to home.
  */
 public class WakeActivity extends Activity {
+
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);

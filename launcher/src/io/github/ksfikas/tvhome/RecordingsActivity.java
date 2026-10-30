@@ -25,6 +25,11 @@ import java.util.List;
  */
 public class RecordingsActivity extends Activity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     private Tvh tvh;
     private LinearLayout list;
     private TextView empty;

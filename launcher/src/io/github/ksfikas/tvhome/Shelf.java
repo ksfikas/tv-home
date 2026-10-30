@@ -60,12 +60,12 @@ final class Shelf {
     static boolean news(Context c) { return prefs(c).getBoolean("shelf_news", true); }
     static int feed(Context c) { return Math.min(FEEDS.length - 1, prefs(c).getInt("shelf_feed", 0)); }
 
-    static String modeName(String m) {
+    static String modeName(Txt t, String m) {
         switch (m) {
-            case ALL: return "All continue watching";
-            case RECS: return "Recommendations & news";
-            case OFF: return "Off";
-            default: return "Focused app";
+            case ALL: return t.s(R.string.shelf_mode_all);
+            case RECS: return t.s(R.string.shelf_mode_recs);
+            case OFF: return t.s(R.string.shelf_mode_off);
+            default: return t.s(R.string.shelf_mode_app);
         }
     }
 
@@ -75,6 +75,7 @@ final class Shelf {
     static List<Item> continueWatching(Context c) {
         List<Item> out = new ArrayList<>();
         PackageManager pm = c.getPackageManager();
+        Txt t = Txt.of(c);
         for (Map.Entry<String, Watched.Entry> e : Watched.all(c).entrySet()) {
             Watched.Entry w = e.getValue();
             if (w.title == null && w.pos <= 0) continue;
@@ -87,9 +88,9 @@ final class Shelf {
             it.title = w.title != null ? w.title : label;
             StringBuilder s = new StringBuilder(label);
             if (w.subtitle != null && w.title != null) s.append("  ·  ").append(w.subtitle);
-            if (w.dur > 0 && w.pos > 0 && w.pos < w.dur) s.append("  ·  ").append(Watched.left(w.dur - w.pos));
+            if (w.dur > 0 && w.pos > 0 && w.pos < w.dur) s.append("  ·  ").append(Watched.left(t, w.dur - w.pos));
             else if (w.title == null) s.append("  ·  ").append(w.paused ? "paused at " : "stopped at ").append(Ui.duration(w.pos));
-            s.append("  ·  ").append(Watched.ago(System.currentTimeMillis() - w.at));
+            s.append("  ·  ").append(Watched.ago(t, System.currentTimeMillis() - w.at));
             it.sub = s.toString();
             if (w.dur > 0 && w.pos > 0) it.progress = Math.min(1f, w.pos / (float) w.dur);
             File art = Watched.artFile(c, e.getKey());
@@ -106,12 +107,15 @@ final class Shelf {
     /** Cached recommendations; refreshed in the background when older than an hour (call off the UI thread). */
     static List<Item> recommendations(Context c, boolean fetch) {
         File cache = new File(c.getCacheDir(), "shelf.json");
-        String key = "v4|" + films(c) + "|" + news(c) + "|" + feed(c); // bump to refetch after a format change
+        // The cached captions ("5 min ago", "Popular film") are in the language they were fetched in, so
+        // the language is part of the key. Bump the version to refetch after a format change.
+        String key = "v5|" + films(c) + "|" + news(c) + "|" + feed(c) + "|" + c.getResources().getConfiguration().getLocales().get(0).getLanguage();
         boolean fresh = cache.exists() && System.currentTimeMillis() - cache.lastModified() < 3600_000L
                 && key.equals(prefs(c).getString("shelf_key", ""));
         if (fetch && !fresh) {
             List<Item> got = new ArrayList<>();
-            List<Item> films = films(c) ? films() : new ArrayList<>(), news = news(c) ? news(feed(c)) : new ArrayList<>();
+            Txt t = Txt.of(c);
+            List<Item> films = films(c) ? films(t) : new ArrayList<>(), news = news(c) ? news(t, feed(c)) : new ArrayList<>();
             // Grouped, not interleaved: all the films, then the headlines.
             got.addAll(films);
             got.addAll(news);
@@ -127,7 +131,7 @@ final class Shelf {
     }
 
     /** The top films on Apple's Greek iTunes chart, with large posters. */
-    static List<Item> films() {
+    static List<Item> films(Txt t) {
         List<Item> out = new ArrayList<>();
         try {
             JSONArray entries = new JSONObject(http("https://itunes.apple.com/gr/rss/topmovies/limit=10/json"))
@@ -139,7 +143,7 @@ final class Shelf {
                 it.title = e.getJSONObject("im:name").getString("label");
                 String genre = e.optJSONObject("category") == null ? "" : e.getJSONObject("category").getJSONObject("attributes").optString("label");
                 String year = e.optJSONObject("im:releaseDate") == null ? "" : e.getJSONObject("im:releaseDate").optString("label", "").replaceAll("^(\\d{4}).*", "$1");
-                it.sub = "Popular film" + (genre.isEmpty() ? "" : "  ·  " + genre) + (year.isEmpty() ? "" : "  ·  " + year);
+                it.sub = t.s(R.string.shelf_popular_film) + (genre.isEmpty() ? "" : "  ·  " + genre) + (year.isEmpty() ? "" : "  ·  " + year);
                 it.summary = e.optJSONObject("summary") == null ? null : e.getJSONObject("summary").optString("label");
                 JSONArray imgs = e.getJSONArray("im:image");
                 it.artUrl = poster(imgs.getJSONObject(imgs.length() - 1).getString("label"));
@@ -159,15 +163,15 @@ final class Shelf {
     }
 
     /** The newest headlines from an RSS feed, with the story's photo when the feed has one. */
-    static List<Item> news(int feed) {
+    static List<Item> news(Txt t, int feed) {
         List<Item> out = new ArrayList<>();
         try {
-            out = parseRss(http(FEEDS[feed][1]), FEEDS[feed][0], 8);
+            out = parseRss(t, http(FEEDS[feed][1]), FEEDS[feed][0], 8);
         } catch (Exception ignored) { }
         return out;
     }
 
-    static List<Item> parseRss(String xml, String source, int max) throws Exception {
+    static List<Item> parseRss(Txt t, String xml, String source, int max) throws Exception {
         List<Item> out = new ArrayList<>();
         XmlPullParser p = Xml.newPullParser();
         p.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
@@ -183,13 +187,13 @@ final class Shelf {
                     if (url != null && it.artUrl == null && (type == null || type.startsWith("image"))) it.artUrl = url;
                 }
             } else if (ev == XmlPullParser.TEXT && it != null && tag != null) {
-                String t = p.getText().trim();
-                if (t.isEmpty()) continue;
+                String text = p.getText().trim();
+                if (text.isEmpty()) continue;
                 switch (tag) {
-                    case "title": it.title = it.title == null ? t : it.title + t; break;
-                    case "link": it.link = t; break;
-                    case "description": it.summary = (it.summary == null ? "" : it.summary) + t; break;
-                    case "pubDate": it.sub = source + "  ·  " + ago(t); break;
+                    case "title": it.title = it.title == null ? text : it.title + text; break;
+                    case "link": it.link = text; break;
+                    case "description": it.summary = (it.summary == null ? "" : it.summary) + text; break;
+                    case "pubDate": it.sub = source + "  ·  " + ago(t, text); break;
                 }
             } else if (ev == XmlPullParser.END_TAG) {
                 if ("item".equals(p.getName()) && it != null) {
@@ -220,10 +224,10 @@ final class Shelf {
         return s.replace("￼", "").replaceAll("[ \\t\\x0B\\f\\r]+", " ").replaceAll("\\n{3,}", "\n\n").trim();
     }
 
-    private static String ago(String rfc822) {
+    private static String ago(Txt t, String rfc822) {
         try {
             Date d = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH).parse(rfc822);
-            return Watched.ago(System.currentTimeMillis() - d.getTime());
+            return Watched.ago(t, System.currentTimeMillis() - d.getTime());
         } catch (Exception e) {
             return "";
         }

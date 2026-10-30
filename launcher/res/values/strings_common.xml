@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Language choice (Control Center → Language) -->
+    <string name="language_title">Language</string>
+    <string name="language_auto">Automatic (TV language)</string>
+
+    <!-- Weather conditions (WMO weather codes) -->
+    <string name="weather_sunny">Sunny</string>
+    <string name="weather_clear">Clear</string>
+    <string name="weather_partly_cloudy">Partly cloudy</string>
+    <string name="weather_cloudy">Cloudy</string>
+    <string name="weather_fog">Fog</string>
+    <string name="weather_drizzle">Drizzle</string>
+    <string name="weather_rain">Rain</string>
+    <string name="weather_snow">Snow</string>
+    <string name="weather_showers">Showers</string>
+    <string name="weather_snow_showers">Snow showers</string>
+    <string name="weather_thunderstorms">Thunderstorms</string>
+
+    <!-- UV index with its band, e.g. "5 moderate" -->
+    <string name="weather_uv_low">%1$d low</string>
+    <string name="weather_uv_moderate">%1$d moderate</string>
+    <string name="weather_uv_high">%1$d high</string>
+    <string name="weather_uv_very_high">%1$d very high</string>
+    <string name="weather_uv_extreme">%1$d extreme</string>
+
+    <!-- European air quality bands -->
+    <string name="weather_aq_good">good</string>
+    <string name="weather_aq_fair">fair</string>
+    <string name="weather_aq_moderate">moderate</string>
+    <string name="weather_aq_poor">poor</string>
+    <string name="weather_aq_very_poor">very poor</string>
+    <string name="weather_aq_extremely_poor">extremely poor</string>
+
+    <!-- Time left in what you were watching, and how long ago it was -->
+    <plurals name="watched_left_min">
+        <item quantity="one">%1$d min left</item>
+        <item quantity="other">%1$d min left</item>
+    </plurals>
+    <string name="watched_left_h">%1$d h %2$d min left</string>
+    <string name="watched_just_now">just now</string>
+    <plurals name="watched_min_ago">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="watched_hour_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <string name="watched_yesterday">yesterday</string>
+    <plurals name="watched_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+
+    <!-- Warning next to LIVE TV -->
+    <string name="box_disk_warning">Recordings disk %1$d%% full</string>
+
+    <!-- Top shelf modes, and the caption on a recommended film -->
+    <string name="shelf_mode_app">Focused app</string>
+    <string name="shelf_mode_all">All continue watching</string>
+    <string name="shelf_mode_recs">Recommendations &amp; news</string>
+    <string name="shelf_mode_off">Off</string>
+    <string name="shelf_popular_film">Popular film</string>
+</resources>

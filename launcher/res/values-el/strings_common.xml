@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Επιλογή γλώσσας (Κέντρο ελέγχου → Γλώσσα) -->
+    <string name="language_title">Γλώσσα</string>
+    <string name="language_auto">Αυτόματα (γλώσσα τηλεόρασης)</string>
+
+    <!-- Καιρικές συνθήκες -->
+    <string name="weather_sunny">Ηλιοφάνεια</string>
+    <string name="weather_clear">Αίθριος</string>
+    <string name="weather_partly_cloudy">Λίγα σύννεφα</string>
+    <string name="weather_cloudy">Συννεφιά</string>
+    <string name="weather_fog">Ομίχλη</string>
+    <string name="weather_drizzle">Ψιχάλες</string>
+    <string name="weather_rain">Βροχή</string>
+    <string name="weather_snow">Χιόνι</string>
+    <string name="weather_showers">Μπόρες</string>
+    <string name="weather_snow_showers">Χιονοπτώσεις</string>
+    <string name="weather_thunderstorms">Καταιγίδες</string>
+
+    <!-- Δείκτης UV με την κατηγορία του -->
+    <string name="weather_uv_low">%1$d χαμηλός</string>
+    <string name="weather_uv_moderate">%1$d μέτριος</string>
+    <string name="weather_uv_high">%1$d υψηλός</string>
+    <string name="weather_uv_very_high">%1$d πολύ υψηλός</string>
+    <string name="weather_uv_extreme">%1$d ακραίος</string>
+
+    <!-- Ποιότητα αέρα (ευρωπαϊκή κλίμακα) -->
+    <string name="weather_aq_good">καλή</string>
+    <string name="weather_aq_fair">αποδεκτή</string>
+    <string name="weather_aq_moderate">μέτρια</string>
+    <string name="weather_aq_poor">κακή</string>
+    <string name="weather_aq_very_poor">πολύ κακή</string>
+    <string name="weather_aq_extremely_poor">εξαιρετικά κακή</string>
+
+    <!-- Χρόνος που απομένει και πότε το είδες -->
+    <plurals name="watched_left_min">
+        <item quantity="one">απομένει %1$d λεπτό</item>
+        <item quantity="other">απομένουν %1$d λεπτά</item>
+    </plurals>
+    <string name="watched_left_h">απομένουν %1$d ώ. %2$d λ.</string>
+    <string name="watched_just_now">μόλις τώρα</string>
+    <plurals name="watched_min_ago">
+        <item quantity="one">πριν από %1$d λεπτό</item>
+        <item quantity="other">πριν από %1$d λεπτά</item>
+    </plurals>
+    <plurals name="watched_hour_ago">
+        <item quantity="one">πριν από %1$d ώρα</item>
+        <item quantity="other">πριν από %1$d ώρες</item>
+    </plurals>
+    <string name="watched_yesterday">χθες</string>
+    <plurals name="watched_days_ago">
+        <item quantity="one">πριν από %1$d ημέρα</item>
+        <item quantity="other">πριν από %1$d ημέρες</item>
+    </plurals>
+
+    <!-- Προειδοποίηση δίπλα στο LIVE TV -->
+    <string name="box_disk_warning">Ο δίσκος εγγραφών είναι γεμάτος κατά %1$d%%</string>
+
+    <!-- Λειτουργίες του Top Shelf και ετικέτα ταινίας -->
+    <string name="shelf_mode_app">Επιλεγμένη εφαρμογή</string>
+    <string name="shelf_mode_all">Όλα για συνέχεια</string>
+    <string name="shelf_mode_recs">Προτάσεις &amp; ειδήσεις</string>
+    <string name="shelf_mode_off">Ανενεργό</string>
+    <string name="shelf_popular_film">Δημοφιλής ταινία</string>
+</resources>

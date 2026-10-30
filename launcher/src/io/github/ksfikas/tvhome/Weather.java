@@ -57,7 +57,7 @@ final class Weather {
                 JSONObject cur = new JSONObject(get(String.format(Locale.ROOT,
                         "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current=temperature_2m,weather_code,is_day",
                         p.getFloat("lat", 0), p.getFloat("lon", 0)))).getJSONObject("current");
-                String s = Math.round(cur.getDouble("temperature_2m")) + "°  " + describe(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1);
+                String s = Math.round(cur.getDouble("temperature_2m")) + "°  " + describe(Txt.of(c), cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1);
                 p.edit().putString("text", s).putLong("at", System.currentTimeMillis()).apply();
                 age = 0;
             } catch (Exception ignored) { }
@@ -83,7 +83,7 @@ final class Weather {
             JSONObject cur = f.getJSONObject("current"), h = f.getJSONObject("hourly"), d = f.getJSONObject("daily");
             StringBuilder s = new StringBuilder();
             s.append(Math.round(cur.getDouble("temperature_2m"))).append("°  ")
-                    .append(describe(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1))
+                    .append(describe(Txt.of(c), cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1))
                     .append("   ·   feels like ").append(Math.round(cur.getDouble("apparent_temperature"))).append('°')
                     .append("   ·   humidity ").append(cur.getInt("relative_humidity_2m")).append('%')
                     .append("   ·   wind ").append(Math.round(cur.getDouble("wind_speed_10m"))).append(" km/h\n\n");
@@ -92,7 +92,7 @@ final class Weather {
             for (int i = 1; i < h.getJSONArray("time").length(); i++) {
                 s.append(h.getJSONArray("time").getString(i).substring(11, 16)).append("   ")
                         .append(Math.round(h.getJSONArray("temperature_2m").getDouble(i))).append("°  ")
-                        .append(describe(h.getJSONArray("weather_code").getInt(i), true));
+                        .append(describe(Txt.of(c), h.getJSONArray("weather_code").getInt(i), true));
                 int rain = h.getJSONArray("precipitation_probability").optInt(i, 0);
                 if (rain >= 20) s.append("  ·  rain ").append(rain).append('%');
                 s.append('\n');
@@ -102,19 +102,19 @@ final class Weather {
             for (int i = 0; i < d.getJSONArray("time").length(); i++) {
                 s.append(dayName(i, d.getJSONArray("time").getString(i))).append("   ").append(Math.round(d.getJSONArray("temperature_2m_max").getDouble(i))).append("° / ")
                         .append(Math.round(d.getJSONArray("temperature_2m_min").getDouble(i))).append("°  ")
-                        .append(describe(d.getJSONArray("weather_code").getInt(i), true))
+                        .append(describe(Txt.of(c), d.getJSONArray("weather_code").getInt(i), true))
                         .append("  ·  rain ").append(d.getJSONArray("precipitation_probability_max").optInt(i, 0)).append("%\n");
             }
 
             s.append("\nSunrise ").append(d.getJSONArray("sunrise").getString(0).substring(11, 16))
                     .append("   ·   sunset ").append(d.getJSONArray("sunset").getString(0).substring(11, 16))
-                    .append("   ·   UV ").append(uv(d.getJSONArray("uv_index_max").optDouble(0, 0)));
+                    .append("   ·   UV ").append(uv(Txt.of(c), d.getJSONArray("uv_index_max").optDouble(0, 0)));
             try {
                 JSONObject aq = new JSONObject(get(String.format(Locale.ROOT,
                         "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.3f&longitude=%.3f&current=european_aqi", lat, lon)))
                         .getJSONObject("current");
                 int aqi = aq.getInt("european_aqi");
-                s.append("\nAir quality ").append(airQuality(aqi)).append(" (").append(aqi).append(')');
+                s.append("\nAir quality ").append(airQuality(Txt.of(c), aqi)).append(" (").append(aqi).append(')');
             } catch (Exception ignored) { } // air quality is a nice-to-have
             return s.toString();
         } catch (Exception e) {
@@ -141,14 +141,14 @@ final class Weather {
                 JSONObject cur = f.getJSONObject("current"), d = f.getJSONObject("daily");
                 JSONArray out = new JSONArray();
                 out.put(Math.round(cur.getDouble("temperature_2m")) + "°");
-                out.put(describe(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1));
+                out.put(describe(Txt.of(c), cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1));
                 out.put("Feels like " + Math.round(cur.getDouble("apparent_temperature")) + "°   ·   humidity "
                         + cur.getInt("relative_humidity_2m") + "%   ·   wind " + Math.round(cur.getDouble("wind_speed_10m")) + " km/h");
                 for (int i = 0; i < d.getJSONArray("time").length(); i++) {
                     out.put(dayName(i, d.getJSONArray("time").getString(i)) + "\t"
                             + Math.round(d.getJSONArray("temperature_2m_max").getDouble(i)) + "° / "
                             + Math.round(d.getJSONArray("temperature_2m_min").getDouble(i)) + "°\t"
-                            + describe(d.getJSONArray("weather_code").getInt(i), true));
+                            + describe(Txt.of(c), d.getJSONArray("weather_code").getInt(i), true));
                 }
                 p.edit().putString("glance", out.toString()).putLong("glance_at", System.currentTimeMillis()).apply();
                 age = 0;
@@ -178,28 +178,30 @@ final class Weather {
     }
 
     /** UV index in words (WHO bands). */
-    static String uv(double v) {
-        long r = Math.round(v);
-        return r + (r <= 2 ? " low" : r <= 5 ? " moderate" : r <= 7 ? " high" : r <= 10 ? " very high" : " extreme");
+    static String uv(Txt t, double v) {
+        int r = (int) Math.round(v);
+        return t.s(r <= 2 ? R.string.weather_uv_low : r <= 5 ? R.string.weather_uv_moderate : r <= 7 ? R.string.weather_uv_high
+                : r <= 10 ? R.string.weather_uv_very_high : R.string.weather_uv_extreme, r);
     }
 
     /** European AQI bands. */
-    static String airQuality(int aqi) {
-        return aqi <= 20 ? "good" : aqi <= 40 ? "fair" : aqi <= 60 ? "moderate" : aqi <= 80 ? "poor" : aqi <= 100 ? "very poor" : "extremely poor";
+    static String airQuality(Txt t, int aqi) {
+        return t.s(aqi <= 20 ? R.string.weather_aq_good : aqi <= 40 ? R.string.weather_aq_fair : aqi <= 60 ? R.string.weather_aq_moderate
+                : aqi <= 80 ? R.string.weather_aq_poor : aqi <= 100 ? R.string.weather_aq_very_poor : R.string.weather_aq_extremely_poor);
     }
 
     /** WMO weather codes, in words. */
-    static String describe(int code, boolean day) {
-        if (code == 0) return day ? "Sunny" : "Clear";
-        if (code <= 2) return "Partly cloudy";
-        if (code == 3) return "Cloudy";
-        if (code <= 48) return "Fog";
-        if (code <= 57) return "Drizzle";
-        if (code <= 67) return "Rain";
-        if (code <= 77) return "Snow";
-        if (code <= 82) return "Showers";
-        if (code <= 86) return "Snow showers";
-        return "Thunderstorms";
+    static String describe(Txt t, int code, boolean day) {
+        if (code == 0) return t.s(day ? R.string.weather_sunny : R.string.weather_clear);
+        if (code <= 2) return t.s(R.string.weather_partly_cloudy);
+        if (code == 3) return t.s(R.string.weather_cloudy);
+        if (code <= 48) return t.s(R.string.weather_fog);
+        if (code <= 57) return t.s(R.string.weather_drizzle);
+        if (code <= 67) return t.s(R.string.weather_rain);
+        if (code <= 77) return t.s(R.string.weather_snow);
+        if (code <= 82) return t.s(R.string.weather_showers);
+        if (code <= 86) return t.s(R.string.weather_snow_showers);
+        return t.s(R.string.weather_thunderstorms);
     }
 
     private static String get(String url) throws IOException {

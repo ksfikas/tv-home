@@ -35,6 +35,11 @@ import java.util.Set;
  */
 public class GuideActivity extends Activity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     private static final long CHUNK = 6 * 3600, STEP = 30 * 60, SPAN = 2 * 3600;
     /** Logo width in the channel column, in pixels (small, so all channels' logos fit in the cache). */
     static final int LOGO_W = 160;

@@ -69,6 +69,11 @@ import java.util.Set;
  */
 public class MainActivity extends Activity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     // Dock, hidden apps, Live TV and grid width come from res/values/config.xml.
     private String[] dockApps;
     private final Set<String> hidden = new HashSet<>();
@@ -882,7 +887,7 @@ public class MainActivity extends Activity {
                     // With the channel list (every 15 min): is the recordings disk getting full?
                     long[] disk = null;
                     if (tvh != null) try { disk = tvh.diskSpace(); } catch (java.io.IOException ignored) { }
-                    diskWarning = BoxHealth.diskWarning(disk);
+                    diskWarning = BoxHealth.diskWarning(Txt.of(this), disk);
                 }
                 else { list = new ArrayList<>(Tvh.channels); if (tvh != null) tvh.fillNow(list); }
             } catch (java.io.IOException e) {
@@ -1489,7 +1494,7 @@ public class MainActivity extends Activity {
         String mode = Shelf.mode(this);
         String[] modes = {Shelf.APP, Shelf.ALL, Shelf.RECS, Shelf.OFF};
         List<String> labels = new ArrayList<>();
-        for (String m : modes) labels.add((m.equals(mode) ? "✓  " : "      ") + Shelf.modeName(m));
+        for (String m : modes) labels.add((m.equals(mode) ? "✓  " : "      ") + Shelf.modeName(Txt.of(this), m));
         labels.add("Recommendations: films " + (Shelf.films(this) ? "on" : "off"));
         labels.add("Recommendations: news " + (Shelf.news(this) ? "on" : "off"));
         labels.add("News from: " + Shelf.FEEDS[Shelf.feed(this)][0]);
@@ -1506,6 +1511,15 @@ public class MainActivity extends Activity {
             refreshShelf();
             pickShelf();
         });
+    }
+
+    /** Control Center → Language: automatic (the TV's language), English or Greek. Applying it restarts the app. */
+    private void pickLanguage() {
+        Txt t = Txt.of(this);
+        String current = Lang.choice(this);
+        String[] labels = new String[Lang.CHOICES.length];
+        for (int i = 0; i < labels.length; i++) labels[i] = (Lang.CHOICES[i].equals(current) ? "✓  " : "      ") + Lang.label(t, Lang.CHOICES[i]);
+        Ui.menu(this, t.s(R.string.language_title), labels, i -> Lang.apply(this, Lang.CHOICES[i]));
     }
 
     /** Control Center → Screensaver: start it now, which slides to show, and how long each stays. */
@@ -1705,11 +1719,12 @@ public class MainActivity extends Activity {
         Object[][] pairs = {
                 {"⇥", "Inputs", "Live TV", (Runnable) () -> showInputs(pills.get(1))},
                 {"⚙", "Settings", "Android TV", (Runnable) () -> launch(new Intent(Settings.ACTION_SETTINGS))},
-                {"▤", "Top shelf", Shelf.modeName(Shelf.mode(this)), (Runnable) this::pickShelf},
+                {"▤", "Top shelf", Shelf.modeName(Txt.of(this), Shelf.mode(this)), (Runnable) this::pickShelf},
                 {"☰", "TV guide", Tvh.get(this) == null ? "Needs Tvheadend" : "What's on", (Runnable) () -> { if (Tvh.get(this) != null) launch(new Intent(this, GuideActivity.class)); }},
                 {"☁", "Weather", weatherNow == null ? "Set a city" : "Next days", (Runnable) this::showWeatherDetails},
                 {"▯", "Phone remote", RemoteServer.enabled(this) ? "On · QR" : "Off", (Runnable) this::showRemoteSetup},
                 {"▣", "Screensaver", "Photos & info", (Runnable) this::pickScreensaver},
+                {"🌐", getString(R.string.language_title), Lang.label(Txt.of(this), Lang.choice(this)), (Runnable) this::pickLanguage},
         };
         for (int i = 0; i < pairs.length; i += 2) {
             LinearLayout r = new LinearLayout(this);
@@ -1846,6 +1861,7 @@ public class MainActivity extends Activity {
             case "☁": return R.drawable.sym_cloud;
             case "▯": return R.drawable.sym_smartphone;
             case "▣": return R.drawable.sym_screensaver;
+            case "🌐": return R.drawable.sym_language;
             case "🎙": return R.drawable.sym_mic;
             case "−": return R.drawable.sym_volume_down;
             case "+": return R.drawable.sym_volume_up;

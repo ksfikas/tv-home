@@ -30,6 +30,11 @@ import java.util.List;
  */
 public class SearchActivity extends Activity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Lang.wrap(base));
+    }
+
     private Tvh tvh;
     private EditText query;
     private LinearLayout results;
