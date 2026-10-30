@@ -82,7 +82,7 @@ separate TV client.
   this box, kept on the box.
 - **Top Shelf** (Control → Top shelf), the big area above the dock, in one of four modes:
   *Focused app* (what you last watched there, the default), *All continue watching* (a carousel
-  with Resume / Remove), *Recommendations & news* (Greece's popular films from Apple's chart, with
+  with Resume / Remove), *Picks & news* (Greece's popular films from Apple's chart, with
   Apple TV and Where to watch; headlines with photos from ERT News, Kathimerini or in.gr, with a QR
   to read on your phone), or *Off*. Films and news can each be switched off.
 - **Phone remote**: Control → Phone remote shows a QR code; scan it and the remote opens already

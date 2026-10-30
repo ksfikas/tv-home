@@ -60,7 +60,7 @@
     <!-- Top shelf modes, and the caption on a recommended film -->
     <string name="shelf_mode_app">Focused app</string>
     <string name="shelf_mode_all">All continue watching</string>
-    <string name="shelf_mode_recs">Recommendations &amp; news</string>
+    <string name="shelf_mode_recs">Picks &amp; news</string>
     <string name="shelf_mode_off">Off</string>
     <string name="shelf_popular_film">Popular film</string>
 </resources>

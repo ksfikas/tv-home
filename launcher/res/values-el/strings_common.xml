@@ -60,7 +60,7 @@
     <!-- Λειτουργίες του Top Shelf και ετικέτα ταινίας -->
     <string name="shelf_mode_app">Επιλεγμένη εφαρμογή</string>
     <string name="shelf_mode_all">Συνέχεια προβολής: όλα</string>
-    <string name="shelf_mode_recs">Προτάσεις &amp; ειδήσεις</string>
+    <string name="shelf_mode_recs">Προτάσεις &amp; νέα</string>
     <string name="shelf_mode_off">Ανενεργό</string>
     <string name="shelf_popular_film">Δημοφιλής ταινία</string>
 </resources>
