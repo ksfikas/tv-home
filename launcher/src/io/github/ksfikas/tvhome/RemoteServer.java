@@ -232,7 +232,17 @@ final class RemoteServer {
             case "/api/state": {
                 JSONObject o = new JSONObject();
                 Tvh.Channel ch = Tvh.find(PlayerActivity.playing);
-                o.put("playing", ch == null ? JSONObject.NULL : channel(ch));
+                JSONObject cj = ch == null ? null : channel(ch);
+                if (cj != null && ch.now != null) {   // second screen: the synopsis and what comes next
+                    if (ch.now.subtitle != null) cj.put("sub", ch.now.subtitle);
+                    if (ch.now.description != null) cj.put("desc", ch.now.description.length() > 420 ? ch.now.description.substring(0, 417) + "…" : ch.now.description);
+                    try {
+                        if (tvh != null && ch.fromTvh()) for (Tvh.Event e : tvh.upcoming(ch.uuid, 3)) {
+                            if (e.start >= ch.now.stop) { cj.put("next", e.title).put("nextStart", e.start); break; }
+                        }
+                    } catch (java.io.IOException ignored) { }   // the card just has no "next" line
+                }
+                o.put("playing", cj == null ? JSONObject.NULL : cj);
                 o.put("tvh", tvh != null);
                 return o;
             }

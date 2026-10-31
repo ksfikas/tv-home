@@ -165,7 +165,7 @@ const DICT = {
     confirm_remove: 'Remove your photos from the TV?',
     sending: 'Sending…', on_tv_now: 'On the TV now', send_failed: 'Couldn\'t send that photo',
     wrong_pin: 'Wrong PIN',
-    watching: 'Watching', until: 'until {0}', watching_on_tv: 'Watching on the TV', opening_on_tv: 'Opening on the TV',
+    next_up: 'Next, {0}:', watching: 'Watching', until: 'until {0}', watching_on_tv: 'Watching on the TV', opening_on_tv: 'Opening on the TV',
     no_guide: 'No guide data',
     a_watch: 'Watch', a_record: 'Record', a_series: 'Every episode', a_remind: 'Remind me', a_reminder_set: 'Reminder set',
     will_record: 'Will record', series_set: 'Series recording set', reminder_cancelled: 'Reminder cancelled',
@@ -219,7 +219,7 @@ const DICT = {
     confirm_remove: 'Κατάργηση των φωτογραφιών σας από την τηλεόραση;',
     sending: 'Αποστολή…', on_tv_now: 'Στην τηλεόραση τώρα', send_failed: 'Η φωτογραφία δεν στάλθηκε',
     wrong_pin: 'Λάθος PIN',
-    watching: 'Παρακολούθηση', until: 'έως {0}', watching_on_tv: 'Προβολή στην τηλεόραση', opening_on_tv: 'Άνοιγμα στην τηλεόραση',
+    next_up: 'Επόμενο, {0}:', watching: 'Παρακολούθηση', until: 'έως {0}', watching_on_tv: 'Προβολή στην τηλεόραση', opening_on_tv: 'Άνοιγμα στην τηλεόραση',
     no_guide: 'Δεν υπάρχουν δεδομένα οδηγού',
     a_watch: 'Παρακολούθηση', a_record: 'Εγγραφή', a_series: 'Όλα τα επεισόδια', a_remind: 'Υπενθύμιση', a_reminder_set: 'Υπενθύμιση ορίστηκε',
     will_record: 'Θα εγγραφεί', series_set: 'Ορίστηκε εγγραφή σειράς', reminder_cancelled: 'Η υπενθύμιση ακυρώθηκε',
@@ -366,9 +366,15 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => tab(b.dat
 async function state() {
   const s = await call('state');
   const p = s.playing;
-  $('now').innerHTML = p ? `<div class="sub" style="margin:0 0 4px">${esc(t('watching'))}</div><b>${esc(p.number)} ${esc(p.name)}</b>` +
-    (p.now ? `<div class="sub" style="margin:6px 0 0">${esc(p.now)} · ${esc(t('until', hhmm(p.stop)))}</div>` : '')
-    : `<span class="sub">${esc(t('nothing_playing'))}</span>`;
+  if (!p) { $('now').innerHTML = `<span class="sub">${esc(t('nothing_playing'))}</span>`; return; }
+  const nowSec = Date.now() / 1000;
+  const pct = p.now && p.stop > p.start ? Math.max(0, Math.min(100, (nowSec - p.start) * 100 / (p.stop - p.start))) : -1;
+  $('now').innerHTML = `<div class="sub" style="margin:0 0 4px">${esc(t('watching'))}</div><b>${esc(p.number)} ${esc(p.name)}</b>` +
+    (p.now ? `<div style="margin:8px 0 0;font-size:17px">${esc(p.now)}${p.sub ? ' · <span class="sub">' + esc(p.sub) + '</span>' : ''}</div>` : '') +
+    (pct >= 0 ? `<div style="height:4px;border-radius:2px;background:rgba(128,128,128,.3);margin:8px 0 4px"><div style="height:4px;border-radius:2px;background:currentColor;width:${pct}%"></div></div>` +
+      `<div class="sub" style="margin:0">${esc(hhmm(p.start))} – ${esc(hhmm(p.stop))}</div>` : '') +
+    (p.desc ? `<div class="sub" style="margin:8px 0 0;line-height:1.4">${esc(p.desc)}</div>` : '') +
+    (p.next ? `<div class="sub" style="margin:8px 0 0">${esc(t('next_up', hhmm(p.nextStart)))} ${esc(p.next)}</div>` : '');
 }
 
 // Channel filter: accents and case ignored; digits match the start of the number (like the TV's search).
