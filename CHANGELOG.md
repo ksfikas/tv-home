@@ -3,6 +3,10 @@
 All notable changes to Advanced TV Home. Newest first. Releases are tagged `vX.Y.Z` and published on
 [GitHub](https://github.com/ksfikas/advanced-tv-home/releases).
 
+## Unreleased
+
+- **Voice commands** in Search (hold the mic): "watch ERT 1", "what is on MEGA", "record the news", and the Greek equivalents ("δες ΕΡΤ ένα", "τι παίζει στο Mega", "κατάγραψε τα νέα"). Anything else is a normal search.
+
 ## 3.0.3
 
 - **Rows remember your place**: going up or down between rows lands on the tile you were last on in that row, not the first.

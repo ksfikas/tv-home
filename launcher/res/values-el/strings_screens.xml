@@ -61,7 +61,13 @@
     <!-- Αναζήτηση -->
     <string name="search_title">Αναζήτηση στον οδηγό</string>
     <string name="search_hint">Κανάλι ή εκπομπή, π.χ. ERT, 700, ειδήσεις, ταινία…</string>
-    <string name="search_say_title">Πείτε ένα κανάλι ή μια εκπομπή</string>
+    <string name="search_say_title">Πείτε έναν τίτλο, ή: δες ΕΡΤ 1 · τι παίζει στο Mega · κατάγραψε τα νέα</string>
+    <string name="voice_watch">Παρακολούθηση</string>
+    <string name="voice_now">Τώρα: %1$s (έως %2$s)</string>
+    <string name="voice_next">Επόμενο: %1$s, %2$s</string>
+    <string name="voice_record_q">Εγγραφή στο %1$s, %2$s;</string>
+    <string name="voice_record">Εγγραφή</string>
+    <string name="voice_recorded">Η εγγραφή ορίστηκε</string>
     <string name="search_voice_missing">Η φωνητική εισαγωγή δεν είναι διαθέσιμη σε αυτή τη συσκευή· πληκτρολογήστε</string>
     <string name="search_searching">Αναζήτηση…</string>
     <string name="search_channels">Κανάλια</string>

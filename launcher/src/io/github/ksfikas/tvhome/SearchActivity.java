@@ -154,11 +154,81 @@ public class SearchActivity extends Activity {
         if (request != VOICE || result != RESULT_OK || data == null) return;
         java.util.ArrayList<String> said = data.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS);
         if (said == null || said.isEmpty()) return;
-        query.setText(said.get(0));
+        VoiceCommand cmd = VoiceCommand.parse(said.get(0));
+        if (cmd.type != VoiceCommand.SEARCH) { runVoice(cmd, said.get(0)); return; }
+        searchFor(said.get(0));
+    }
+
+    private void searchFor(String text) {
+        query.setText(text);
         query.setSelection(query.length());
         handler.removeCallbacks(search);
         search();
         focusFirstResult = true;
+    }
+
+    /** "Watch ERT 1", "what's on MEGA", "record the news": do it, or search for the words when nothing matches. */
+    private void runVoice(VoiceCommand cmd, String said) {
+        message.setText(R.string.search_searching);
+        Tvh.IO.execute(() -> {
+            try {
+                if (Tvh.channels.isEmpty()) tvh.loadChannels();
+                if (cmd.type == VoiceCommand.RECORD) {
+                    Tvh.Event ev = soonestWithTitle(cmd.arg);
+                    if (ev != null) { runOnUiThread(() -> confirmRecord(ev)); return; }
+                } else {
+                    List<Tvh.Channel> m = Tvh.matchChannels(Tvh.channels, cmd.arg, 1);
+                    if (!m.isEmpty()) {
+                        Tvh.Channel ch = m.get(0);
+                        if (cmd.type == VoiceCommand.WATCH) { runOnUiThread(() -> watchChannel(ch)); return; }
+                        List<Tvh.Event> next = tvh.upcoming(ch.uuid, 3);
+                        runOnUiThread(() -> showWhatOn(ch, next));
+                        return;
+                    }
+                }
+            } catch (IOException ignored) { /* fall through to a normal search */ }
+            runOnUiThread(() -> searchFor(said));
+        });
+    }
+
+    /** The next airing (today and tomorrow) whose title contains the words, accents and case ignored. */
+    private Tvh.Event soonestWithTitle(String words) throws IOException {
+        long now = System.currentTimeMillis() / 1000;
+        String want = Tvh.fold(words);
+        Tvh.Event best = null;
+        for (List<Tvh.Event> l : tvh.window(now, now + 36 * 3600).values()) {
+            for (Tvh.Event e : l) {
+                if (e.stop <= now || Tvh.find(e.channelUuid) == null || !Tvh.fold(e.title).contains(want)) continue;
+                if (best == null || e.start < best.start) best = e;
+            }
+        }
+        return best;
+    }
+
+    private void showWhatOn(Tvh.Channel ch, List<Tvh.Event> events) {
+        long now = System.currentTimeMillis() / 1000;
+        StringBuilder s = new StringBuilder();
+        for (Tvh.Event e : events) {
+            if (s.length() > 0) s.append("\n");
+            s.append(e.isOn(now) ? getString(R.string.voice_now, e.title, Ui.time(this, e.stop))
+                    : getString(R.string.voice_next, e.title, Ui.time(this, e.start)));
+            if (s.toString().split("\n").length >= 3) break;
+        }
+        Ui.confirm(this, ch.name, s.length() == 0 ? getString(R.string.search_none) : s.toString(),
+                getString(R.string.voice_watch), () -> watchChannel(ch));
+    }
+
+    private void confirmRecord(Tvh.Event ev) {
+        Tvh.Channel ch = Tvh.find(ev.channelUuid);
+        long now = System.currentTimeMillis() / 1000;
+        String when = ev.isOn(now) ? getString(R.string.search_on_now_until, Ui.time(this, ev.stop)) : Ui.day(ev.start) + " " + Ui.time(this, ev.start);
+        Ui.confirm(this, ev.title, getString(R.string.voice_record_q, ch == null ? "" : ch.name, when), getString(R.string.voice_record), () ->
+                Tvh.IO.execute(() -> {
+                    String msg = getString(R.string.voice_recorded);
+                    try { tvh.record(ev.id); } catch (IOException e) { msg = e.getMessage(); }
+                    String m = msg;
+                    runOnUiThread(() -> android.widget.Toast.makeText(this, m, android.widget.Toast.LENGTH_SHORT).show());
+                }));
     }
 
     @Override

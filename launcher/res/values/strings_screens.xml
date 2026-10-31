@@ -61,7 +61,13 @@
     <!-- Search -->
     <string name="search_title">Search the guide</string>
     <string name="search_hint">Channel or programme, e.g. ERT, 700, news, a film…</string>
-    <string name="search_say_title">Say a channel or programme</string>
+    <string name="search_say_title">Say a title, or: watch ERT 1 · what is on MEGA · record the news</string>
+    <string name="voice_watch">Watch</string>
+    <string name="voice_now">Now: %1$s (until %2$s)</string>
+    <string name="voice_next">Next: %1$s, %2$s</string>
+    <string name="voice_record_q">Record on %1$s, %2$s?</string>
+    <string name="voice_record">Record</string>
+    <string name="voice_recorded">Recording set</string>
     <string name="search_voice_missing">Voice input isn\'t available on this box; type instead</string>
     <string name="search_searching">Searching…</string>
     <string name="search_channels">Channels</string>
