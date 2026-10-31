@@ -62,6 +62,9 @@ separate TV client.
 - **Series recording**: "Record every episode" from the guide, search or player; manage series
   under Recordings.
 - **Search**: find a channel or a programme by name in the whole guide, then watch, record or get a reminder.
+- **Suggested films that point at the right app**: the Top Shelf asks JustWatch where a film streams in
+  Greece and offers Netflix, Disney+, Prime Video, Apple TV and the others you have installed, marked
+  "rent" when paid. The home glow takes the colour of the poster in focus.
 - **Tvheadend tools** (Inputs → Tvheadend server): a **status** screen (tuners and signal, who is watching,
   what is recording, disk space), a **channel manager** (show or hide channels, change their numbers),
   **refresh the guide now** and **rescan channels**.
@@ -101,7 +104,8 @@ separate TV client.
   paired (home network only). From the phone: zap, pause, back to live, volume, sleep timer, turn
   the TV off and on, the channel list, the guide (now and next on every channel, or search) with
   record / every episode / remind me, a channel filter, a Tvheadend status card, opening apps, and
-  sending photos as wallpapers. Five wrong PIN attempts lock pairing for a minute. Android
+  sending photos as wallpapers, a second-screen card (synopsis, progress, what is next), a settings
+  backup and optional smart-home hooks. Five wrong PIN attempts lock pairing for a minute. Android
   doesn't let it press keys inside other apps.
 - **Voice search**: the mic in Search uses Google TV's voice input through the remote.
 - **Your dock**: hold OK on any app for Open, Add to dock / Move left / Move right / Remove from dock,
@@ -152,7 +156,8 @@ When the TV sits idle (after 10 minutes, Android's usual timeout) it turns into 
 - **A news ticker** scrolls the latest headlines along the bottom.
 - **In between, a few slides**: the **weather** (now, feels like, three days), **what's on TV right
   now** on your favourite channels with what comes next, **coming up** (your scheduled recordings and
-  reminders), **popular films** with their posters, and
+  reminders), **tonight for you** (programmes that fit what you record and your favourites, with the
+  reason), **popular films** with their posters, and
   **headlines** with the story's photo.
 - **Nothing new to set up.** It reuses what the launcher already has: the weather city, your
   Tvheadend guide and favourites, the Top Shelf's news feed (ERT News, Kathimerini or in.gr), the

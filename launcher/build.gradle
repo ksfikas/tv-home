@@ -10,8 +10,8 @@ android {
         applicationId "io.github.ksfikas.tvhome"
         minSdk 30
         targetSdk 30
-        versionCode 7
-        versionName "3.0.2-tvh"
+        versionCode 8
+        versionName "3.0.3-tvh"
     }
 
     // Keep the original flat layout: launcher/{AndroidManifest.xml,src,res,assets}.

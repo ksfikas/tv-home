@@ -9,6 +9,9 @@
     <string name="setup_tv_done">Live TV: συνδέθηκε</string>
     <string name="setup_tv_todo">Live TV: συνδέστε διακομιστή Tvheadend ή δέκτη δικτύου (προαιρετικό)</string>
     <string name="setup_remote_on">Τηλεχειριστήριο κινητού: ενεργό</string>
+    <string name="setup_fav_done">Αγαπημένα: %1$d κανάλια</string>
+    <string name="setup_fav_todo">Αγαπημένα: ξεκινήστε με τα πρώτα 8 κανάλια (OK)</string>
+    <string name="setup_fav_none">Συνδέστε πρώτα το Live TV, μετά μπορείτε να επιλέξετε κανάλια</string>
     <string name="setup_remote_todo">Τηλεχειριστήριο κινητού: ενεργοποιήστε το (προαιρετικό)</string>
     <string name="setup_saver_done">Προφύλαξη οθόνης: επιλέχθηκε</string>
     <string name="setup_saver_todo">Προφύλαξη οθόνης: επιλέξτε την (πώς;)</string>

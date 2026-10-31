@@ -9,6 +9,9 @@
     <string name="setup_tv_done">Live TV: connected</string>
     <string name="setup_tv_todo">Live TV: connect a Tvheadend server or network tuner (optional)</string>
     <string name="setup_remote_on">Phone remote: on</string>
+    <string name="setup_fav_done">Favourites: %1$d channels</string>
+    <string name="setup_fav_todo">Favourites: start with the first 8 channels (OK)</string>
+    <string name="setup_fav_none">Connect Live TV first, then the channels can be chosen</string>
     <string name="setup_remote_todo">Phone remote: turn it on (optional)</string>
     <string name="setup_saver_done">Screensaver: chosen</string>
     <string name="setup_saver_todo">Screensaver: choose it (how?)</string>

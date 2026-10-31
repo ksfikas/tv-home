@@ -3,13 +3,19 @@
 All notable changes to Advanced TV Home. Newest first. Releases are tagged `vX.Y.Z` and published on
 [GitHub](https://github.com/ksfikas/advanced-tv-home/releases).
 
-## Unreleased
+## 3.0.3
 
 - **Rows remember your place**: going up or down between rows lands on the tile you were last on in that row, not the first.
 - **Film cards**: one clear button for the app that has the film (rent shown in the subtitle), a small magnifier for "Where to watch", and a "3 / 18" counter instead of a row of dots. The button now opens the film inside Prime Video, Netflix and the others using JustWatch's Android TV links.
 - **Live TV**: a channel that plays sound but draws no picture, or sits in "buffering" for 8 seconds, is restarted automatically.
-
 - **Living colours**: the glow behind the home screen, and a touch of it in the dock strip, now take the colour of the film poster or news photo in focus, not just the dock app's brand colour.
+- **Tonight for you**: a screensaver slide with tonight's programmes that fit what you record and your favourite channels, each with the reason ("You record …"). It can be switched off under Control → Screensaver.
+- **Settings backup** on the phone page: save favourites, dock, sources, language, weather city and screensaver choices as a small file, and restore it later. Passwords are never included.
+- **Recordings**: a summary line (how many, space used, disk free), sizes in MB/GB, and MENU sorts biggest first.
+- **Where to watch** now lists every service that has the film (streaming, then rent or buy).
+- **Second screen** on the phone page: the programme's subtitle, a progress bar with times, the synopsis and what comes next.
+- **Smart home hooks** (phone page → Smart home): optional web addresses the TV calls when playback starts, pauses or stops, for example Home Assistant webhooks to dim the lights. Off until you set an address.
+- **Setup** gained a Favourites step that starts you with the first eight channels.
 
 ## 3.0.2
 

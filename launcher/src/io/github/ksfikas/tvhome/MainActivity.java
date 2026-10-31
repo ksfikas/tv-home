@@ -1688,15 +1688,32 @@ public class MainActivity extends Activity {
     }
 
     /** What is set up (✓) and what isn't (○); each line opens the matching dialog, then the list comes back. */
+    /** Setup step: make the first eight TV channels (by number) the favourites, as a starting point. */
+    private void setDefaultFavourites() {
+        List<String> uuids = new ArrayList<>();
+        for (Tvh.Channel ch : Tvh.channels) {
+            if (ch.radio || uuids.size() >= 8) continue;
+            uuids.add(ch.uuid);
+        }
+        if (uuids.isEmpty()) {
+            android.widget.Toast.makeText(this, R.string.setup_fav_none, android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        Tvh.setFavourites(this, uuids);
+        showChannels(Tvh.channels);
+    }
+
     private void pickSetup() {
         String city = Weather.city(this);
         boolean tv = Tvh.get(this) != null || Sources.configured(this);
         String chosen = Settings.Secure.getString(getContentResolver(), "screensaver_components");
         boolean saver = chosen != null && chosen.contains(getPackageName());
+        List<String> favs = Tvh.favourites(this);
         String[] items = {
                 "✓  " + getString(R.string.setup_language, Lang.label(Txt.of(this), Lang.choice(this))),
                 city.isEmpty() ? "○  " + getString(R.string.setup_weather_todo) : "✓  " + getString(R.string.setup_weather, city),
                 (tv ? "✓  " : "○  ") + getString(tv ? R.string.setup_tv_done : R.string.setup_tv_todo),
+                favs.isEmpty() ? "○  " + getString(R.string.setup_fav_todo) : "✓  " + getString(R.string.setup_fav_done, favs.size()),
                 (RemoteServer.enabled(this) ? "✓  " : "○  ") + getString(RemoteServer.enabled(this) ? R.string.setup_remote_on : R.string.setup_remote_todo),
                 (saver ? "✓  " : "○  ") + getString(saver ? R.string.setup_saver_done : R.string.setup_saver_todo),
                 getString(R.string.setup_done)};
@@ -1705,8 +1722,9 @@ public class MainActivity extends Activity {
                 case 0: setupReturn = true; pickLanguage(); break;
                 case 1: setupReturn = true; showWeatherSetup(); break;
                 case 2: setupReturn = true; showLiveSetup(); break;
-                case 3: setupReturn = true; showRemoteSetup(); break;
-                case 4: Ui.confirm(this, getString(R.string.main_screensaver), getString(R.string.setup_saver_help), getString(R.string.main_close), this::pickSetup); break;
+                case 3: setDefaultFavourites(); pickSetup(); break;
+                case 4: setupReturn = true; showRemoteSetup(); break;
+                case 5: Ui.confirm(this, getString(R.string.main_screensaver), getString(R.string.setup_saver_help), getString(R.string.main_close), this::pickSetup); break;
                 default: Tvh.prefs(this).edit().putBoolean("setup_done", true).apply();
             }
         });
