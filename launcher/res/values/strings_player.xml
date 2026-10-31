@@ -36,6 +36,7 @@
     <string name="player_recording_stopped">Recording stopped</string>
     <string name="player_recording">Recording</string>
     <string name="player_record_every">Record every episode</string>
+    <string name="player_pip">Picture in picture</string>
     <string name="player_tv_guide">TV guide</string>
     <string name="player_recordings">Recordings</string>
     <plurals name="player_sleep_left">

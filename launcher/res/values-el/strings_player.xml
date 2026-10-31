@@ -36,6 +36,7 @@
     <string name="player_recording_stopped">Η εγγραφή διακόπηκε</string>
     <string name="player_recording">Εγγραφή</string>
     <string name="player_record_every">Εγγραφή όλων των επεισοδίων</string>
+    <string name="player_pip">Εικόνα σε εικόνα</string>
     <string name="player_tv_guide">Οδηγός προγράμματος</string>
     <string name="player_recordings">Εγγραφές</string>
     <plurals name="player_sleep_left">

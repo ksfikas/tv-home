@@ -114,7 +114,8 @@ final class Reminders {
             // Already watching that channel: nothing to remind.
             if (r.channelUuid.equals(PlayerActivity.playing)) return;
             c.startActivity(new Intent(c, Popup.class).putExtra("r", stored)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_HISTORY));
+                    // NO_USER_ACTION: a popup coming up is not the user leaving, so the player must not shrink for it.
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_HISTORY | Intent.FLAG_ACTIVITY_NO_USER_ACTION));
         }
     }
 

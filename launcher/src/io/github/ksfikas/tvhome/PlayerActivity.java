@@ -1,8 +1,12 @@
 package io.github.ksfikas.tvhome;
 
 import android.app.Activity;
+import android.app.PictureInPictureParams;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.util.Rational;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -214,6 +218,55 @@ public class PlayerActivity extends Activity {
         if (sleepAt > 0) sleepTick();
         if (infoShown) refreshInfo();
         wake();
+    }
+
+    // ---------------------------------------------------------------- picture in picture
+
+    /** True while we open one of our own screens (guide, recordings): that is not the user leaving. */
+    private boolean openingOwnScreen;
+
+    /** Live TV or a recording from our own player, with a picture; not radio or a tuner app's TvView. */
+    private boolean canPip() {
+        return android.os.Build.VERSION.SDK_INT >= 26
+                && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+                && player != null && !isTvInput() && !isRadio() && (isRecording() || index >= 0);
+    }
+
+    /** Shrink the picture into a corner window; the launcher (or any app) shows behind it. */
+    private void enterPip() {
+        if (!canPip()) return;
+        closeList();
+        try {
+            enterPictureInPictureMode(new PictureInPictureParams.Builder().setAspectRatio(new Rational(16, 9)).build());
+        } catch (IllegalStateException | IllegalArgumentException ignored) { } // not allowed right now: stay full-screen
+    }
+
+    /** Home (or Recents) pressed: keep watching in the corner instead of stopping. */
+    @Override
+    protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (!openingOwnScreen) enterPip();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        openingOwnScreen = false;
+    }
+
+    @Override
+    public void onPictureInPictureModeChanged(boolean inPip, Configuration config) {
+        super.onPictureInPictureModeChanged(inPip, config);
+        // The overlays are drawn for a full screen: hide them in the small window, bring them back after.
+        float a = inPip ? 0f : 1f;
+        for (View v : new View[]{status, digits, pauseBadge, infoPanel, sleepBadge}) if (v != null) v.setAlpha(a);
+        if (inPip) { handler.removeCallbacks(hideBanner); banner.setAlpha(0f); }
+        else showBanner();
+    }
+
+    private void openOwnScreen(Intent i) {
+        openingOwnScreen = true;
+        startActivity(i);
     }
 
     @Override
@@ -638,11 +691,15 @@ public class PlayerActivity extends Activity {
                 actions.add(() -> recordSeries(this, tvh, ev, this::showBanner));
             }
         }
+        if (canPip()) {
+            labels.add(getString(R.string.player_pip));
+            actions.add(this::enterPip);
+        }
         if (!isRecording() && tvh != null) {
             labels.add(getString(R.string.player_tv_guide));
             actions.add(this::openGuide);
             labels.add(getString(R.string.player_recordings));
-            actions.add(() -> startActivity(new Intent(this, RecordingsActivity.class)));
+            actions.add(() -> openOwnScreen(new Intent(this, RecordingsActivity.class)));
         }
         if (sleepAt > 0) {
             int left = (int) Math.max(1, (sleepAt - android.os.SystemClock.elapsedRealtime()) / 60_000);
@@ -667,7 +724,7 @@ public class PlayerActivity extends Activity {
     }
 
     private void openGuide() {
-        startActivity(new Intent(this, GuideActivity.class));
+        openOwnScreen(new Intent(this, GuideActivity.class));
     }
 
     /** Shared by the player, guide and search: confirm, then set up a series recording. */
