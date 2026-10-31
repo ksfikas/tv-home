@@ -10,6 +10,7 @@
     <string name="remote_needs_tvh_guide">The guide needs Tvheadend</string>
     <string name="remote_needs_tvh_record">Recording needs Tvheadend</string>
     <string name="remote_pair_locked">Too many wrong PINs. Wait a minute, then use the new PIN shown on the TV</string>
+    <string name="remote_not_backup">That is not a backup from this app</string>
     <string name="remote_needs_tvh_status">The status needs Tvheadend</string>
     <string name="remote_unknown">Unknown request</string>
     <string name="remote_photo_large">Photo too large</string>

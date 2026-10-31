@@ -250,6 +250,14 @@ final class RemoteServer {
                     return new JSONObject().put("error", e.getMessage() == null ? c.getString(R.string.tvh_bad_reply) : e.getMessage());
                 }
             }
+            case "/api/backup":
+                return Backup.export(c);
+            case "/api/restore": {
+                int n;
+                try { n = Backup.restore(c, new JSONObject(p.getOrDefault("data", ""))); } catch (org.json.JSONException e) { n = -1; }
+                if (n < 0) return err(c, "not_backup", R.string.remote_not_backup);
+                return new JSONObject().put("restored", n);
+            }
             case "/api/watch":
                 start(c, new Intent(c, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_CHANNEL, p.get("ch")));
                 return ok();

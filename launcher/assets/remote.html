@@ -98,6 +98,13 @@
   <div class="label" data-i18n="lbl_server">Server</div>
   <button id="statusbtn" style="width:100%" onclick="toggleStatus()" data-i18n="status_btn">Tvheadend status</button>
   <div class="now hide" id="status" style="margin-top:10px;line-height:1.5"></div>
+  <div class="label" data-i18n="lbl_backup">Settings backup</div>
+  <div class="grid g2">
+    <button onclick="saveBackup()" data-i18n="backup_save">⬇ Save backup</button>
+    <button onclick="$('backupfile').click()" data-i18n="backup_restore">⬆ Restore</button>
+  </div>
+  <input id="backupfile" type="file" accept=".json,application/json" class="hide">
+  <div class="sub" data-i18n="backup_note" style="margin:8px 4px 0">Favourites, dock, sources, language and screensaver. Passwords are not included.</div>
 </section>
 
 <section id="tab-channels" class="hide">
@@ -166,6 +173,9 @@ const DICT = {
     on_now_until: 'on now, until {0}', nothing_found: 'Nothing coming up with that title',
     err_wrong_pin: 'Wrong PIN',
     err_pair_locked: 'Too many wrong PINs. Wait a minute, then use the new PIN shown on the TV',
+    lbl_backup: 'Settings backup', backup_save: '⬇ Save backup', backup_restore: '⬆ Restore',
+    backup_note: 'Favourites, dock, sources, language and screensaver. Passwords are not included.',
+    backup_done: n => n + ' settings restored', err_not_backup: 'That is not a backup from this app',
     chan_search_ph: 'Find a channel by name or number', lbl_server: 'Server', status_btn: 'Tvheadend status',
     st_tuner: 'Tuner {0}', st_idle: 'idle', st_busy: n => `in use (${n} ${n === 1 ? 'stream' : 'streams'})`,
     st_signal: 'Signal {0} · SNR {1}', st_watching: 'Watching now', st_nobody: 'Nobody is watching',
@@ -217,6 +227,9 @@ const DICT = {
     on_now_until: 'τώρα, έως {0}', nothing_found: 'Δεν βρέθηκε προσεχής εκπομπή με αυτόν τον τίτλο',
     err_wrong_pin: 'Λάθος PIN',
     err_pair_locked: 'Πάρα πολλά λάθος PIN. Περιμένετε ένα λεπτό και χρησιμοποιήστε το νέο PIN που εμφανίζεται στην τηλεόραση',
+    lbl_backup: 'Αντίγραφο ρυθμίσεων', backup_save: '⬇ Αποθήκευση αντιγράφου', backup_restore: '⬆ Επαναφορά',
+    backup_note: 'Αγαπημένα, dock, πηγές, γλώσσα και προφύλαξη οθόνης. Οι κωδικοί δεν περιλαμβάνονται.',
+    backup_done: n => 'Επαναφέρθηκαν ' + n + ' ρυθμίσεις', err_not_backup: 'Αυτό δεν είναι αντίγραφο από αυτή την εφαρμογή',
     chan_search_ph: 'Βρείτε κανάλι με όνομα ή αριθμό', lbl_server: 'Διακομιστής', status_btn: 'Κατάσταση Tvheadend',
     st_tuner: 'Δέκτης {0}', st_idle: 'αδρανής', st_busy: n => `σε χρήση (${n} ${n === 1 ? 'ροή' : 'ροές'})`,
     st_signal: 'Σήμα {0} · SNR {1}', st_watching: 'Παρακολουθούν τώρα', st_nobody: 'Κανείς δεν παρακολουθεί',
@@ -297,6 +310,22 @@ function shrink(file) {
     img.src = URL.createObjectURL(file);
   });
 }
+async function saveBackup() {
+  const j = await call('backup');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(j, null, 1)], {type: 'application/json'}));
+  a.download = 'advanced-tv-home-backup.json';
+  a.click();
+}
+$('backupfile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const j = await call('restore', {data: await f.text()});
+    toast(t('backup_done', j.restored));
+  } catch (err) { if (err.message === 'pair') return; }
+});
 $('photo').addEventListener('change', async e => {
   for (const f of e.target.files) {
     toast(t('sending'));
