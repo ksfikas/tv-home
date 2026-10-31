@@ -177,10 +177,16 @@ final class Shelf {
     }
 
     static List<Item> parseRss(Txt t, String xml, String source, int max) throws Exception {
-        List<Item> out = new ArrayList<>();
         XmlPullParser p = Xml.newPullParser();
         p.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
         p.setInput(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)), "UTF-8");
+        return parseRss(t, p, source, max, Shelf::plain);
+    }
+
+    /** The parsing itself; the parser and the HTML cleaner are passed in so it can be tested off the device. */
+    static List<Item> parseRss(Txt t, XmlPullParser p, String source, int max,
+                               java.util.function.UnaryOperator<String> clean) throws Exception {
+        List<Item> out = new ArrayList<>();
         Item it = null;
         String tag = null;
         for (int ev = p.getEventType(); ev != XmlPullParser.END_DOCUMENT && out.size() < max; ev = p.next()) {
@@ -209,9 +215,9 @@ final class Shelf {
                             // drop it from the text (Android would show an "OBJ" placeholder there).
                             java.util.regex.Matcher img = java.util.regex.Pattern.compile("<img[^>]+src=\"([^\"]+)\"").matcher(it.summary);
                             if (it.artUrl == null && img.find()) it.artUrl = img.group(1);
-                            it.summary = plain(it.summary);
+                            it.summary = clean.apply(it.summary);
                         }
-                        it.title = plain(it.title);
+                        it.title = clean.apply(it.title);
                         out.add(it);
                     }
                     it = null;

@@ -75,4 +75,5 @@ dependencies {
     // Unit tests (JVM, run in CI). Android's org.json is a stub off-device, so tests use the real one.
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.json:json:20260814"
+    testImplementation "net.sf.kxml:kxml2:2.3.0"   // an XmlPullParser for the news-feed tests (Android's is a stub off-device)
 }
