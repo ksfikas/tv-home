@@ -28,7 +28,11 @@
 
     <!-- Recordings -->
     <string name="rec_title">Recordings</string>
-    <string name="rec_hint">OK to play · hold OK to delete · record, series and reminders from the TV guide or search</string>
+    <string name="rec_hint">OK to play · hold OK to delete · MENU: biggest first · record, series and reminders from the TV guide or search</string>
+    <string name="rec_summary">Recorded: %1$d · %2$s used · %3$s free of %4$s</string>
+    <string name="rec_summary_nodisk">Recorded: %1$d · %2$s used</string>
+    <string name="rec_sorted_size">Biggest first</string>
+    <string name="rec_sorted_date">Newest first</string>
     <string name="rec_loading">Loading…</string>
     <string name="rec_empty">Nothing recorded yet. Open the TV guide and press OK on a programme to record it.</string>
     <string name="rec_section_now">RECORDING NOW</string>

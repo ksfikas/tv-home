@@ -28,7 +28,11 @@
 
     <!-- Εγγραφές -->
     <string name="rec_title">Εγγραφές</string>
-    <string name="rec_hint">OK για αναπαραγωγή · παρατεταμένο OK για διαγραφή · νέες εγγραφές από τον οδηγό ή την αναζήτηση</string>
+    <string name="rec_hint">OK για αναπαραγωγή · παρατεταμένο OK για διαγραφή · MENU: μεγαλύτερες πρώτα · νέες εγγραφές από τον οδηγό ή την αναζήτηση</string>
+    <string name="rec_summary">Εγγραφές: %1$d · %2$s σε χρήση · %3$s ελεύθερα από %4$s</string>
+    <string name="rec_summary_nodisk">Εγγραφές: %1$d · %2$s σε χρήση</string>
+    <string name="rec_sorted_size">Μεγαλύτερες πρώτα</string>
+    <string name="rec_sorted_date">Νεότερες πρώτα</string>
     <string name="rec_loading">Φόρτωση…</string>
     <string name="rec_empty">Καμία εγγραφή ακόμα. Ανοίξτε τον οδηγό και πατήστε OK σε μια εκπομπή για να την εγγράψετε.</string>
     <string name="rec_section_now">ΕΓΓΡΑΦΗ ΤΩΡΑ</string>

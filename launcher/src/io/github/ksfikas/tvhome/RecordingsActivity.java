@@ -34,6 +34,11 @@ public class RecordingsActivity extends Activity {
     private LinearLayout list;
     private TextView empty;
     private String focusUuid;
+    private TextView summary;
+    private boolean bySize;
+    private List<Tvh.Recording> lastAll;
+    private List<Tvh.SeriesRule> lastSeries;
+    private long[] lastDisk;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -54,6 +59,9 @@ public class RecordingsActivity extends Activity {
         TextView hint = Ui.text(this, 12, "sans-serif", 0x80FFFFFF);
         hint.setText(R.string.rec_hint);
         root.addView(hint, new LinearLayout.LayoutParams(-2, -2));
+        summary = Ui.text(this, 13, "sans-serif", 0xB3FFFFFF);
+        summary.setPadding(0, Ui.dp(this, 6), 0, 0);
+        root.addView(summary, new LinearLayout.LayoutParams(-2, -2));
 
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
@@ -76,6 +84,7 @@ public class RecordingsActivity extends Activity {
     private void load() {
         empty.setText(R.string.rec_loading);
         Tvh.IO.execute(() -> {
+            long[] disk = null;
             List<Tvh.Recording> all = null;
             List<Tvh.SeriesRule> series = Collections.emptyList();
             String err = null;
@@ -83,10 +92,12 @@ public class RecordingsActivity extends Activity {
                 all = tvh.recordings();
                 series = tvh.seriesRules();
             } catch (IOException e) { err = e.getMessage(); }
+            try { disk = tvh.diskSpace(); } catch (IOException ignored) { }   // the summary just leaves the disk out
             List<Tvh.Recording> res = all;
             List<Tvh.SeriesRule> ser = series;
+            long[] dsk = disk;
             String e2 = err;
-            runOnUiThread(() -> { if (!isDestroyed()) show(res, ser, e2); });
+            runOnUiThread(() -> { if (!isDestroyed()) { lastDisk = dsk; show(res, ser, e2); } });
         });
     }
 
@@ -95,6 +106,7 @@ public class RecordingsActivity extends Activity {
         if (focused != null && focused.getTag() instanceof Tvh.Recording) focusUuid = ((Tvh.Recording) focused.getTag()).uuid;
         list.removeAllViews();
         list.addView(empty);
+        lastAll = all; lastSeries = series;
         if (all == null) { empty.setText(err); return; }
         List<Reminders.Reminder> reminders = Reminders.all(this);
         boolean nothing = all.isEmpty() && series.isEmpty() && reminders.isEmpty();
@@ -106,14 +118,20 @@ public class RecordingsActivity extends Activity {
             else done.add(r);
         }
         Collections.sort(sched, (a, b) -> Long.compare(a.start, b.start));
-        Collections.sort(done, (a, b) -> Long.compare(b.start, a.start));
+        Collections.sort(done, (a, b) -> bySize ? Long.compare(b.size, a.size) : Long.compare(b.start, a.start));
+        long used = 0;
+        for (Tvh.Recording r : done) used += r.size;
+        summary.setText(done.isEmpty() ? "" : lastDisk == null
+                ? getString(R.string.rec_summary_nodisk, done.size(), android.text.format.Formatter.formatShortFileSize(this, used))
+                : getString(R.string.rec_summary, done.size(), android.text.format.Formatter.formatShortFileSize(this, used),
+                        android.text.format.Formatter.formatShortFileSize(this, lastDisk[0]), android.text.format.Formatter.formatShortFileSize(this, lastDisk[1])));
         Collections.sort(failed, (a, b) -> Long.compare(b.start, a.start));
         empty.setText(nothing ? getString(R.string.rec_empty) : "");
         empty.setVisibility(nothing ? View.VISIBLE : View.GONE);
         View first = null, refocus = null;
         // The recording you were last watching goes first.
         String last = Tvh.resume(this).getString("last", null);
-        for (Tvh.Recording r : done) if (r.uuid.equals(last)) { done.remove(r); done.add(0, r); break; }
+        if (!bySize) for (Tvh.Recording r : done) if (r.uuid.equals(last)) { done.remove(r); done.add(0, r); break; }
         for (Object[] section : new Object[][]{{getString(R.string.rec_section_now), now}, {getString(R.string.rec_section_scheduled), sched},
                 {getString(R.string.rec_section_recorded), done}, {getString(R.string.rec_section_failed), failed}}) {
             @SuppressWarnings("unchecked") List<Tvh.Recording> rs = (List<Tvh.Recording>) section[1];
@@ -156,6 +174,18 @@ public class RecordingsActivity extends Activity {
         if (f != null) f.requestFocus();
     }
 
+    /** MENU: biggest recordings first, or newest first. */
+    @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent e) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_MENU && lastAll != null) {
+            bySize = !bySize;
+            Toast.makeText(this, bySize ? R.string.rec_sorted_size : R.string.rec_sorted_date, Toast.LENGTH_SHORT).show();
+            show(lastAll, lastSeries, null);
+            return true;
+        }
+        return super.onKeyDown(keyCode, e);
+    }
+
     private TextView header(String s) {
         TextView h = Ui.text(this, 11, "sans-serif-medium", 0x99FFFFFF);
         h.setText(s);
@@ -181,7 +211,7 @@ public class RecordingsActivity extends Activity {
         s.append("\n").append(r.channel).append("   ").append(Ui.day(r.start)).append("  ")
                 .append(Ui.time(this, r.start)).append(" – ").append(Ui.time(this, r.stop))
                 .append("   ").append(Ui.duration((r.stop - r.start) * 1000));
-        if (r.size > 0) s.append("   ").append(String.valueOf(r.size / (1024 * 1024))).append(" MB");
+        if (r.size > 0) s.append("   ").append(android.text.format.Formatter.formatShortFileSize(this, r.size));
         if (r.recording()) s.append("   ● ").append(getString(R.string.rec_badge_rec));
         long pos = Tvh.resume(this).getLong(r.uuid, 0);
         if (pos > 0 && r.stop > r.start) s.append("   ▶ ").append(getString(R.string.rec_percent_watched, (int) Math.min(99, pos / 10 / (r.stop - r.start))));
