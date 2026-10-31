@@ -86,8 +86,8 @@ final class BoxHealth {
             });
         });
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> Tvh.IO.execute(() -> {
-            long freed = tidyAll(a);
-            a.runOnUiThread(() -> refresh(a, d, "\n\n" + a.getString(R.string.box_freed, Formatter.formatShortFileSize(a, freed))));
+            long freed = tidyAll(a), mem = Memory.freeBackground(a);   // the cache, and other apps left in the background
+            a.runOnUiThread(() -> refresh(a, d, "\n\n" + a.getString(R.string.box_freed, Formatter.formatShortFileSize(a, freed), Formatter.formatShortFileSize(a, mem))));
         }));
         refresh(a, d, "");
     }

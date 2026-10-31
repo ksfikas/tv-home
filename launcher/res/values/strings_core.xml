@@ -27,9 +27,9 @@
     <!-- Box status -->
     <string name="box_title">Box status</string>
     <string name="box_checking">Checking…</string>
-    <string name="box_tidy">Tidy launcher cache</string>
+    <string name="box_tidy">Tidy cache and free memory</string>
     <string name="box_close">Close</string>
-    <string name="box_freed">Freed %1$s.</string>
+    <string name="box_freed">Freed %1$s of cache and %2$s of memory.</string>
     <string name="box_memory">Memory free: %1$s of %2$s</string>
     <string name="box_memory_low">Memory free: %1$s of %2$s (low: Android is closing apps)</string>
     <string name="box_storage">Storage free: %1$s of %2$s</string>

@@ -832,6 +832,10 @@ public class MainActivity extends Activity {
         if (Tvh.get(this) != null) rows.add(inputRow(getString(R.string.server_menu_item), this::pickServer));
         rows.add(inputRow(getString(R.string.main_weather_menu), this::showWeatherSetup));
         rows.add(inputRow(getString(R.string.main_box_status_menu),() -> BoxHealth.show(this)));
+        rows.add(inputRow(getString(R.string.main_free_mem_menu, getString(Memory.auto(this) ? R.string.main_state_on : R.string.main_state_off)), () -> {
+            Memory.setAuto(this, !Memory.auto(this));
+            android.widget.Toast.makeText(this, getString(R.string.main_free_mem_menu, getString(Memory.auto(this) ? R.string.main_state_on : R.string.main_state_off)), android.widget.Toast.LENGTH_SHORT).show();
+        }));
         rows.add(inputRow(getString(R.string.main_phone_remote_menu), this::showRemoteSetup));
         if (!Tvh.prefs(this).getStringSet("hidden_user", Collections.emptySet()).isEmpty()) {
             rows.add(inputRow(getString(R.string.main_show_hidden_apps),() -> {
@@ -2287,6 +2291,20 @@ public class MainActivity extends Activity {
     }
 
     private static java.lang.ref.WeakReference<MainActivity> current;
+
+
+    /** Android wants memory back while another app is in front: let go of the big pictures (they come back on return). */
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level < android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN || artLayer == null) return;
+        wallFront.setImageDrawable(null);
+        wallBack.setImageDrawable(null);
+        artLayer.setImageDrawable(null);
+        artPkg = null;
+        poster.setImageDrawable(null);
+        wallChangedAt = 0;      // so onResume loads a photo again
+    }
 
     private void nextWallpaper() {
         handler.removeCallbacks(rotateWallpaper);

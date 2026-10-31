@@ -27,9 +27,9 @@
     <!-- Κατάσταση συσκευής -->
     <string name="box_title">Κατάσταση συσκευής</string>
     <string name="box_checking">Έλεγχος…</string>
-    <string name="box_tidy">Εκκαθάριση προσωρινής μνήμης</string>
+    <string name="box_tidy">Εκκαθάριση και ελευθέρωση μνήμης</string>
     <string name="box_close">Κλείσιμο</string>
-    <string name="box_freed">Ελευθερώθηκαν %1$s.</string>
+    <string name="box_freed">Ελευθερώθηκαν %1$s προσωρινής μνήμης και %2$s μνήμης.</string>
     <string name="box_memory">Ελεύθερη μνήμη: %1$s από %2$s</string>
     <string name="box_memory_low">Ελεύθερη μνήμη: %1$s από %2$s (χαμηλή: το Android κλείνει εφαρμογές)</string>
     <string name="box_storage">Ελεύθερος χώρος: %1$s από %2$s</string>

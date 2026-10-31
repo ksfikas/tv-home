@@ -33,6 +33,7 @@
     <string name="main_live_tv_setup">Live TV setup…</string>
     <string name="main_weather_menu">Weather…</string>
     <string name="main_box_status_menu">Box status…</string>
+    <string name="main_free_mem_menu">Free memory for live TV: %1$s</string>
     <string name="main_phone_remote_menu">Phone remote…</string>
     <string name="main_show_hidden_apps">Show hidden apps</string>
     <string name="main_all_sources">All sources…</string>

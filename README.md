@@ -391,6 +391,8 @@ Undo with `tools\windows\restore.ps1` and the same list. On macOS or Linux, the 
 package names: run `adb shell pm disable-user --user 0 <package>` for each, one call per package.
 Everything is disabled for user 0, never uninstalled, and a factory reset brings it all back.
 
+The launcher also helps day to day: Box status → *Tidy cache and free memory*, and an optional *Free memory for live TV* in the Inputs menu, close other apps' idle background processes (Android limits this to apps it already counts as cached). The apps you use stay in memory by design; closing them from Recent apps before a long live TV session helps on a 2 GB box.
+
 On that box, the whole clean-up (debloat, launcher swap, 0.5× animations, cleared caches, unused
 apps removed) took free memory from about **535 MB to 940 MB** after a restart, and free storage
 from 1.1 GB to 1.9 GB.

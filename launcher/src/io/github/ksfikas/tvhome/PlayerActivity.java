@@ -160,6 +160,7 @@ public class PlayerActivity extends Activity {
                 View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         setContentView(buildUi());
+        Memory.freeIfLow(this);   // when switched on and memory is low: close background apps first
         tvh = Tvh.get(this);
         if (!Sources.configured(this)) { finish(); return; } // tvh may be null: tuner-only setups
         handleIntent(getIntent());

@@ -5,6 +5,8 @@ All notable changes to Advanced TV Home. Newest first. Releases are tagged `vX.Y
 
 ## Unreleased
 
+- **Memory**: Box status → "Tidy cache and free memory" now also closes other apps' idle background processes (Android only lets a launcher close ones it already counts as cached, so a recently used app such as Netflix may stay). Inputs → "Free memory for live TV" (off by default) does the same when live TV starts and memory is low. The home screen also lets go of its big pictures when another app needs memory.
+
 - **Voice commands** in Search (hold the mic): "watch ERT 1", "what is on MEGA", "record the news", and the Greek equivalents ("δες ΕΡΤ ένα", "τι παίζει στο Mega", "κατάγραψε τα νέα"). Anything else is a normal search.
 
 ## 3.0.3
