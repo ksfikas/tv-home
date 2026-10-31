@@ -7,6 +7,7 @@ import android.content.pm.ResolveInfo;
 import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -42,7 +43,7 @@ final class RemoteServer {
 
     static final int PORT = 8099;
     private static ServerSocket socket;
-    private static final ExecutorService pool = Executors.newFixedThreadPool(2);
+    private static final ExecutorService pool = Executors.newFixedThreadPool(6); // a few idle sockets must not block the remote
     private static final Handler ui = new Handler(Looper.getMainLooper());
 
     private static SharedPreferences prefs(Context c) {
@@ -145,13 +146,17 @@ final class RemoteServer {
                 return;
             }
             if (path.equals("/api/pair")) {
-                if (pin(c).equals(params.get("pin"))) {
+                if (pairLocked()) {
+                    send(out, 403, "application/json", err(c, "pair_locked", R.string.remote_pair_locked).toString());
+                } else if (pin(c).equals(params.get("pin"))) {
+                    pairMisses = 0;
                     String token = Long.toHexString(new SecureRandom().nextLong()) + Long.toHexString(new SecureRandom().nextLong());
                     Set<String> tokens = new HashSet<>(prefs(c).getStringSet("tokens", new HashSet<>()));
                     tokens.add(token);
                     prefs(c).edit().putStringSet("tokens", tokens).apply();
                     sendJson(out, new JSONObject().put("token", token));
                 } else {
+                    countMiss(c);
                     send(out, 403, "application/json", err(c, "wrong_pin", R.string.remote_wrong_pin).toString());
                 }
                 return;
@@ -391,6 +396,23 @@ final class RemoteServer {
     }
 
     private static JSONObject ok() throws JSONException { return new JSONObject().put("ok", true); }
+
+    // Four digits are only 10,000 guesses: after a few wrong ones, refuse pairing for a minute and change the PIN.
+    private static final int MAX_MISSES = 5;
+    private static final long LOCK_MS = 60_000L;
+    private static int pairMisses;
+    private static long lockedUntil;
+
+    private static synchronized boolean pairLocked() {
+        return SystemClock.elapsedRealtime() < lockedUntil;
+    }
+
+    private static synchronized void countMiss(Context c) {
+        if (++pairMisses < MAX_MISSES) return;
+        pairMisses = 0;
+        lockedUntil = SystemClock.elapsedRealtime() + LOCK_MS;
+        prefs(c).edit().remove("pin").apply(); // the next pin(c) makes a new one
+    }
 
     /** An error for the page: text in the TV language plus a short code the page translates into the phone language. */
     private static JSONObject err(Context c, String code, int res) throws JSONException {

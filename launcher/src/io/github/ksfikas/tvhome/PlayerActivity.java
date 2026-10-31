@@ -601,6 +601,7 @@ public class PlayerActivity extends Activity {
     // ---------------------------------------------------------------- options menu
 
     private void options() {
+        if (!isRecording() && (index < 0 || index >= list.size())) return; // still loading channels: nothing to offer yet
         List<String> labels = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
         // A tuner app's channel plays in TvView, outside our player: no pause, tracks or stream info.

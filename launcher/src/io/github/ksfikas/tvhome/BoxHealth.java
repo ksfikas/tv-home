@@ -20,7 +20,7 @@ import java.io.IOException;
 final class BoxHealth {
     private BoxHealth() { }
 
-    private static final long DAY = 24 * 3600_000L, LOGO_MAX_AGE = 30 * DAY;
+    private static final long DAY = 24 * 3600_000L, LOGO_MAX_AGE = 30 * DAY, SHELF_MAX_AGE = 14 * DAY;
 
     /** At most once a day, on returning home: drop old logos and any leftover pause buffer. */
     static void dailyTidy(Context c) {
@@ -38,6 +38,11 @@ final class BoxHealth {
         long now = System.currentTimeMillis();
         if (logos != null) for (File f : logos) {
             if (now - f.lastModified() > LOGO_MAX_AGE) { long n = f.length(); if (f.delete()) freed += n; }
+        }
+        // Posters and news photos for the Top Shelf and the screensaver: a dozen new ones a day.
+        File[] shelf = new File(c.getCacheDir(), "shelf").listFiles();
+        if (shelf != null) for (File f : shelf) {
+            if (now - f.lastModified() > SHELF_MAX_AGE) { long n = f.length(); if (f.delete()) freed += n; }
         }
         // Normally deleted when playback stops; a crash could leave it behind.
         File pause = new File(c.getCacheDir(), "pause.ts");

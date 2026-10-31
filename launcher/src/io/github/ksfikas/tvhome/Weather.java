@@ -33,7 +33,9 @@ final class Weather {
         name = name.trim();
         if (name.isEmpty()) { prefs(c).edit().clear().apply(); return null; }
         try {
-            JSONObject o = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=1&name="
+            // language: the place name comes back in the app's language ("Αθήνα" or "Athens")
+            JSONObject o = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=1&language="
+                    + c.getResources().getConfiguration().getLocales().get(0).getLanguage() + "&name="
                     + URLEncoder.encode(name, "UTF-8")));
             JSONArray r = o.optJSONArray("results");
             if (r == null || r.length() == 0) return c.getString(R.string.weather_city_not_found, name);

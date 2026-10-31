@@ -62,6 +62,6 @@ final class Lang {
         a.finishAffinity();
         // A fresh process, so nothing cached in the old language survives. As the home app, Android
         // starts it again by itself; the intent above makes it land on the home screen.
-        new Handler(Looper.getMainLooper()).postDelayed(() -> android.os.Process.killProcess(android.os.Process.myPid()), 250);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> android.os.Process.killProcess(android.os.Process.myPid()), 1000); // long enough for the new screen to be up and queued writes to land
     }
 }

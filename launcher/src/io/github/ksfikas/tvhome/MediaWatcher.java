@@ -37,17 +37,21 @@ public class MediaWatcher extends NotificationListenerService {
         try {
             sessions.addOnActiveSessionsChangedListener(changed, me, handler);
         } catch (SecurityException ignored) { return; } // access was taken away
+        connected = true;
         // The sessions already playing: a binder call, so off the main thread; track() runs on it again.
         Tvh.IO.execute(() -> {
             try {
                 List<MediaController> now = sessions.getActiveSessions(me);
-                handler.post(() -> track(now));
+                handler.post(() -> { if (connected) track(now); }); // not after the listener was disconnected
             } catch (SecurityException ignored) { }
         });
     }
 
+    private volatile boolean connected;
+
     @Override
     public void onListenerDisconnected() {
+        connected = false;
         if (sessions != null) sessions.removeOnActiveSessionsChangedListener(changed);
         tracked.clear();
     }

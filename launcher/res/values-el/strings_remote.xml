@@ -9,6 +9,7 @@
     <string name="remote_needs_tvh_search">Η αναζήτηση χρειάζεται το Tvheadend</string>
     <string name="remote_needs_tvh_guide">Ο οδηγός χρειάζεται το Tvheadend</string>
     <string name="remote_needs_tvh_record">Η εγγραφή χρειάζεται το Tvheadend</string>
+    <string name="remote_pair_locked">Πάρα πολλά λάθος PIN. Περιμένετε ένα λεπτό και χρησιμοποιήστε το νέο PIN που εμφανίζεται στην τηλεόραση</string>
     <string name="remote_unknown">Άγνωστο αίτημα</string>
     <string name="remote_photo_large">Η φωτογραφία είναι πολύ μεγάλη</string>
     <string name="remote_upload_interrupted">Η αποστολή διακόπηκε</string>

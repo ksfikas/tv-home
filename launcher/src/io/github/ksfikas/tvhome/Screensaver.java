@@ -116,6 +116,11 @@ public class Screensaver extends DreamService {
     public void onDreamingStarted() {
         super.onDreamingStarted();
         running = true;
+        // Start the photos at once: the information slides arrive when their network loads finish, which
+        // can take a minute when the network is slow or the server is asleep.
+        photos = photoList(getApplicationContext());
+        slides = new ArrayList<>(Collections.singletonList(new Slide(null)));
+        next();
         load();
     }
 
@@ -214,6 +219,9 @@ public class Screensaver extends DreamService {
     }
 
     private void startTicker(String line) {
+        // Same headlines as already scrolling (a refresh found nothing new): leave it, don't jump back.
+        if (line.equals(tickerShown) && tickerBar.getVisibility() == View.VISIBLE) return;
+        tickerShown = line;
         ticker.removeCallbacks(scroll);
         if (line.isEmpty()) { tickerBar.setVisibility(View.GONE); return; }
         ticker.setText(line);
@@ -237,7 +245,7 @@ public class Screensaver extends DreamService {
         final Context c = getApplicationContext();
         final boolean wantWeather = option(c, WEATHER), wantTv = option(c, TV), wantFilms = option(c, FILMS),
                 wantNews = option(c, NEWS), wantTicker = option(c, TICKER);
-        Tvh.IO.execute(() -> {
+        Tvh.IO.execute(() -> { try {
             String[] weather = wantWeather ? Weather.glance(c) : null;
             List<Row> tv = wantTv ? onTv(c) : new ArrayList<>();
             List<Shelf.Item> films = wantFilms ? Shelf.films(Txt.of(c)) : new ArrayList<>();
@@ -257,12 +265,27 @@ public class Screensaver extends DreamService {
                 if (b != null) { pics.put(it.artUrl, b); shown++; }
             }
             handler.post(() -> { if (running) build(weather, tv, films, wantNews ? news : new ArrayList<>(), wantTicker ? tickerText(news) : "", list, pics); });
-        });
+        } catch (Throwable t) { /* offline, or out of memory on a big image: keep what is already showing; this runs on the home app's process */ } });
     }
+
+    // What the last successful load produced, so one failed refresh doesn't empty the screen.
+    private List<Row> lastTv = new ArrayList<>();
+    private List<Shelf.Item> lastFilms = new ArrayList<>(), lastNews = new ArrayList<>();
+    private String lastLine = "";
+    private Map<String, Bitmap> lastPics = new HashMap<>();
+    private String tickerShown = "";
 
     private void build(String[] weather, List<Row> tv, List<Shelf.Item> films, List<Shelf.Item> news, String line,
                        List<String> list, Map<String, Bitmap> pics) {
         photos = list;
+        // A source that came back empty this time (offline, server asleep) keeps its previous content.
+        boolean keptOld = false;
+        if (tv.isEmpty() && !lastTv.isEmpty() && option(this, TV)) tv = lastTv; else lastTv = tv;
+        if (films.isEmpty() && !lastFilms.isEmpty() && option(this, FILMS)) { films = lastFilms; keptOld = true; } else lastFilms = films;
+        if (news.isEmpty() && !lastNews.isEmpty() && option(this, NEWS)) { news = lastNews; keptOld = true; } else lastNews = news;
+        if (line.isEmpty() && !lastLine.isEmpty() && option(this, TICKER)) line = lastLine; else lastLine = line;
+        if (keptOld) { Map<String, Bitmap> merged = new HashMap<>(lastPics); merged.putAll(pics); pics = merged; }
+        lastPics = pics;
         if (weather != null) {
             weatherChip.setText(weather[0] + "   " + weather[1] + "   ·   " + Weather.city(this));
             weatherChip.setVisibility(View.VISIBLE);
@@ -276,7 +299,9 @@ public class Screensaver extends DreamService {
         out.add(new Slide(null));
         if (weather != null) { out.add(weatherSlide(weather)); out.add(new Slide(null)); }
         if (!tv.isEmpty()) { out.add(tvSlide(tv)); out.add(new Slide(null)); }
-        if (!films.isEmpty()) { out.add(filmsSlide(films, pics)); out.add(new Slide(null)); }
+        boolean anyPoster = false;
+        for (Shelf.Item f : films) if (pics.get(f.artUrl) != null) anyPoster = true;
+        if (anyPoster) { out.add(filmsSlide(films, pics)); out.add(new Slide(null)); } // no posters downloaded: no empty slide
         for (int i = 0; i < news.size() && i < 4; i++) {
             out.add(newsSlide(news.get(i), pics.get(news.get(i).artUrl)));
             if (i == 1) out.add(new Slide(null));
@@ -296,8 +321,10 @@ public class Screensaver extends DreamService {
         final Slide s = slides.get(slideIndex);
         final String photo = nextPhoto();
         Tvh.IO.execute(() -> {
-            Bitmap bm = photo == null ? null : decode(photo);
-            handler.post(() -> show(s, bm));
+            Bitmap bm = null;
+            try { bm = photo == null ? null : decode(photo); } catch (Throwable ignored) { } // e.g. out of memory: show the slide without a new photo
+            final Bitmap got = bm;
+            handler.post(() -> show(s, got));
         });
     }
 
@@ -332,7 +359,8 @@ public class Screensaver extends DreamService {
         current = s.view;
         if (old != null && old != s.view) {
             old.animate().cancel();
-            old.animate().alpha(0f).setDuration(FADE_MS / 2).withEndAction(() -> content.removeView(old)).start();
+            // The same animator was given a 500 ms start delay when this view faded in: clear it.
+            old.animate().setStartDelay(0).alpha(0f).setDuration(FADE_MS / 2).withEndAction(() -> content.removeView(old)).start();
         }
         if (s.view != null) {
             s.view.animate().cancel();
@@ -519,7 +547,8 @@ public class Screensaver extends DreamService {
             o.inJustDecodeBounds = true;
             try (InputStream in = open(name)) { BitmapFactory.decodeStream(in, null, o); }
             o.inSampleSize = 1;
-            while (o.outWidth / (o.inSampleSize * 2) >= 1920) o.inSampleSize *= 2;
+            // By width for the screen, and by height too: a very tall image can exceed the GPU's texture limit.
+            while (o.outWidth / (o.inSampleSize * 2) >= 1920 || o.outHeight / (o.inSampleSize * 2) >= 4096) o.inSampleSize *= 2;
             o.inJustDecodeBounds = false;
             try (InputStream in = open(name)) { return BitmapFactory.decodeStream(in, null, o); }
         } catch (IOException e) {

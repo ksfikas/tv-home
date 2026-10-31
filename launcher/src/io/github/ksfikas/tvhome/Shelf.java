@@ -112,7 +112,8 @@ final class Shelf {
         String key = "v5|" + films(c) + "|" + news(c) + "|" + feed(c) + "|" + c.getResources().getConfiguration().getLocales().get(0).getLanguage();
         boolean fresh = cache.exists() && System.currentTimeMillis() - cache.lastModified() < 3600_000L
                 && key.equals(prefs(c).getString("shelf_key", ""));
-        if (fetch && !fresh) {
+        // Both sources down (offline): don't retry on every return to home, wait a few minutes.
+        if (fetch && !fresh && System.currentTimeMillis() - lastTotalFailure > 5 * 60_000L) {
             List<Item> got = new ArrayList<>();
             Txt t = Txt.of(c);
             List<Item> films = films(c) ? films(t) : new ArrayList<>(), news = news(c) ? news(t, feed(c)) : new ArrayList<>();
@@ -125,10 +126,14 @@ final class Shelf {
                 save(cache, got);
                 if (!complete) cache.setLastModified(System.currentTimeMillis() - 3300_000L); // retry in ~5 min
                 prefs(c).edit().putString("shelf_key", key).apply();
+            } else if (films(c) || news(c)) {
+                lastTotalFailure = System.currentTimeMillis();
             }
         }
         return load(cache);
     }
+
+    private static volatile long lastTotalFailure;
 
     /** The top films on Apple's Greek iTunes chart, with large posters. */
     static List<Item> films(Txt t) {
@@ -242,7 +247,10 @@ final class Shelf {
                 a.put(new JSONObject().put("kind", it.kind).put("title", it.title).put("sub", it.sub)
                         .put("summary", it.summary).put("link", it.link).put("art", it.artUrl).put("tall", it.tall));
             }
-            try (FileOutputStream out = new FileOutputStream(f)) { out.write(a.toString().getBytes(StandardCharsets.UTF_8)); }
+            // Write beside it and rename, so a reader (or a second fetch) never sees half a file.
+            File tmp = new File(f.getPath() + ".tmp");
+            try (FileOutputStream out = new FileOutputStream(tmp)) { out.write(a.toString().getBytes(StandardCharsets.UTF_8)); }
+            if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f); }
         } catch (Exception ignored) { }
     }
 
@@ -295,11 +303,14 @@ final class Shelf {
                 con.setReadTimeout(15000);
                 try (InputStream in = con.getInputStream()) { data = read(in); } finally { con.disconnect(); }
                 f.getParentFile().mkdirs();
-                try (FileOutputStream out = new FileOutputStream(f)) { out.write(data); }
+                File tmp = new File(f.getPath() + ".tmp");
+                try (FileOutputStream out = new FileOutputStream(tmp)) { out.write(data); }
+                if (!tmp.renameTo(f)) { f.delete(); tmp.renameTo(f); }
             }
             android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
             o.inJustDecodeBounds = true;
             android.graphics.BitmapFactory.decodeByteArray(data, 0, data.length, o);
+            if (o.outWidth <= 0) { f.delete(); return null; } // not an image (an error page, a cut-off download): fetch again next time
             o.inSampleSize = 1;
             while (o.outWidth / (o.inSampleSize * 2) >= maxW) o.inSampleSize *= 2;
             o.inJustDecodeBounds = false;

@@ -161,6 +161,7 @@ const DICT = {
     confirm_series: 'Record every episode of “{0}” on {1}?',
     on_now_until: 'on now, until {0}', nothing_found: 'Nothing coming up with that title',
     err_wrong_pin: 'Wrong PIN',
+    err_pair_locked: 'Too many wrong PINs. Wait a minute, then use the new PIN shown on the TV',
     err_pair_needed: 'Pair with the PIN shown on the TV',
     err_sleep_perm: 'The sleep timer needs the sleep permission (see the README)',
     err_off_perm: 'Turning off needs the sleep permission (see the README)',
@@ -206,6 +207,7 @@ const DICT = {
     confirm_series: 'Εγγραφή όλων των επεισοδίων του «{0}» στο κανάλι {1};',
     on_now_until: 'τώρα, έως {0}', nothing_found: 'Δεν βρέθηκε προσεχής εκπομπή με αυτόν τον τίτλο',
     err_wrong_pin: 'Λάθος PIN',
+    err_pair_locked: 'Πάρα πολλά λάθος PIN. Περιμένετε ένα λεπτό και χρησιμοποιήστε το νέο PIN που εμφανίζεται στην τηλεόραση',
     err_pair_needed: 'Συνδεθείτε με το PIN που εμφανίζεται στην τηλεόραση',
     err_sleep_perm: 'Ο χρονοδιακόπτης ύπνου χρειάζεται την άδεια ύπνου (δείτε το README)',
     err_off_perm: 'Η απενεργοποίηση χρειάζεται την άδεια ύπνου (δείτε το README)',
@@ -287,6 +289,7 @@ $('photo').addEventListener('change', async e => {
     try {
       const blob = await shrink(f);
       const r = await fetch('/api/wallpaper', {method: 'POST', headers: {'X-Token': token, 'Content-Type': 'image/jpeg'}, body: blob});
+      if (r.status === 401) { showPair(); break; } // the TV forgot this phone: back to the PIN screen
       const j = await r.json();
       if (j.error) { toast(errText(j)); break; }
       toast(t('on_tv_now'));
