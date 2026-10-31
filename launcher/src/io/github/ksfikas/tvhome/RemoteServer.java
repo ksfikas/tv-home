@@ -242,6 +242,14 @@ final class RemoteServer {
                 for (Tvh.Channel ch : Tvh.channels) a.put(channel(ch));
                 return a;
             }
+            case "/api/status": {
+                if (tvh == null) return err(c, "needs_tvh_status", R.string.remote_needs_tvh_status);
+                try {
+                    return tvh.serverStatus().toJson();
+                } catch (java.io.IOException e) { // e.g. a user without the right to see the status pages
+                    return new JSONObject().put("error", e.getMessage() == null ? c.getString(R.string.tvh_bad_reply) : e.getMessage());
+                }
+            }
             case "/api/watch":
                 start(c, new Intent(c, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_CHANNEL, p.get("ch")));
                 return ok();

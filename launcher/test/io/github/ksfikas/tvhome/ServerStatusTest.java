@@ -70,6 +70,22 @@ public class ServerStatusTest {
     }
 
     @Test
+    public void theJsonForThePhoneCarriesTheSameFacts() throws Exception {
+        JSONObject j = parse(BUSY, SUBS, new ArrayList<>(), new long[]{26 * GB, 31 * GB}).toJson();
+        assertEquals("4.3-2471", j.getString("version"));
+        JSONObject tuner = j.getJSONArray("tuners").getJSONObject(0);
+        assertEquals("Sony CXD2880 · DVB-T", tuner.getString("name"));
+        assertEquals(2, tuner.getInt("subs"));
+        assertEquals("80 %", tuner.getString("signal"));
+        assertEquals("28.6 dB", tuner.getString("snr"));
+        assertEquals(2, j.getJSONArray("watchers").length());
+        assertEquals("kostas@192.168.178.130", j.getJSONArray("watchers").getJSONObject(0).getString("who"));
+        assertEquals(26 * GB, j.getJSONArray("disk").getLong(0));
+        // no disk reported: null, not a crash
+        assertTrue(parse(IDLE, NO_SUBS, new ArrayList<>(), null).toJson().isNull("disk"));
+    }
+
+    @Test
     public void missingPagesDoNotCrash() throws Exception {
         // A non-admin user or an old server: the parts that are there still show.
         ServerStatus s = ServerStatus.parse(null, null, null, null, null);

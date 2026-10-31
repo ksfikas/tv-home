@@ -73,6 +73,24 @@ final class ServerStatus {
         return s;
     }
 
+    /** The same information as data, for the phone remote page (which words it in the phone's language). */
+    JSONObject toJson() throws org.json.JSONException {
+        JSONObject o = new JSONObject().put("version", version);
+        JSONArray ts = new JSONArray();
+        for (Tuner t : tuners) {
+            ts.put(new JSONObject().put("name", t.name).put("subs", t.subs)
+                    .put("signal", t.signal == null ? JSONObject.NULL : t.signal)
+                    .put("snr", t.snr == null ? JSONObject.NULL : t.snr)
+                    .put("unc", t.uncorrected).put("bps", t.bitsPerSecond));
+        }
+        JSONArray ws = new JSONArray();
+        for (Watcher w : watchers) ws.put(new JSONObject().put("channel", w.channel).put("who", w.who));
+        JSONArray rs = new JSONArray();
+        for (String r : recording) rs.put(r);
+        return o.put("tuners", ts).put("watchers", ws).put("recording", rs)
+                .put("disk", disk == null || disk[1] <= 0 ? JSONObject.NULL : new JSONArray().put(disk[0]).put(disk[1]));
+    }
+
     /** The text of the screen. {@code size} turns a byte count into "26 GB" (the TV's own formatter). */
     String render(Txt t, LongFunction<String> size) {
         StringBuilder out = new StringBuilder();

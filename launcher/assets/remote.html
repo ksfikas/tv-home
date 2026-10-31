@@ -95,11 +95,15 @@
     <button onclick="power('on')" data-i18n="turn_on">⏻ Turn on</button>
     <button onclick="power('off')" data-i18n="turn_off">⏻ Turn off</button>
   </div>
+  <div class="label" data-i18n="lbl_server">Server</div>
+  <button id="statusbtn" style="width:100%" onclick="toggleStatus()" data-i18n="status_btn">Tvheadend status</button>
+  <div class="now hide" id="status" style="margin-top:10px;line-height:1.5"></div>
 </section>
 
 <section id="tab-channels" class="hide">
   <h1 data-i18n="channels_title">Channels</h1>
   <div class="sub" data-i18n="channels_sub">Tap to watch on the TV</div>
+  <input id="cq" type="search" data-i18n-ph="chan_search_ph" placeholder="Find a channel by name or number" style="margin:0 0 12px">
   <div id="channels"></div>
 </section>
 
@@ -162,6 +166,11 @@ const DICT = {
     on_now_until: 'on now, until {0}', nothing_found: 'Nothing coming up with that title',
     err_wrong_pin: 'Wrong PIN',
     err_pair_locked: 'Too many wrong PINs. Wait a minute, then use the new PIN shown on the TV',
+    chan_search_ph: 'Find a channel by name or number', lbl_server: 'Server', status_btn: 'Tvheadend status',
+    st_tuner: 'Tuner {0}', st_idle: 'idle', st_busy: n => `in use (${n} ${n === 1 ? 'stream' : 'streams'})`,
+    st_signal: 'Signal {0} · SNR {1}', st_watching: 'Watching now', st_nobody: 'Nobody is watching',
+    st_recording: 'Recording now', st_none: 'Nothing is recording', st_disk: 'Recordings disk: {0} free of {1}',
+    err_needs_tvh_status: 'The status needs Tvheadend',
     err_pair_needed: 'Pair with the PIN shown on the TV',
     err_sleep_perm: 'The sleep timer needs the sleep permission (see the README)',
     err_off_perm: 'Turning off needs the sleep permission (see the README)',
@@ -208,6 +217,11 @@ const DICT = {
     on_now_until: 'τώρα, έως {0}', nothing_found: 'Δεν βρέθηκε προσεχής εκπομπή με αυτόν τον τίτλο',
     err_wrong_pin: 'Λάθος PIN',
     err_pair_locked: 'Πάρα πολλά λάθος PIN. Περιμένετε ένα λεπτό και χρησιμοποιήστε το νέο PIN που εμφανίζεται στην τηλεόραση',
+    chan_search_ph: 'Βρείτε κανάλι με όνομα ή αριθμό', lbl_server: 'Διακομιστής', status_btn: 'Κατάσταση Tvheadend',
+    st_tuner: 'Δέκτης {0}', st_idle: 'αδρανής', st_busy: n => `σε χρήση (${n} ${n === 1 ? 'ροή' : 'ροές'})`,
+    st_signal: 'Σήμα {0} · SNR {1}', st_watching: 'Παρακολουθούν τώρα', st_nobody: 'Κανείς δεν παρακολουθεί',
+    st_recording: 'Εγγράφονται τώρα', st_none: 'Δεν γίνεται εγγραφή', st_disk: 'Δίσκος εγγραφών: {0} ελεύθερα από {1}',
+    err_needs_tvh_status: 'Η κατάσταση χρειάζεται το Tvheadend',
     err_pair_needed: 'Συνδεθείτε με το PIN που εμφανίζεται στην τηλεόραση',
     err_sleep_perm: 'Ο χρονοδιακόπτης ύπνου χρειάζεται την άδεια ύπνου (δείτε το README)',
     err_off_perm: 'Η απενεργοποίηση χρειάζεται την άδεια ύπνου (δείτε το README)',
@@ -312,6 +326,7 @@ async function pair() {
 function tab(name) {
   document.querySelectorAll('[id^=tab-]').forEach(s => s.classList.toggle('hide', s.id !== 'tab-' + name));
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('sel', b.dataset.tab === name));
+  if (name !== 'remote') { clearInterval(statusTimer); $('status').classList.add('hide'); }
   if (name === 'channels') channels();
   if (name === 'apps') apps();
   if (name === 'guide') search(); // empty box: now and next on every channel
@@ -327,11 +342,52 @@ async function state() {
     : `<span class="sub">${esc(t('nothing_playing'))}</span>`;
 }
 
+// Channel filter: accents and case ignored; digits match the start of the number (like the TV's search).
+const fold = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+let allChannels = [];
+function filterChannels() {
+  const q = fold($('cq').value);
+  if (!q) return allChannels;
+  const digits = /^\d+$/.test(q);
+  return allChannels.filter(c => digits ? String(c.number).startsWith(q) : fold(c.name).includes(q));
+}
 async function channels() {
-  const list = await call('channels');
+  allChannels = await call('channels');
+  renderChannels();
+}
+function renderChannels() {
+  const list = filterChannels();
   $('channels').innerHTML = list.map(c => `<div class="row" data-ch="${esc(c.uuid)}"><div class="num">${esc(c.number)}</div>
     <div class="main"><div class="t">${c.radio ? '♪ ' : ''}${esc(c.name)}</div><div class="m">${esc(c.now || '')}</div></div></div>`).join('');
   $('channels').querySelectorAll('.row').forEach(r => r.onclick = () => call('watch', {ch: r.dataset.ch}).then(() => toast(t('watching_on_tv'))));
+}
+$('cq').addEventListener('input', renderChannels);
+
+// Server status card: refreshes every 5 s while it is open.
+let statusTimer;
+function toggleStatus() {
+  const box = $('status');
+  box.classList.toggle('hide');
+  clearInterval(statusTimer);
+  if (!box.classList.contains('hide')) { loadStatus(); statusTimer = setInterval(() => { if (!document.hidden) loadStatus(); }, 5000); }
+}
+async function loadStatus() {
+  try { $('status').innerHTML = renderStatus(await call('status')); }
+  catch (e) { clearInterval(statusTimer); $('status').classList.add('hide'); } // call() has already shown why
+}
+const gb = b => (b / 1073741824).toFixed(b >= 1e11 ? 0 : 1) + ' GB';
+function renderStatus(s) {
+  let h = s.version ? '<div class="sub" style="margin:0 0 8px">Tvheadend ' + esc(s.version) + '</div>' : '';
+  for (const x of s.tuners) {
+    h += '<div><b>' + esc(t('st_tuner', x.name)) + '</b> · ' + esc(x.subs ? t('st_busy', x.subs) : t('st_idle')) + '</div>';
+    if (x.subs) h += '<div class="sub" style="margin:2px 0 8px">' + esc(t('st_signal', x.signal || '–', x.snr || '–')) + (x.unc ? ' · UNC ' + x.unc : '') + '</div>';
+  }
+  h += '<div class="label" style="margin:14px 0 6px">' + esc(t('st_watching')) + '</div>';
+  h += s.watchers.length ? s.watchers.map(w => '<div>' + esc(w.channel || '?') + (w.who ? ' <span class="sub">· ' + esc(w.who) + '</span>' : '') + '</div>').join('') : '<div class="sub">' + esc(t('st_nobody')) + '</div>';
+  h += '<div class="label" style="margin:14px 0 6px">' + esc(t('st_recording')) + '</div>';
+  h += s.recording.length ? s.recording.map(r => '<div>' + esc(r) + '</div>').join('') : '<div class="sub">' + esc(t('st_none')) + '</div>';
+  if (s.disk) h += '<div class="sub" style="margin:14px 0 0">' + esc(t('st_disk', gb(s.disk[0]), gb(s.disk[1]))) + '</div>';
+  return h;
 }
 
 async function apps() {
