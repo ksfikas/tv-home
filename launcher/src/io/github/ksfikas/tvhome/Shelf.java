@@ -281,7 +281,7 @@ final class Shelf {
         HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
         con.setConnectTimeout(6000);
         con.setReadTimeout(10000);
-        con.setRequestProperty("User-Agent", "tv-home");
+        con.setRequestProperty("User-Agent", "Advanced-TV-Home");
         con.setInstanceFollowRedirects(true);
         try (InputStream in = con.getInputStream()) {
             return new String(read(in), StandardCharsets.UTF_8);

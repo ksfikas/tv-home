@@ -1,4 +1,6 @@
-# tv-home · Live TV edition
+# Advanced TV Home
+
+*Formerly tv-home.*
 
 **A fast, clean Apple TV-style home screen for Android TV, with live TV from your own
 [Tvheadend](https://tvheadend.org) server built right in:** channels on the home screen, a TV

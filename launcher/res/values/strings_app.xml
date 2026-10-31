@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Names the system shows (app list, notification-access and screen-saver settings) -->
-    <string name="app_name">Home</string>
+    <string name="app_name">Advanced TV Home</string>
     <string name="service_media_watcher">Last watched</string>
-    <string name="service_screensaver">Home screensaver</string>
+    <string name="service_screensaver">Advanced TV Home screensaver</string>
 </resources>
