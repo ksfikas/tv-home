@@ -140,6 +140,11 @@ public class PlayerActivity extends Activity {
     private final Runnable tuneNow = this::startPlayback;
     private final Runnable commitDigits = this::commitDigits;
     private final Runnable retry = this::startPlayback;
+    /** A live stream stuck in "buffering" (a tuner that was asleep, a lost ticket) never fails by itself: try again. */
+    private boolean firstFrame;
+    private int pictureRetries;
+    private final Runnable noPicture = this::noPicture;
+    private final Runnable stall = () -> { if (!isRecording()) failed(null); };
     private final Runnable tick = this::tick;
     private int retries;
     private long tuneSeq;
@@ -302,6 +307,7 @@ public class PlayerActivity extends Activity {
         if (index >= 0 && i != index) previousIndex = index;
         index = i;
         retries = 0;
+        pictureRetries = 0;
         current = next = null;
         Tvh.prefs(this).edit().putString("last_channel", list.get(i).uuid).apply();
         boolean radio = list.get(i).radio;
@@ -311,6 +317,8 @@ public class PlayerActivity extends Activity {
         showBanner();
         handler.removeCallbacks(tuneNow);
         handler.removeCallbacks(retry);
+        handler.removeCallbacks(stall);
+        handler.removeCallbacks(noPicture);
         if (debounce) handler.postDelayed(tuneNow, 250); // short pause so fast channel-surfing does not tune every channel
         else startPlayback();
     }
@@ -318,6 +326,7 @@ public class PlayerActivity extends Activity {
     private void startPlayback() {
         if (index < 0 && !isRecording()) return;
         long seq = ++tuneSeq;
+        firstFrame = false;
         pausedAt = 0;
         behindMs = 0;
         updatePauseBadge();
@@ -406,8 +415,9 @@ public class PlayerActivity extends Activity {
         p.setVideoSurfaceView(surface);
         p.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int state) {
-                if (state == Player.STATE_READY) { retries = 0; status(""); }
-                else if (state == Player.STATE_BUFFERING) status("…");
+                handler.removeCallbacks(stall);
+                if (state == Player.STATE_READY) { retries = 0; status(""); if (!firstFrame) handler.postDelayed(noPicture, 4000); }
+                else if (state == Player.STATE_BUFFERING) { status("…"); handler.postDelayed(stall, 8000); }
                 else if (state == Player.STATE_ENDED) {
                     if (isRecording()) { Tvh.saveResume(PlayerActivity.this, recordingUuid, recordingTitle, 0, 0); finish(); }
                     else failed(getString(R.string.player_stream_ended)); // also how an over-long live pause gets back to live
@@ -415,6 +425,8 @@ public class PlayerActivity extends Activity {
             }
 
             @Override public void onPlayerError(PlaybackException e) { failed(describe(e)); }
+
+            @Override public void onRenderedFirstFrame() { firstFrame = true; handler.removeCallbacks(noPicture); }
 
             @Override public void onVideoSizeChanged(VideoSize v) {
                 if (v.width > 0 && v.height > 0) videoFrame.setAspect(v.width * v.pixelWidthHeightRatio / v.height);
@@ -466,6 +478,15 @@ public class PlayerActivity extends Activity {
     }
 
     private boolean isTvInput() { return !isRecording() && index >= 0 && list.get(index).inputId != null; }
+
+    /**
+     * Sound without a picture: the stream plays (the server sees it) but the video decoder never drew a
+     * frame, which a fresh start of the same channel fixes (what zapping does by accident). Twice at most.
+     */
+    private void noPicture() {
+        if (firstFrame || player == null || isTvInput() || player.getVideoFormat() == null) return; // audio-only service: nothing to show
+        if (pictureRetries++ < 2) { status(getString(R.string.player_reconnecting)); startPlayback(); }
+    }
 
     /** Retry a few times (tickets expire, tuners get busy), then say what went wrong. */
     private void failed(String why) {

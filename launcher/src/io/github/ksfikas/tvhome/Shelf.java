@@ -315,7 +315,7 @@ final class Shelf {
         List<Offer> out = new ArrayList<>();
         try {
             String q = "{\"query\":\"query($q:String!,$c:Country!,$l:Language!){popularTitles(country:$c,first:5,filter:{searchQuery:$q,objectTypes:[MOVIE]})"
-                    + "{edges{node{content(country:$c,language:$l){title originalReleaseYear} offers(country:$c,platform:WEB){monetizationType package{technicalName} standardWebURL}}}}}\","
+                    + "{edges{node{content(country:$c,language:$l){title originalReleaseYear} offers(country:$c,platform:WEB){monetizationType package{technicalName} standardWebURL androidtv:deeplinkURL(platform:ANDROID_TV)}}}}}\","
                     + "\"variables\":{\"q\":" + JSONObject.quote(title) + ",\"c\":\"GR\",\"l\":\"en\"}}";
             HttpURLConnection con = (HttpURLConnection) new URL("https://apis.justwatch.com/graphql").openConnection();
             con.setConnectTimeout(6000);
@@ -366,7 +366,7 @@ final class Shelf {
                     for (Offer have : out) if (have.pkg.equals(s[2])) dup = true;
                     if (dup) break;
                     Offer of = new Offer();
-                    of.app = s[1]; of.pkg = s[2]; of.url = o.optString("standardWebURL", null); of.included = included;
+                    of.app = s[1]; of.pkg = s[2]; of.url = o.optString("androidtv", "").startsWith("intent:") ? o.getString("androidtv") : o.optString("standardWebURL", null); of.included = included;
                     out.add(of);
                     break;
                 }

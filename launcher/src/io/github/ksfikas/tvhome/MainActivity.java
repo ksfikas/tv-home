@@ -672,6 +672,7 @@ public class MainActivity extends Activity {
             label.animate().alpha(has ? 1f : 0f).translationY(has ? dp(4) : 0).setDuration(200).start();
             if (!has) return;
             lastFocusedId = v.getId();
+            remember(v);
             if (inDock) {
                 title.setText(app.label);
                 showWatched(app);
@@ -692,6 +693,23 @@ public class MainActivity extends Activity {
         return box;
     }
 
+    private final java.util.Map<List<View>, View> rowMemory = new java.util.IdentityHashMap<>();
+
+    /** Where Up/Down should land in a row: the item you were last on there, else its first. */
+    private View rowTarget(List<View> row) {
+        View v = rowMemory.get(row);
+        return v != null && row.contains(v) ? v : row.get(0);
+    }
+
+    /** Called when a tile gains focus: remember it for its row, and re-aim the neighbouring rows at it. */
+    private void remember(View v) {
+        for (List<View> row : Arrays.asList(dockCards, channelCards, radioCards, gridCards)) {
+            if (!row.contains(v)) continue;
+            if (rowMemory.get(row) != v) { rowMemory.put(row, v); wireFocus(); }
+            return;
+        }
+    }
+
     /** Explicit D-pad targets: one row per press, ends of rows and of the top bar don't wrap. */
     private void wireFocus() {
         int d = dockCards.size(), g = gridCards.size();
@@ -699,8 +717,8 @@ public class MainActivity extends Activity {
         List<List<View>> live = new ArrayList<>();
         if (!channelCards.isEmpty()) live.add(channelCards);
         if (!radioCards.isEmpty()) live.add(radioCards);
-        View firstLive = live.isEmpty() ? null : live.get(0).get(0);
-        View lastLive = live.isEmpty() ? null : live.get(live.size() - 1).get(0);
+        View firstLive = live.isEmpty() ? null : rowTarget(live.get(0));
+        View lastLive = live.isEmpty() ? null : rowTarget(live.get(live.size() - 1));
         for (int i = 0; i < pills.size(); i++) {
             View p = pills.get(i);
             p.setNextFocusLeftId(i == 0 ? p.getId() : pills.get(i - 1).getId());
@@ -720,7 +738,7 @@ public class MainActivity extends Activity {
         // Each live row is one line: Up to the row above (or the dock), Down to the next (or the apps).
         for (int r = 0; r < live.size(); r++) {
             List<View> row = live.get(r);
-            int above = r == 0 ? (d > 0 ? dockCards.get(0).getId() : topId) : live.get(r - 1).get(0).getId();
+            int above = r == 0 ? (d > 0 ? rowTarget(dockCards).getId() : topId) : rowTarget(live.get(r - 1)).getId();
             for (int i = 0; i < row.size(); i++) {
                 View c = row.get(i);
                 // Left from the first TV channel reaches the small Guide/Search/… block.
@@ -728,22 +746,22 @@ public class MainActivity extends Activity {
                 c.setNextFocusLeftId(i == 0 ? leftOfFirst : row.get(i - 1).getId());
                 c.setNextFocusRightId(i == row.size() - 1 ? c.getId() : row.get(i + 1).getId());
                 c.setNextFocusUpId(above);
-                c.setNextFocusDownId(r + 1 < live.size() ? live.get(r + 1).get(0).getId()
-                        : g > 0 ? gridCards.get(0).getId() : c.getId());
+                c.setNextFocusDownId(r + 1 < live.size() ? rowTarget(live.get(r + 1)).getId()
+                        : g > 0 ? rowTarget(gridCards).getId() : c.getId());
             }
         }
         // The 2×2 block: arrows move inside it; Right from its right column goes to the channels,
         // Up from its top row to the dock, Down from its bottom row to the next row.
         int a = actionCards.size();
         View firstChannel = channelCards.isEmpty() ? null : channelCards.get(0);
-        View below = !radioCards.isEmpty() ? radioCards.get(0) : g > 0 ? gridCards.get(0) : null;
+        View below = !radioCards.isEmpty() ? rowTarget(radioCards) : g > 0 ? rowTarget(gridCards) : null;
         for (int i = 0; i < a; i++) {
             View c = actionCards.get(i);
             boolean leftCol = i % 2 == 0, topRow = i < 2;
             c.setNextFocusLeftId(leftCol ? c.getId() : actionCards.get(i - 1).getId());
             c.setNextFocusRightId(!leftCol || i + 1 >= a
                     ? (firstChannel != null ? firstChannel.getId() : c.getId()) : actionCards.get(i + 1).getId());
-            c.setNextFocusUpId(topRow ? (d > 0 ? dockCards.get(0).getId() : topId) : actionCards.get(i - 2).getId());
+            c.setNextFocusUpId(topRow ? (d > 0 ? rowTarget(dockCards).getId() : topId) : actionCards.get(i - 2).getId());
             c.setNextFocusDownId(i + 2 < a ? actionCards.get(i + 2).getId()
                     : !topRow || a <= 2 ? (below != null ? below.getId() : c.getId())
                     : actionCards.get(a - 1).getId());
@@ -1055,7 +1073,7 @@ public class MainActivity extends Activity {
         card.setOnFocusChangeListener((v, has) -> {
             bg.setStroke(dp(2), has ? 0xE6FFFFFF : 0x00FFFFFF);
             v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(200).start();
-            if (has) onChannelFocus(v);
+            if (has) { remember(v); onChannelFocus(v); }
         });
         box.addView(card, new LinearLayout.LayoutParams(-1, -2));
         if (configured && message != null && !message.equals(getString(R.string.main_loading_channels))) {
@@ -1227,7 +1245,7 @@ public class MainActivity extends Activity {
                     .setInterpolator(has ? new OvershootInterpolator(1.8f) : new DecelerateInterpolator())
                     .setDuration(has ? 320 : 200).start();
             shine.animate().alpha(has ? 1f : 0f).setDuration(160).start();
-            if (has) onChannelFocus(v);
+            if (has) { remember(v); onChannelFocus(v); }
         });
 
         Tvh tvh = Tvh.get(this);
@@ -1391,22 +1409,26 @@ public class MainActivity extends Activity {
                 buttons.add(new String[]{getString(R.string.main_shelf_remove), "close"}); actions.add(() -> { Watched.remove(this, it.pkg); refreshShelf(); });
                 break;
             case "film":
-                // The chart is Apple's, but a film may stream elsewhere: offer the apps that really have it.
+                // The chart is Apple's, but a film may stream elsewhere: offer the app that really has it.
                 List<Shelf.Offer> offers = Shelf.cachedOffers(it.title);
                 if (offers == null) {
                     findOffers(it);
-                    // Until the answer arrives (or when offline) keep the old Apple TV button.
-                    if (it.link != null && isInstalled("com.apple.atve.androidtv.appletv")) {
+                    // Only when the lookup failed (offline) fall back to the old Apple TV button.
+                    if (offerFailed.contains(it.title) && it.link != null && isInstalled("com.apple.atve.androidtv.appletv")) {
                         buttons.add(new String[]{"Apple TV", "play"}); actions.add(() -> openInAppleTv(it.link));
                     }
                 } else {
                     for (Shelf.Offer o : offers) {
-                        if (buttons.size() >= 2 || !isInstalled(o.pkg)) continue;
-                        buttons.add(new String[]{o.app + (o.included ? "" : " · " + getString(R.string.main_shelf_rent_buy)), "play"});
+                        if (!isInstalled(o.pkg)) continue;
+                        buttons.add(new String[]{o.app, "play"});
                         actions.add(() -> openOffer(it, o));
+                        if (!o.included) watchedLine.setText(it.sub + "  ·  " + o.app + ": " + getString(R.string.main_shelf_rent_buy));
+                        break;      // one clear button; the rest are under "Where to watch"
                     }
                 }
-                buttons.add(new String[]{getString(R.string.main_shelf_where), "search"});
+                // Beside a provider button this is just the magnifier; alone it keeps its words.
+                buttons.add(buttons.isEmpty() ? new String[]{getString(R.string.main_shelf_where), "search"}
+                        : new String[]{getString(R.string.main_shelf_where), "search", "icon"});
                 actions.add(() -> shelfDetails(it, "https://www.justwatch.com/gr/search?q=" + android.net.Uri.encode(it.title)));
                 break;
             default:
@@ -1414,7 +1436,7 @@ public class MainActivity extends Activity {
         }
         for (int i = 0; i < buttons.size(); i++) {
             TextView b = text(14, "sans-serif-medium", Color.WHITE);
-            b.setText(buttons.get(i)[0]);
+            if (buttons.get(i).length > 2) { b.setContentDescription(buttons.get(i)[0]); } else b.setText(buttons.get(i)[0]);
             String k = buttons.get(i)[1];
             Ui.iconBefore(b, "play".equals(k) ? R.drawable.sym_play_arrow : "close".equals(k) ? R.drawable.sym_close
                     : "search".equals(k) ? R.drawable.sym_search : "info".equals(k) ? R.drawable.sym_info : R.drawable.sym_smartphone, 17);
@@ -1438,9 +1460,7 @@ public class MainActivity extends Activity {
             shelfBar.addView(b, llp(-2, dp(40), i == 0 ? 0 : dp(10), 0, 0, 0));
         }
         TextView dots = text(12, "sans-serif", 0x99FFFFFF);
-        StringBuilder d = new StringBuilder();
-        for (int i = 0; i < shelfItems.size(); i++) d.append(i == shelfIndex ? "●" : "○").append(' ');
-        dots.setText(shelfItems.size() > 1 ? d.toString().trim() : "");
+        dots.setText(shelfItems.size() > 1 ? (shelfIndex + 1) + " / " + shelfItems.size() : "");   // a counter, not 18 dots under the poster
         dots.setGravity(Gravity.CENTER_VERTICAL);
         shelfBar.addView(dots, llp(-2, dp(40), dp(16), 0, 0, 0));
         shelfBar.setVisibility(View.VISIBLE);
@@ -1468,7 +1488,7 @@ public class MainActivity extends Activity {
         if (i != null) launch(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
-    private final java.util.Set<String> offerLookups = new java.util.HashSet<>();
+    private final java.util.Set<String> offerLookups = new java.util.HashSet<>(), offerFailed = new java.util.HashSet<>();
 
     /** Asks where a film streams, once per film; redraws its card when the answer comes. */
     private void findOffers(Shelf.Item it) {
@@ -1476,7 +1496,7 @@ public class MainActivity extends Activity {
         Tvh.IO.execute(() -> {
             List<Shelf.Offer> got = Shelf.offers(it.title, it.year);
             runOnUiThread(() -> {
-                if (got == null) return;    // offline: the Apple TV fallback stays
+                if (got == null) offerFailed.add(it.title);     // offline: the Apple TV fallback appears
                 if (shelfIndex < shelfItems.size() && shelfItems.get(shelfIndex) == it) showShelfItem();
             });
         });
@@ -1485,7 +1505,16 @@ public class MainActivity extends Activity {
     /** Opens the film in the app that has it: its own page when the app takes the link, else the app. */
     private void openOffer(Shelf.Item it, Shelf.Offer o) {
         if (o.pkg.equals("com.apple.atve.androidtv.appletv") && it.link != null) { openInAppleTv(it.link); return; }
-        if (o.url != null && launch(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(o.url)).setPackage(o.pkg))) return;
+        if (o.url != null) {
+            try {
+                // JustWatch gives an Android TV intent link for most services; plain web links otherwise.
+                Intent i = o.url.startsWith("intent:") ? Intent.parseUri(o.url, Intent.URI_INTENT_SCHEME)
+                        : new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(o.url));
+                i.setPackage(o.pkg).setComponent(null);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (launch(i)) return;
+            } catch (java.net.URISyntaxException ignored) { }
+        }
         openPackage(o.pkg);
     }
 

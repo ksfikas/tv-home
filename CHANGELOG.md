@@ -5,6 +5,10 @@ All notable changes to Advanced TV Home. Newest first. Releases are tagged `vX.Y
 
 ## Unreleased
 
+- **Rows remember your place**: going up or down between rows lands on the tile you were last on in that row, not the first.
+- **Film cards**: one clear button for the app that has the film (rent shown in the subtitle), a small magnifier for "Where to watch", and a "3 / 18" counter instead of a row of dots. The button now opens the film inside Prime Video, Netflix and the others using JustWatch's Android TV links.
+- **Live TV**: a channel that plays sound but draws no picture, or sits in "buffering" for 8 seconds, is restarted automatically.
+
 - **Living colours**: the glow behind the home screen, and a touch of it in the dock strip, now take the colour of the film poster or news photo in focus, not just the dock app's brand colour.
 
 ## 3.0.2

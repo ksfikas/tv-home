@@ -58,4 +58,14 @@ public class OffersTest {
         List<Shelf.Offer> r = Shelf.parseOffers(answer(node("Film", 2020, offer("FLATRATE", "amazonprimevideo"))), "Film", 2020);
         assertEquals("Prime Video", r.get(0).app);
     }
+
+    @Test
+    public void anAndroidTvIntentLinkIsPreferredToTheWebLink() throws Exception {
+        String o = "{\"monetizationType\":\"RENT\",\"package\":{\"technicalName\":\"amazon\"},\"standardWebURL\":\"https://web/x\","
+                + "\"androidtv\":\"intent://app.primevideo.com/watch?gti=1#Intent;package=com.amazon.amazonvideo.livingroom;scheme=https;end\"}";
+        List<Shelf.Offer> r = Shelf.parseOffers(answer(node("Film", 2020, o)), "Film", 2020);
+        assertTrue(r.get(0).url.startsWith("intent://app.primevideo.com/watch"));
+        List<Shelf.Offer> web = Shelf.parseOffers(answer(node("Film", 2020, offer("RENT", "amazon"))), "Film", 2020);
+        assertEquals("https://x/amazon", web.get(0).url);
+    }
 }
