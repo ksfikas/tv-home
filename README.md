@@ -68,6 +68,10 @@ separate TV client.
 - **Sleep timer**: 15 min to 2 h, or the end of the programme; a one-minute warning, then standby.
 - **Stream info**: codec, resolution, bitrate, plus the tuner's signal, SNR and error counters.
 - **Pause live TV**, then carry on from where you paused, or jump back to live.
+- **Picture in picture**: press Home while watching live TV or a recording and the picture shrinks into a
+  corner window instead of stopping, so you can browse the guide or open an app while it plays; or choose
+  it in the options menu. Select the channel again to bring it back. Radio and tuner-app channels are left
+  out (no picture of ours to shrink).
 - **Audio and subtitle tracks**, with the language remembered from channel to channel.
 - **Favourites**: hold OK on a channel to pin it; the row then shows only your favourites, in your order.
 - A **red dot** on channels that are recording right now, and a warning next to LIVE TV when the
