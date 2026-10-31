@@ -279,6 +279,7 @@ public class PlayerActivity extends Activity {
         super.onStop();
         visible = false;
         playing = null;
+        HomeHooks.event(this, HomeHooks.STOP);
         handler.removeCallbacksAndMessages(null);
         releasePlayer();
         if (tvView != null) { tvView.reset(); tvView.setVisibility(View.GONE); }
@@ -425,6 +426,8 @@ public class PlayerActivity extends Activity {
             }
 
             @Override public void onPlayerError(PlaybackException e) { failed(describe(e)); }
+
+            @Override public void onIsPlayingChanged(boolean isPlayingNow) { HomeHooks.event(PlayerActivity.this, isPlayingNow ? HomeHooks.PLAY : HomeHooks.PAUSE); }
 
             @Override public void onRenderedFirstFrame() { firstFrame = true; handler.removeCallbacks(noPicture); }
 

@@ -105,6 +105,18 @@
   </div>
   <input id="backupfile" type="file" accept=".json,application/json" class="hide">
   <div class="sub" data-i18n="backup_note" style="margin:8px 4px 0">Favourites, dock, sources, language and screensaver. Passwords are not included.</div>
+  <div class="label" data-i18n="lbl_home">Smart home</div>
+  <button id="hooksbtn" style="width:100%" onclick="toggleHooks()" data-i18n="hooks_btn">Lights and scenes…</button>
+  <div class="now hide" id="hooks" style="margin-top:10px">
+    <div class="sub" data-i18n="hooks_note" style="margin:0 0 8px">The TV calls these web addresses (POST), for example Home Assistant webhooks. Leave empty to switch off.</div>
+    <div class="sub" style="margin:6px 0 2px" data-i18n="hook_play">When playing starts</div>
+    <div class="grid g2" style="grid-template-columns:1fr auto"><input id="hook_play" type="url" placeholder="http://…"><button onclick="testHook('hook_play')" data-i18n="hook_test">Test</button></div>
+    <div class="sub" style="margin:10px 0 2px" data-i18n="hook_pause">When paused</div>
+    <div class="grid g2" style="grid-template-columns:1fr auto"><input id="hook_pause" type="url" placeholder="http://…"><button onclick="testHook('hook_pause')" data-i18n="hook_test">Test</button></div>
+    <div class="sub" style="margin:10px 0 2px" data-i18n="hook_stop">When stopped</div>
+    <div class="grid g2" style="grid-template-columns:1fr auto"><input id="hook_stop" type="url" placeholder="http://…"><button onclick="testHook('hook_stop')" data-i18n="hook_test">Test</button></div>
+    <button style="width:100%;margin-top:12px" onclick="saveHooks()" data-i18n="hook_save">Save</button>
+  </div>
 </section>
 
 <section id="tab-channels" class="hide">
@@ -173,6 +185,9 @@ const DICT = {
     on_now_until: 'on now, until {0}', nothing_found: 'Nothing coming up with that title',
     err_wrong_pin: 'Wrong PIN',
     err_pair_locked: 'Too many wrong PINs. Wait a minute, then use the new PIN shown on the TV',
+    lbl_home: 'Smart home', hooks_btn: 'Lights and scenes…', hook_play: 'When playing starts', hook_pause: 'When paused', hook_stop: 'When stopped',
+    hook_test: 'Test', hook_save: 'Save', hook_saved: 'Saved', hook_called: 'Called',
+    hooks_note: 'The TV calls these web addresses (POST), for example Home Assistant webhooks. Leave empty to switch off.',
     lbl_backup: 'Settings backup', backup_save: '⬇ Save backup', backup_restore: '⬆ Restore',
     backup_note: 'Favourites, dock, sources, language and screensaver. Passwords are not included.',
     backup_done: n => n + ' settings restored', err_not_backup: 'That is not a backup from this app',
@@ -227,6 +242,9 @@ const DICT = {
     on_now_until: 'τώρα, έως {0}', nothing_found: 'Δεν βρέθηκε προσεχής εκπομπή με αυτόν τον τίτλο',
     err_wrong_pin: 'Λάθος PIN',
     err_pair_locked: 'Πάρα πολλά λάθος PIN. Περιμένετε ένα λεπτό και χρησιμοποιήστε το νέο PIN που εμφανίζεται στην τηλεόραση',
+    lbl_home: 'Έξυπνο σπίτι', hooks_btn: 'Φώτα και σκηνές…', hook_play: 'Όταν ξεκινά η αναπαραγωγή', hook_pause: 'Όταν γίνεται παύση', hook_stop: 'Όταν σταματά',
+    hook_test: 'Δοκιμή', hook_save: 'Αποθήκευση', hook_saved: 'Αποθηκεύτηκε', hook_called: 'Κλήθηκε',
+    hooks_note: 'Η τηλεόραση καλεί αυτές τις διευθύνσεις (POST), π.χ. webhooks του Home Assistant. Αφήστε κενό για απενεργοποίηση.',
     lbl_backup: 'Αντίγραφο ρυθμίσεων', backup_save: '⬇ Αποθήκευση αντιγράφου', backup_restore: '⬆ Επαναφορά',
     backup_note: 'Αγαπημένα, dock, πηγές, γλώσσα και προφύλαξη οθόνης. Οι κωδικοί δεν περιλαμβάνονται.',
     backup_done: n => 'Επαναφέρθηκαν ' + n + ' ρυθμίσεις', err_not_backup: 'Αυτό δεν είναι αντίγραφο από αυτή την εφαρμογή',
@@ -309,6 +327,24 @@ function shrink(file) {
     img.onerror = fail;
     img.src = URL.createObjectURL(file);
   });
+}
+async function toggleHooks() {
+  const box = $('hooks');
+  box.classList.toggle('hide');
+  if (box.classList.contains('hide')) return;
+  const j = await call('hooks');
+  for (const e of ['play', 'pause', 'stop']) $('hook_' + e).value = j[e] || '';
+}
+async function saveHooks() {
+  const p = {set: '1'};
+  for (const e of ['play', 'pause', 'stop']) p[e] = $('hook_' + e).value.trim();
+  await call('hooks', p);
+  toast(t('hook_saved'));
+}
+async function testHook(id) {
+  const url = $(id).value.trim();
+  if (!url) return;
+  try { await call('hooktest', {url}); toast(t('hook_called')); } catch (e) { /* the error is already shown */ }
 }
 async function saveBackup() {
   const j = await call('backup');

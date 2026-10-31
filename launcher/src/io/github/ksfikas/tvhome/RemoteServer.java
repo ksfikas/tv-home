@@ -268,6 +268,24 @@ final class RemoteServer {
                 if (n < 0) return err(c, "not_backup", R.string.remote_not_backup);
                 return new JSONObject().put("restored", n);
             }
+            case "/api/hooks": {
+                JSONObject o = new JSONObject();
+                if (p.containsKey("set")) {
+                    for (String e : HomeHooks.EVENTS) {
+                        String u = p.getOrDefault(e, "").trim();
+                        if (!u.isEmpty() && !HomeHooks.valid(u)) return err(c, "bad_hook", R.string.remote_bad_hook);
+                    }
+                    for (String e : HomeHooks.EVENTS) HomeHooks.setUrl(c, e, p.getOrDefault(e, ""));
+                }
+                for (String e : HomeHooks.EVENTS) o.put(e, HomeHooks.url(c, e));
+                return o;
+            }
+            case "/api/hooktest": {
+                String u = p.getOrDefault("url", "").trim();
+                if (!HomeHooks.valid(u)) return err(c, "bad_hook", R.string.remote_bad_hook);
+                String r = HomeHooks.call(u);
+                return r == null ? ok() : new JSONObject().put("error", r);
+            }
             case "/api/watch":
                 start(c, new Intent(c, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_CHANNEL, p.get("ch")));
                 return ok();
