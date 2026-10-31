@@ -3,6 +3,10 @@
 All notable changes to Advanced TV Home. Newest first. Releases are tagged `vX.Y.Z` and published on
 [GitHub](https://github.com/ksfikas/advanced-tv-home/releases).
 
+## Unreleased
+
+- **Living colours**: the glow behind the home screen, and a touch of it in the dock strip, now take the colour of the film poster or news photo in focus, not just the dock app's brand colour.
+
 ## 3.0.2
 
 - **Tvheadend tools** (Inputs → Tvheadend server): server status (tuners, signal, who is watching, recordings disk), channel manager (show/hide channels, change numbers), refresh the guide now, rescan channels.

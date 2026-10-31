@@ -116,6 +116,7 @@ public class MainActivity extends Activity {
     private App dockFocus;  // the focused dock app, to refresh its line on returning home
     private Map<String, Long> lastUsed = Collections.emptyMap();
     private int glowColor = 0xFF3A3A3A;
+    private GradientDrawable dockBand;   // the frosted strip behind the dock: picks up a little of the glow
     private ValueAnimator glowAnim;
     private int lastFocusedId = View.NO_ID;
     private boolean firstShow = true;
@@ -350,7 +351,7 @@ public class MainActivity extends Activity {
         dockRow.setClipChildren(false);
         dockRow.setClipToPadding(false);
         dockRow.setPadding(dp(20), dp(22), dp(20), dp(22));
-        GradientDrawable band = new GradientDrawable();
+        GradientDrawable band = dockBand = new GradientDrawable();
         band.setCornerRadius(dp(26));
         band.setColor(0x1FFFFFFF);
         band.setStroke(dp(1), 0x14FFFFFF);
@@ -1266,7 +1267,10 @@ public class MainActivity extends Activity {
     }
 
     /** A backdrop behind the hero (artwork, a news photo), loaded off the UI thread; null fades it out. */
-    private void showBackdrop(String key, java.util.concurrent.Callable<Bitmap> load) {
+    private void showBackdrop(String key, java.util.concurrent.Callable<Bitmap> load) { showBackdrop(key, load, false); }
+
+    /** As above; with {@code tint} the glow takes the picture's colour (news photos, not an app's own artwork). */
+    private void showBackdrop(String key, java.util.concurrent.Callable<Bitmap> load, boolean tint) {
         if (key == null) {
             artPkg = null;
             artLayer.animate().alpha(0f).setDuration(400).start();
@@ -1279,10 +1283,12 @@ public class MainActivity extends Activity {
             Bitmap b = null;
             try { b = load.call(); } catch (Exception ignored) { }
             Bitmap got = b;
+            int accent = tint ? Accent.of(b, 0) : 0;
             runOnUiThread(() -> {
                 if (!key.equals(artPkg)) return; // moved on meanwhile
                 if (got == null) { showBackdrop(null, null); return; }
                 artLayer.setImageBitmap(got);
+                if (accent != 0) animateGlow(accent);
                 artLayer.animate().alpha(1f).setDuration(600).start();
             });
         });
@@ -1358,8 +1364,10 @@ public class MainActivity extends Activity {
             String url = it.artUrl;
             Tvh.IO.execute(() -> {
                 Bitmap b = Shelf.image(this, url, dp(240));
+                int accent = Accent.of(b, 0);
                 runOnUiThread(() -> {
                     if (shelfItems.isEmpty() || shelfItems.get(shelfIndex) != it) return;
+                    if (accent != 0) animateGlow(accent);
                     poster.setImageBitmap(b);
                     poster.animate().alpha(b == null ? 0f : 1f).setDuration(500).start();
                 });
@@ -1367,7 +1375,7 @@ public class MainActivity extends Activity {
         } else {
             poster.animate().alpha(0f).setDuration(300).start();
             if (it.artFile != null) showArt(it.pkg);
-            else if (it.artUrl != null) showBackdrop(it.artUrl, () -> Shelf.image(this, it.artUrl, 1280));
+            else if (it.artUrl != null) showBackdrop(it.artUrl, () -> Shelf.image(this, it.artUrl, 1280), true);
             else showBackdrop(null, null);
         }
 
@@ -2158,6 +2166,18 @@ public class MainActivity extends Activity {
         g.setGradientRadius(getResources().getDisplayMetrics().widthPixels * 0.62f);
         g.setColors(new int[]{withAlpha(color, 0.5f), withAlpha(color, 0.14f), Color.TRANSPARENT});
         glow.setBackground(g);
+        if (dockBand != null) {   // a touch of the glow in the strip and its edge, so the colour reaches the dock
+            dockBand.setColor(blend(0x1FFFFFFF, color, 0.22f));
+            dockBand.setStroke(dp(1), blend(0x14FFFFFF, color, 0.5f));
+        }
+    }
+
+    /** Mixes the accent into a translucent base colour, keeping the base's alpha. */
+    private static int blend(int base, int accent, float amount) {
+        int r = Math.round(Color.red(base) * (1 - amount) + Color.red(accent) * amount);
+        int g = Math.round(Color.green(base) * (1 - amount) + Color.green(accent) * amount);
+        int b = Math.round(Color.blue(base) * (1 - amount) + Color.blue(accent) * amount);
+        return Color.argb(Color.alpha(base), r, g, b);
     }
 
     private void animateGlow(int to) {
