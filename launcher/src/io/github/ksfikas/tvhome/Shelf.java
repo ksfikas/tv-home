@@ -44,6 +44,7 @@ final class Shelf {
         boolean tall;           // a poster (portrait) rather than a backdrop
         float progress = -1;
         long at;                // continue watching: when it was last played
+        int year;               // films: release year, to pick the right title when looking up where it streams
     }
 
     static final String[][] FEEDS = {
@@ -148,6 +149,7 @@ final class Shelf {
                 it.title = e.getJSONObject("im:name").getString("label");
                 String genre = e.optJSONObject("category") == null ? "" : e.getJSONObject("category").getJSONObject("attributes").optString("label");
                 String year = e.optJSONObject("im:releaseDate") == null ? "" : e.getJSONObject("im:releaseDate").optString("label", "").replaceAll("^(\\d{4}).*", "$1");
+                try { it.year = Integer.parseInt(year); } catch (NumberFormatException ignored) { }
                 it.sub = t.s(R.string.shelf_popular_film) + (genre.isEmpty() ? "" : "  ·  " + genre) + (year.isEmpty() ? "" : "  ·  " + year);
                 it.summary = e.optJSONObject("summary") == null ? null : e.getJSONObject("summary").optString("label");
                 JSONArray imgs = e.getJSONArray("im:image");
@@ -278,6 +280,98 @@ final class Shelf {
                 out.add(it);
             }
         } catch (Exception ignored) { }
+        return out;
+    }
+
+
+
+    // ---------------------------------------------------------------- where a film streams
+
+    /** One place a film can be watched: an app on the box, and whether it is included or paid. */
+    static final class Offer {
+        String app, pkg, url;
+        boolean included;       // streaming (subscription, free or with ads) rather than rent / buy
+    }
+
+    private static final java.util.Map<String, List<Offer>> OFFERS = new java.util.HashMap<>();
+
+    /** JustWatch's name for a service -> its label and the Android TV app. Only apps worth opening. */
+    private static final String[][] SERVICES = {
+            {"netflix", "Netflix", "com.netflix.ninja"},
+            {"disneyplus", "Disney+", "com.disney.disneyplus"},
+            {"amazon", "Prime Video", "com.amazon.amazonvideo.livingroom"},
+            {"itunes", "Apple TV", "com.apple.atve.androidtv.appletv"},
+            {"appletvplus", "Apple TV", "com.apple.atve.androidtv.appletv"},
+            {"youtube", "YouTube", "com.google.android.youtube.tv"},
+            {"hbomax", "Max", "com.wbd.stream"},
+            {"max", "Max", "com.wbd.stream"},
+    };
+
+    /** Cached answer for a film, or null when it hasn't been asked for yet. */
+    static synchronized List<Offer> cachedOffers(String title) { return OFFERS.get(title); }
+
+    /** Asks JustWatch (no key needed) where a film streams in Greece; empty when it can't say. */
+    static List<Offer> offers(String title, int year) {
+        List<Offer> out = new ArrayList<>();
+        try {
+            String q = "{\"query\":\"query($q:String!,$c:Country!,$l:Language!){popularTitles(country:$c,first:5,filter:{searchQuery:$q,objectTypes:[MOVIE]})"
+                    + "{edges{node{content(country:$c,language:$l){title originalReleaseYear} offers(country:$c,platform:WEB){monetizationType package{technicalName} standardWebURL}}}}}\","
+                    + "\"variables\":{\"q\":" + JSONObject.quote(title) + ",\"c\":\"GR\",\"l\":\"en\"}}";
+            HttpURLConnection con = (HttpURLConnection) new URL("https://apis.justwatch.com/graphql").openConnection();
+            con.setConnectTimeout(6000);
+            con.setReadTimeout(10000);
+            con.setDoOutput(true);
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("User-Agent", "Advanced-TV-Home");
+            con.getOutputStream().write(q.getBytes(StandardCharsets.UTF_8));
+            try (InputStream in = con.getInputStream()) {
+                out = parseOffers(new String(read(in), StandardCharsets.UTF_8), title, year);
+            } finally {
+                con.disconnect();
+            }
+        } catch (Exception ignored) {
+            return null;    // offline: the caller keeps its fallback
+        }
+        synchronized (Shelf.class) { OFFERS.put(title, out); }
+        return out;
+    }
+
+    /**
+     * The services that have the film (the search result matching its title and year), included ones
+     * first, one entry per app. Services without a known app on Android TV are left out.
+     */
+    static List<Offer> parseOffers(String json, String title, int year) throws org.json.JSONException {
+        List<Offer> out = new ArrayList<>();
+        JSONArray edges = new JSONObject(json).getJSONObject("data").getJSONObject("popularTitles").getJSONArray("edges");
+        JSONObject best = null;
+        for (int i = 0; i < edges.length() && best == null; i++) {
+            JSONObject n = edges.getJSONObject(i).getJSONObject("node");
+            JSONObject c = n.getJSONObject("content");
+            boolean sameYear = year <= 0 || Math.abs(c.optInt("originalReleaseYear") - year) <= 1;
+            if (sameYear && Tvh.fold(c.optString("title")).equals(Tvh.fold(title))) best = n;
+        }
+        if (best == null) return out;
+        JSONArray offers = best.getJSONArray("offers");
+        for (int pass = 0; pass < 2; pass++) {          // included first, then rent / buy
+            for (int i = 0; i < offers.length(); i++) {
+                JSONObject o = offers.getJSONObject(i);
+                String type = o.optString("monetizationType");
+                boolean included = type.equals("FLATRATE") || type.equals("FREE") || type.equals("ADS");
+                if (included != (pass == 0)) continue;
+                String tech = o.getJSONObject("package").optString("technicalName");
+                for (String[] s : SERVICES) {
+                    if (!tech.equals(s[0]) && !(s[0].equals("amazon") && tech.startsWith("amazon") && !tech.contains("store"))) continue;
+                    boolean dup = false;
+                    for (Offer have : out) if (have.pkg.equals(s[2])) dup = true;
+                    if (dup) break;
+                    Offer of = new Offer();
+                    of.app = s[1]; of.pkg = s[2]; of.url = o.optString("standardWebURL", null); of.included = included;
+                    out.add(of);
+                    break;
+                }
+            }
+        }
         return out;
     }
 

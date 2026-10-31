@@ -1383,8 +1383,20 @@ public class MainActivity extends Activity {
                 buttons.add(new String[]{getString(R.string.main_shelf_remove), "close"}); actions.add(() -> { Watched.remove(this, it.pkg); refreshShelf(); });
                 break;
             case "film":
-                if (it.link != null && isInstalled("com.apple.atve.androidtv.appletv")) {
-                    buttons.add(new String[]{"Apple TV", "play"}); actions.add(() -> openInAppleTv(it.link));
+                // The chart is Apple's, but a film may stream elsewhere: offer the apps that really have it.
+                List<Shelf.Offer> offers = Shelf.cachedOffers(it.title);
+                if (offers == null) {
+                    findOffers(it);
+                    // Until the answer arrives (or when offline) keep the old Apple TV button.
+                    if (it.link != null && isInstalled("com.apple.atve.androidtv.appletv")) {
+                        buttons.add(new String[]{"Apple TV", "play"}); actions.add(() -> openInAppleTv(it.link));
+                    }
+                } else {
+                    for (Shelf.Offer o : offers) {
+                        if (buttons.size() >= 2 || !isInstalled(o.pkg)) continue;
+                        buttons.add(new String[]{o.app + (o.included ? "" : " · " + getString(R.string.main_shelf_rent_buy)), "play"});
+                        actions.add(() -> openOffer(it, o));
+                    }
                 }
                 buttons.add(new String[]{getString(R.string.main_shelf_where), "search"});
                 actions.add(() -> shelfDetails(it, "https://www.justwatch.com/gr/search?q=" + android.net.Uri.encode(it.title)));
@@ -1446,6 +1458,27 @@ public class MainActivity extends Activity {
         Intent i = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
         if (i == null) i = getPackageManager().getLaunchIntentForPackage(pkg);
         if (i != null) launch(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
+    private final java.util.Set<String> offerLookups = new java.util.HashSet<>();
+
+    /** Asks where a film streams, once per film; redraws its card when the answer comes. */
+    private void findOffers(Shelf.Item it) {
+        if (!offerLookups.add(it.title)) return;
+        Tvh.IO.execute(() -> {
+            List<Shelf.Offer> got = Shelf.offers(it.title, it.year);
+            runOnUiThread(() -> {
+                if (got == null) return;    // offline: the Apple TV fallback stays
+                if (shelfIndex < shelfItems.size() && shelfItems.get(shelfIndex) == it) showShelfItem();
+            });
+        });
+    }
+
+    /** Opens the film in the app that has it: its own page when the app takes the link, else the app. */
+    private void openOffer(Shelf.Item it, Shelf.Offer o) {
+        if (o.pkg.equals("com.apple.atve.androidtv.appletv") && it.link != null) { openInAppleTv(it.link); return; }
+        if (o.url != null && launch(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(o.url)).setPackage(o.pkg))) return;
+        openPackage(o.pkg);
     }
 
     /**

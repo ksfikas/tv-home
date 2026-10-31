@@ -11,6 +11,7 @@ All notable changes to Advanced TV Home. Newest first. Releases are tagged `vX.Y
 - **Screensaver**: "Coming up" slide (your scheduled recordings and reminders) and a night mode that dims to a small drifting clock from a chosen hour until 06:00.
 - **Box status** shows the installed version and a notice when a newer release exists (checked once a day, can be switched off).
 - **First-run setup**: a short checklist (language, weather, Live TV, phone remote, screensaver) offered once on a fresh install, and always under Inputs → Set up…
+- **Suggested films** now offer the apps that actually have them (Netflix, Disney+, Prime Video, Apple TV, Max, YouTube, whichever you have installed), marked "rent" when they are paid, instead of always Apple TV. Looked up on JustWatch for Greece, no key needed.
 - Fixed a crash when leaving live TV (the pause buffer's reading thread).
 - Faster channel start: playback begins after 250 ms of data and the zap pause is 250 ms.
 - Tests for the news-feed parser, channel search, server status and update check (70 in all).
