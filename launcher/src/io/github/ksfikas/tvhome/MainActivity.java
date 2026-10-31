@@ -1525,15 +1525,18 @@ public class MainActivity extends Activity {
 
     /** Control Center → Screensaver: start it now, which slides to show, and how long each stays. */
     private void pickScreensaver() {
-        String[] keys = {Screensaver.WEATHER, Screensaver.TV, Screensaver.FILMS, Screensaver.NEWS, Screensaver.TICKER};
-        String[] names = {getString(R.string.main_weather), getString(R.string.main_on_tv_now), getString(R.string.main_popular_films), getString(R.string.main_news_slides), getString(R.string.main_news_ticker)};
+        String[] keys = {Screensaver.WEATHER, Screensaver.TV, Screensaver.COMING, Screensaver.FILMS, Screensaver.NEWS, Screensaver.TICKER};
+        String[] names = {getString(R.string.main_weather), getString(R.string.main_on_tv_now), getString(R.string.main_coming_up), getString(R.string.main_popular_films), getString(R.string.main_news_slides), getString(R.string.main_news_ticker)};
         List<String> labels = new ArrayList<>();
         labels.add(getString(R.string.main_start_now));
         for (int i = 0; i < keys.length; i++) labels.add(getString(R.string.main_name_state, names[i], getString(Screensaver.option(this, keys[i]) ? R.string.main_state_on : R.string.main_state_off)));
+        int night = Screensaver.nightFrom(this);
+        labels.add(night < 0 ? getString(R.string.main_night_off) : getString(R.string.main_night_from, String.format(java.util.Locale.ROOT, "%02d:00", night)));
         labels.add(getResources().getQuantityString(R.plurals.main_each_slide, Screensaver.seconds(this), Screensaver.seconds(this)));
         Ui.menu(this, getString(R.string.main_screensaver),labels.toArray(new String[0]), i -> {
             if (i == 0) { startScreensaver(); return; }
             if (i <= keys.length) Screensaver.toggle(this, keys[i - 1]);
+            else if (i == keys.length + 1) Screensaver.nextNight(this);
             else Screensaver.nextSeconds(this);
             pickScreensaver();
         });

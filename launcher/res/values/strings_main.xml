@@ -74,6 +74,9 @@
     <string name="main_screensaver">Screensaver</string>
     <string name="main_weather">Weather</string>
     <string name="main_on_tv_now">On TV now</string>
+    <string name="main_coming_up">Coming up</string>
+    <string name="main_night_off">Night mode: off</string>
+    <string name="main_night_from">Night mode: dim clock from %1$s until 06:00</string>
     <string name="main_popular_films">Popular films</string>
     <string name="main_news_slides">News slides</string>
     <string name="main_news_ticker">News ticker</string>

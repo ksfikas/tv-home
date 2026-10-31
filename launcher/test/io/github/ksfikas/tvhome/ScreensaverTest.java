@@ -1,6 +1,7 @@
 package io.github.ksfikas.tvhome;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -89,5 +90,83 @@ public class ScreensaverTest {
         assertTrue(line.endsWith("Second story"));
         assertEquals(1, line.split("•").length - 1);
         assertEquals("", Screensaver.tickerText(new ArrayList<>()));
+    }
+
+    // ---------------------------------------------------------------- night mode
+
+    @Test
+    public void nightRunsFromTheChosenHourAcrossMidnightUntilSix() {
+        // 23:00 to 06:00
+        assertTrue(Screensaver.isNight(23, 23, 6));
+        assertTrue(Screensaver.isNight(0, 23, 6));
+        assertTrue(Screensaver.isNight(5, 23, 6));
+        assertFalse(Screensaver.isNight(6, 23, 6));
+        assertFalse(Screensaver.isNight(12, 23, 6));
+        assertFalse(Screensaver.isNight(22, 23, 6));
+        // starting at midnight itself
+        assertTrue(Screensaver.isNight(0, 0, 6));
+        assertTrue(Screensaver.isNight(5, 0, 6));
+        assertFalse(Screensaver.isNight(23, 0, 6));
+        // an evening start
+        assertTrue(Screensaver.isNight(21, 21, 6));
+        assertFalse(Screensaver.isNight(20, 21, 6));
+    }
+
+    @Test
+    public void nightOffNeverDims() {
+        for (int h = 0; h < 24; h++) assertFalse(Screensaver.isNight(h, -1, 6));
+    }
+
+    // ---------------------------------------------------------------- coming up
+
+    private static Tvh.Recording rec(String title, String status, long start) {
+        Tvh.Recording r = new Tvh.Recording();
+        r.title = title; r.channel = "ERT 1"; r.schedStatus = status; r.start = start;
+        return r;
+    }
+
+    private static Reminders.Reminder remind(String title, long start) {
+        Reminders.Reminder r = new Reminders.Reminder();
+        r.title = title; r.channelName = "MEGA"; r.start = start;
+        return r;
+    }
+
+    @Test
+    public void comingUpMergesFutureRecordingsAndRemindersSoonestFirst() {
+        List<Tvh.Recording> recs = new ArrayList<>();
+        recs.add(rec("Late film", "scheduled", NOW + 7200));
+        recs.add(rec("Running now", "recording", NOW - 600));    // not coming up
+        recs.add(rec("Finished", "completed", NOW - 86400));     // not coming up
+        recs.add(rec("Soon show", "scheduled", NOW + 600));
+        List<Reminders.Reminder> reminders = new ArrayList<>();
+        reminders.add(remind("News", NOW + 3600));
+        reminders.add(remind("Already started", NOW - 5));        // not coming up
+
+        List<Screensaver.Coming> out = Screensaver.pickComing(recs, reminders, NOW, 5);
+        assertEquals(3, out.size());
+        assertEquals("Soon show", out.get(0).title);
+        assertTrue(out.get(0).recording);
+        assertEquals("News", out.get(1).title);
+        assertFalse("a reminder is not a recording", out.get(1).recording);
+        assertEquals("Late film", out.get(2).title);
+    }
+
+    @Test
+    public void aReminderAndARecordingForTheSameProgrammeShowOnce() {
+        List<Tvh.Recording> recs = new ArrayList<>();
+        recs.add(rec("Film", "scheduled", NOW + 600));
+        List<Reminders.Reminder> reminders = new ArrayList<>();
+        reminders.add(remind("Film", NOW + 600));
+        List<Screensaver.Coming> out = Screensaver.pickComing(recs, reminders, NOW, 5);
+        assertEquals(1, out.size());
+        assertTrue("the recording wins", out.get(0).recording);
+    }
+
+    @Test
+    public void comingUpIsCappedAndToleratesMissingData() {
+        List<Reminders.Reminder> many = new ArrayList<>();
+        for (int i = 1; i <= 9; i++) many.add(remind("Show " + i, NOW + i * 60L));
+        assertEquals(5, Screensaver.pickComing(null, many, NOW, 5).size());
+        assertTrue(Screensaver.pickComing(null, null, NOW, 5).isEmpty());
     }
 }

@@ -54,7 +54,7 @@ public class Screensaver extends DreamService {
     private static final long FADE_MS = 1_600, REFRESH_MS = 45 * 60_000L;
 
     // Options (Control Center → Screensaver). All on by default; the slide time is in seconds.
-    static final String WEATHER = "ss_weather", TV = "ss_tv", FILMS = "ss_films", NEWS = "ss_news", TICKER = "ss_ticker";
+    static final String WEATHER = "ss_weather", TV = "ss_tv", COMING = "ss_coming", FILMS = "ss_films", NEWS = "ss_news", TICKER = "ss_ticker";
     static final int[] SECONDS = {8, 16, 30};
 
     static boolean option(Context c, String key) { return Tvh.prefs(c).getBoolean(key, true); }
@@ -75,6 +75,68 @@ public class Screensaver extends DreamService {
     private static final class Slide {
         final View view; // null: just the photo
         Slide(View view) { this.view = view; }
+    }
+
+    // Night mode (Control Center → Screensaver): from a chosen hour until 6:00 only a dim clock, no photos, no
+    // network, and the screen at its dimmest. The hour is stored as 0-23, or -1 for off.
+    static final String NIGHT_FROM = "ss_night_from";
+    static final int NIGHT_UNTIL = 6, NIGHT_DEFAULT = 23;
+    static final int[] NIGHT_CHOICES = {-1, 21, 22, 23, 0};
+
+    static int nightFrom(Context c) { return Tvh.prefs(c).getInt(NIGHT_FROM, NIGHT_DEFAULT); }
+    static void nextNight(Context c) {
+        int cur = nightFrom(c), next = NIGHT_CHOICES[0];
+        for (int i = 0; i < NIGHT_CHOICES.length; i++) if (NIGHT_CHOICES[i] == cur) next = NIGHT_CHOICES[(i + 1) % NIGHT_CHOICES.length];
+        Tvh.prefs(c).edit().putInt(NIGHT_FROM, next).apply();
+    }
+
+    /** Is this hour (0-23) in the night that starts at {@code from} and ends at {@code until}? from -1 means never. */
+    static boolean isNight(int hour, int from, int until) {
+        if (from < 0) return false;
+        return from > until ? (hour >= from || hour < until) : (hour >= from && hour < until);
+    }
+
+    private boolean night;
+    private View edges;
+    private LinearLayout clockBox;
+    private TextClock nightClock;
+    private final Runnable nightCheck = new Runnable() {
+        @Override public void run() {
+            if (!running) return;
+            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            boolean n = isNight(hour, nightFrom(getApplicationContext()), NIGHT_UNTIL);
+            if (n != night) applyNight(n);
+            if (night) { // a small step each minute, so the same pixels don't stay lit all night
+                nightClock.setTranslationX((float) ((Math.random() - 0.5) * Ui.dp(Screensaver.this, 120)));
+                nightClock.setTranslationY((float) ((Math.random() - 0.5) * Ui.dp(Screensaver.this, 80)));
+            }
+            handler.postDelayed(this, 60_000);
+        }
+    };
+
+    private void applyNight(boolean on) {
+        night = on;
+        int day = on ? View.GONE : View.VISIBLE;
+        bgHolder.setVisibility(day);
+        edges.setVisibility(day);
+        textScrim.setVisibility(day);
+        content.setVisibility(day);
+        clockBox.setVisibility(day);
+        nightClock.setVisibility(on ? View.VISIBLE : View.GONE);
+        setScreenBright(!on);
+        if (on) {
+            handler.removeCallbacks(tick);
+            ticker.removeCallbacks(scroll);
+            weatherChip.setVisibility(View.GONE);
+            tickerBar.setVisibility(View.GONE);
+            for (ImageView v : new ImageView[]{bgA, bgB}) v.animate().cancel();
+        } else {
+            weatherChip.setVisibility(weatherChip.getText().length() > 0 ? View.VISIBLE : View.GONE);
+            tickerShown = ""; // so startTicker really restarts the scroll
+            startTicker(lastLine);
+            next();
+            load();
+        }
     }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -116,17 +178,39 @@ public class Screensaver extends DreamService {
     public void onDreamingStarted() {
         super.onDreamingStarted();
         running = true;
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        boolean startNight = isNight(hour, nightFrom(getApplicationContext()), NIGHT_UNTIL);
         // Start the photos at once: the information slides arrive when their network loads finish, which
         // can take a minute when the network is slow or the server is asleep.
         photos = photoList(getApplicationContext());
         slides = new ArrayList<>(Collections.singletonList(new Slide(null)));
-        next();
-        load();
+        if (startNight) {
+            applyNightStart();
+        } else {
+            next();
+            load();
+        }
+        handler.postDelayed(nightCheck, 60_000);
+    }
+
+    /** Dreaming begins during the night hours: show the dim clock, and fetch nothing. */
+    private void applyNightStart() {
+        night = true;
+        bgHolder.setVisibility(View.GONE);
+        edges.setVisibility(View.GONE);
+        textScrim.setVisibility(View.GONE);
+        content.setVisibility(View.GONE);
+        clockBox.setVisibility(View.GONE);
+        weatherChip.setVisibility(View.GONE);
+        tickerBar.setVisibility(View.GONE);
+        nightClock.setVisibility(View.VISIBLE);
+        setScreenBright(false);
     }
 
     @Override
     public void onDreamingStopped() {
         running = false;
+        night = false;
         handler.removeCallbacksAndMessages(null);
         ticker.removeCallbacks(scroll);
         for (ImageView v : new ImageView[]{bgA, bgB}) {
@@ -154,7 +238,7 @@ public class Screensaver extends DreamService {
         root.addView(bgHolder, new FrameLayout.LayoutParams(-1, -1));
 
         // Dark at the top and bottom edge, where the clock and the ticker sit.
-        View edges = new View(this);
+        edges = new View(this);
         edges.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xB3000000, 0x00000000, 0x00000000, 0xCC000000}));
         root.addView(edges, new FrameLayout.LayoutParams(-1, -1));
@@ -171,7 +255,7 @@ public class Screensaver extends DreamService {
         content.setPadding(side, Ui.dp(this, 140), side, Ui.dp(this, 76));
         root.addView(content, new FrameLayout.LayoutParams(-1, -1));
 
-        LinearLayout clockBox = new LinearLayout(this);
+        clockBox = new LinearLayout(this);
         clockBox.setOrientation(LinearLayout.VERTICAL);
         TextClock time = new TextClock(this);
         time.setFormat12Hour("h:mm");
@@ -208,6 +292,15 @@ public class Screensaver extends DreamService {
         ticker.setGravity(Gravity.CENTER_VERTICAL);
         tickerBar.addView(ticker, new FrameLayout.LayoutParams(-2, -1));
         root.addView(tickerBar, new FrameLayout.LayoutParams(-1, Ui.dp(this, 60), Gravity.BOTTOM));
+        // Night mode: a big, dim clock in the middle (nothing else is drawn).
+        nightClock = new TextClock(this);
+        nightClock.setFormat12Hour("h:mm");
+        nightClock.setFormat24Hour("H:mm");
+        nightClock.setTextSize(120);
+        nightClock.setTypeface(android.graphics.Typeface.create("sans-serif-thin", android.graphics.Typeface.NORMAL));
+        nightClock.setTextColor(0x55FFFFFF);
+        nightClock.setVisibility(View.GONE);
+        root.addView(nightClock, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
         return root;
     }
 
@@ -219,6 +312,7 @@ public class Screensaver extends DreamService {
     }
 
     private void startTicker(String line) {
+        if (night) return; // the ticker comes back with the day (applyNight)
         // Same headlines as already scrolling (a refresh found nothing new): leave it, don't jump back.
         if (line.equals(tickerShown) && tickerBar.getVisibility() == View.VISIBLE) return;
         tickerShown = line;
@@ -242,12 +336,14 @@ public class Screensaver extends DreamService {
     private void load() {
         handler.removeCallbacks(refresh);
         handler.postDelayed(refresh, REFRESH_MS);
+        if (night) return; // nothing is shown at night: no network either
         final Context c = getApplicationContext();
         final boolean wantWeather = option(c, WEATHER), wantTv = option(c, TV), wantFilms = option(c, FILMS),
-                wantNews = option(c, NEWS), wantTicker = option(c, TICKER);
+                wantNews = option(c, NEWS), wantTicker = option(c, TICKER), wantComing = option(c, COMING);
         Tvh.IO.execute(() -> { try {
             String[] weather = wantWeather ? Weather.glance(c) : null;
             List<Row> tv = wantTv ? onTv(c) : new ArrayList<>();
+            List<Coming> coming = wantComing ? comingUp(c) : new ArrayList<>();
             List<Shelf.Item> films = wantFilms ? Shelf.films(Txt.of(c)) : new ArrayList<>();
             List<Shelf.Item> news = wantNews || wantTicker ? Shelf.news(Txt.of(c), Shelf.feed(c)) : new ArrayList<>();
             List<String> list = photoList(c);
@@ -264,23 +360,25 @@ public class Screensaver extends DreamService {
                 Bitmap b = Shelf.image(c, it.artUrl, 800);
                 if (b != null) { pics.put(it.artUrl, b); shown++; }
             }
-            handler.post(() -> { if (running) build(weather, tv, films, wantNews ? news : new ArrayList<>(), wantTicker ? tickerText(news) : "", list, pics); });
+            handler.post(() -> { if (running) build(weather, tv, coming, films, wantNews ? news : new ArrayList<>(), wantTicker ? tickerText(news) : "", list, pics); });
         } catch (Throwable t) { /* offline, or out of memory on a big image: keep what is already showing; this runs on the home app's process */ } });
     }
 
     // What the last successful load produced, so one failed refresh doesn't empty the screen.
     private List<Row> lastTv = new ArrayList<>();
+    private List<Coming> lastComing = new ArrayList<>();
     private List<Shelf.Item> lastFilms = new ArrayList<>(), lastNews = new ArrayList<>();
     private String lastLine = "";
     private Map<String, Bitmap> lastPics = new HashMap<>();
     private String tickerShown = "";
 
-    private void build(String[] weather, List<Row> tv, List<Shelf.Item> films, List<Shelf.Item> news, String line,
+    private void build(String[] weather, List<Row> tv, List<Coming> coming, List<Shelf.Item> films, List<Shelf.Item> news, String line,
                        List<String> list, Map<String, Bitmap> pics) {
         photos = list;
         // A source that came back empty this time (offline, server asleep) keeps its previous content.
         boolean keptOld = false;
         if (tv.isEmpty() && !lastTv.isEmpty() && option(this, TV)) tv = lastTv; else lastTv = tv;
+        if (coming.isEmpty() && !lastComing.isEmpty() && option(this, COMING)) coming = lastComing; else lastComing = coming;
         if (films.isEmpty() && !lastFilms.isEmpty() && option(this, FILMS)) { films = lastFilms; keptOld = true; } else lastFilms = films;
         if (news.isEmpty() && !lastNews.isEmpty() && option(this, NEWS)) { news = lastNews; keptOld = true; } else lastNews = news;
         if (line.isEmpty() && !lastLine.isEmpty() && option(this, TICKER)) line = lastLine; else lastLine = line;
@@ -288,7 +386,7 @@ public class Screensaver extends DreamService {
         lastPics = pics;
         if (weather != null) {
             weatherChip.setText(weather[0] + "   " + weather[1] + "   ·   " + Weather.city(this));
-            weatherChip.setVisibility(View.VISIBLE);
+            weatherChip.setVisibility(night ? View.GONE : View.VISIBLE);
         } else {
             weatherChip.setVisibility(View.GONE);
         }
@@ -299,6 +397,7 @@ public class Screensaver extends DreamService {
         out.add(new Slide(null));
         if (weather != null) { out.add(weatherSlide(weather)); out.add(new Slide(null)); }
         if (!tv.isEmpty()) { out.add(tvSlide(tv)); out.add(new Slide(null)); }
+        if (!coming.isEmpty()) { out.add(comingSlide(coming)); out.add(new Slide(null)); }
         boolean anyPoster = false;
         for (Shelf.Item f : films) if (pics.get(f.artUrl) != null) anyPoster = true;
         if (anyPoster) { out.add(filmsSlide(films, pics)); out.add(new Slide(null)); } // no posters downloaded: no empty slide
@@ -315,7 +414,7 @@ public class Screensaver extends DreamService {
 
     private void next() {
         handler.removeCallbacks(tick);
-        if (!running || slides.isEmpty()) return;
+        if (!running || night || slides.isEmpty()) return;
         handler.postDelayed(tick, seconds(this) * 1000L);
         slideIndex = (slideIndex + 1) % slides.size();
         final Slide s = slides.get(slideIndex);
@@ -329,7 +428,7 @@ public class Screensaver extends DreamService {
     }
 
     private void show(Slide s, Bitmap bm) {
-        if (!running) return;
+        if (!running || night) return;
         if (bm != null) {
             final ImageView in = bgFront == bgA ? bgB : bgA, out = bgFront;
             bgFront = in;
@@ -453,6 +552,42 @@ public class Screensaver extends DreamService {
         return new Slide(v);
     }
 
+    /** Your next recordings (●) and reminders (○), soonest first. */
+    private Slide comingSlide(List<Coming> items) {
+        LinearLayout v = column();
+        v.addView(label(getString(R.string.ss_coming_up)));
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < items.size() && i < 5; i++) {
+            Coming it = items.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 6));
+            boolean today = sameDay(it.start * 1000, now);
+            row.addView(cell(today ? Ui.time(this, it.start) : Ui.day(it.start) + "  " + Ui.time(this, it.start), 17, "sans-serif-medium", 0xCCFFFFFF, 190));
+            LinearLayout titles = column();
+            titles.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 470), -2));
+            TextView title = text((it.recording ? "● " : "○ ") + it.title, 21, "sans-serif-light", Color.WHITE);
+            title.setSingleLine(true);
+            title.setEllipsize(TextUtils.TruncateAt.END);
+            titles.addView(title);
+            TextView meta = text((it.channel == null || it.channel.isEmpty() ? "" : it.channel + "   ")
+                    + getString(it.recording ? R.string.search_badge_recording : R.string.search_badge_reminder), 13, "sans-serif", 0x99FFFFFF);
+            meta.setSingleLine(true);
+            titles.addView(meta);
+            row.addView(titles);
+            v.addView(row);
+        }
+        return new Slide(v);
+    }
+
+    private static boolean sameDay(long a, long b) {
+        java.util.Calendar x = java.util.Calendar.getInstance(), y = java.util.Calendar.getInstance();
+        x.setTimeInMillis(a);
+        y.setTimeInMillis(b);
+        return x.get(java.util.Calendar.YEAR) == y.get(java.util.Calendar.YEAR)
+                && x.get(java.util.Calendar.DAY_OF_YEAR) == y.get(java.util.Calendar.DAY_OF_YEAR);
+    }
+
     private Slide filmsSlide(List<Shelf.Item> films, Map<String, Bitmap> pics) {
         LinearLayout v = column();
         v.addView(label(getString(R.string.ss_popular_films)));
@@ -571,6 +706,49 @@ public class Screensaver extends DreamService {
             s.append(n.title.replaceAll("\\s+", " "));
         }
         return s.toString();
+    }
+
+    /** One thing coming up: a scheduled recording or a reminder. */
+    static final class Coming {
+        String title, channel;
+        long start;        // epoch seconds
+        boolean recording; // else a reminder
+    }
+
+    /** Scheduled recordings and reminders from the server and this box (the server part may be missing). */
+    private static List<Coming> comingUp(Context c) {
+        List<Tvh.Recording> recs = new ArrayList<>();
+        Tvh t = Tvh.get(c);
+        if (t != null) try { recs = t.recordings(); } catch (Exception ignored) { } // asleep or unreachable: reminders still show
+        return pickComing(recs, Reminders.all(c), System.currentTimeMillis() / 1000, 5);
+    }
+
+    /**
+     * What is still to come, soonest first: scheduled recordings and reminders that haven't started. When
+     * a reminder and a recording are for the same programme the recording wins, so it appears once.
+     */
+    static List<Coming> pickComing(List<Tvh.Recording> recs, List<Reminders.Reminder> reminders, long nowSec, int max) {
+        List<Coming> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        if (recs != null) for (Tvh.Recording r : recs) {
+            if (r.schedStatus == null || !r.scheduled() || r.start <= nowSec) continue;
+            Coming it = new Coming();
+            it.title = r.title == null ? "" : r.title;
+            it.channel = r.channel;
+            it.start = r.start;
+            it.recording = true;
+            if (seen.add(it.title + "|" + it.start)) out.add(it);
+        }
+        if (reminders != null) for (Reminders.Reminder r : reminders) {
+            if (r.start <= nowSec) continue;
+            Coming it = new Coming();
+            it.title = r.title == null ? "" : r.title;
+            it.channel = r.channelName;
+            it.start = r.start;
+            if (seen.add(it.title + "|" + it.start)) out.add(it);
+        }
+        java.util.Collections.sort(out, (a, b) -> Long.compare(a.start, b.start));
+        return out.size() > max ? new ArrayList<>(out.subList(0, max)) : out;
     }
 
     private static List<Row> onTv(Context c) {

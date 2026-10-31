@@ -74,6 +74,9 @@
     <string name="main_screensaver">Προφύλαξη οθόνης</string>
     <string name="main_weather">Καιρός</string>
     <string name="main_on_tv_now">Τώρα στην τηλεόραση</string>
+    <string name="main_coming_up">Προσεχώς</string>
+    <string name="main_night_off">Λειτουργία νύχτας: ανενεργή</string>
+    <string name="main_night_from">Λειτουργία νύχτας: αχνό ρολόι από τις %1$s έως τις 06:00</string>
     <string name="main_popular_films">Δημοφιλείς ταινίες</string>
     <string name="main_news_slides">Διαφάνειες ειδήσεων</string>
     <string name="main_news_ticker">Γραμμή ειδήσεων</string>

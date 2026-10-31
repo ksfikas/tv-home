@@ -36,6 +36,10 @@
     <string name="box_uptime_d">Σε λειτουργία: %1$d μ. %2$d ώ. %3$d λ.</string>
     <string name="box_uptime">Σε λειτουργία: %1$d ώ. %2$d λ.</string>
     <string name="box_cache">Προσωρινή μνήμη εφαρμογής: %1$s</string>
+    <string name="box_version">Έκδοση: %1$s</string>
+    <string name="box_update">Υπάρχει νεότερη έκδοση: %1$s. Κατεβάστε το tv-home.apk από το %2$s και τρέξτε: adb install -r tv-home.apk</string>
+    <string name="box_update_on">Έλεγχος ενημέρωσης: ναι</string>
+    <string name="box_update_off">Έλεγχος ενημέρωσης: όχι</string>
     <string name="box_tvh_disk">Δίσκος εγγραφών Tvheadend: %1$s ελεύθερα από %2$s</string>
     <string name="box_memory_tight">Η μνήμη είναι περιορισμένη. Η επανεκκίνηση (Ρυθμίσεις → Σύστημα → Επανεκκίνηση) την ελευθερώνει.</string>
 
@@ -59,6 +63,7 @@
     <!-- Διαφάνειες προφύλαξης οθόνης -->
     <string name="ss_weather_title">Καιρός</string>
     <string name="ss_on_tv">Τώρα στην τηλεόραση</string>
+    <string name="ss_coming_up">Προσεχώς</string>
     <string name="ss_next">Επόμενο: %1$s</string>
     <string name="ss_until">έως %1$s</string>
     <string name="ss_popular_films">Δημοφιλείς ταινίες της εβδομάδας</string>

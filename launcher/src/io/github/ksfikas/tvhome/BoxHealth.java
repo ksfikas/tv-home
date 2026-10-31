@@ -28,7 +28,7 @@ final class BoxHealth {
         long now = System.currentTimeMillis();
         if (now - p.getLong("tidied_at", 0) < DAY) return;
         p.edit().putLong("tidied_at", now).apply();
-        Tvh.IO.execute(() -> tidy(c));
+        Tvh.IO.execute(() -> { tidy(c); UpdateCheck.refreshIfDue(c); }); // the once-a-day "is there a newer release?" too
     }
 
     /** Returns the bytes freed. */
@@ -71,9 +71,20 @@ final class BoxHealth {
                 .setTitle(a.getString(R.string.box_title))
                 .setMessage(a.getString(R.string.box_checking))
                 .setPositiveButton(a.getString(R.string.box_tidy), null)
+                .setNeutralButton(a.getString(UpdateCheck.enabled(a) ? R.string.box_update_on : R.string.box_update_off), null)
                 .setNegativeButton(a.getString(R.string.box_close), null)
                 .create();
         Ui.frost(d).show();
+        // Switch the daily "newer version?" check on or off without closing the dialog.
+        d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+            boolean on = !UpdateCheck.enabled(a);
+            UpdateCheck.setEnabled(a, on);
+            d.getButton(AlertDialog.BUTTON_NEUTRAL).setText(on ? R.string.box_update_on : R.string.box_update_off);
+            Tvh.IO.execute(() -> {
+                if (on) UpdateCheck.refreshIfDue(a);
+                a.runOnUiThread(() -> refresh(a, d, ""));
+            });
+        });
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> Tvh.IO.execute(() -> {
             long freed = tidyAll(a);
             a.runOnUiThread(() -> refresh(a, d, "\n\n" + a.getString(R.string.box_freed, Formatter.formatShortFileSize(a, freed))));
@@ -115,7 +126,10 @@ final class BoxHealth {
                         Formatter.formatShortFileSize(c, data.getTotalBytes()))).append('\n')
                 .append(up >= 1440 ? c.getString(R.string.box_uptime_d, up / 1440, up / 60 % 24, up % 60)
                         : c.getString(R.string.box_uptime, up / 60 % 24, up % 60)).append('\n')
-                .append(c.getString(R.string.box_cache, Formatter.formatShortFileSize(c, dirSize(c.getCacheDir()))));
+                .append(c.getString(R.string.box_cache, Formatter.formatShortFileSize(c, dirSize(c.getCacheDir())))).append('\n')
+                .append(c.getString(R.string.box_version, UpdateCheck.installed(c)));
+        String newer = UpdateCheck.newerTag(c);
+        if (newer != null) s.append("\n\n").append(c.getString(R.string.box_update, newer, UpdateCheck.PAGE));
         if (tvhDisk != null) {
             s.append('\n').append(c.getString(R.string.box_tvh_disk, Formatter.formatShortFileSize(c, tvhDisk[0]),
                     Formatter.formatShortFileSize(c, tvhDisk[1])));
