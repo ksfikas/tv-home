@@ -296,6 +296,7 @@ public class PlayerActivity extends Activity {
     // ---------------------------------------------------------------- playback
 
     /** Select a channel; the stream starts after a short pause so fast zapping doesn't open every channel. */
+
     private void tuneTo(int i, boolean debounce) {
         if (i < 0 || i >= list.size()) return;
         if (index >= 0 && i != index) previousIndex = index;
@@ -310,7 +311,7 @@ public class PlayerActivity extends Activity {
         showBanner();
         handler.removeCallbacks(tuneNow);
         handler.removeCallbacks(retry);
-        if (debounce) handler.postDelayed(tuneNow, 450);
+        if (debounce) handler.postDelayed(tuneNow, 250); // short pause so fast channel-surfing does not tune every channel
         else startPlayback();
     }
 
@@ -394,7 +395,7 @@ public class PlayerActivity extends Activity {
                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, textLang == null));
         // Live TV: start fast, keep a modest buffer (memory is tight on 2 GB boxes).
         DefaultLoadControl load = new DefaultLoadControl.Builder()
-                .setBufferDurationsMs(3000, 12000, 700, 1500)
+                .setBufferDurationsMs(3000, 12000, 250, 1000) // 250 ms is enough to start: a live stream only arrives in real time
                 .build();
         ExoPlayer p = new ExoPlayer.Builder(this, renderers)
                 .setTrackSelector(tracks)
