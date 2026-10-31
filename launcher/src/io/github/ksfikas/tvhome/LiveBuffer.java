@@ -92,8 +92,10 @@ final class LiveBuffer implements DataSource {
                     lock.notifyAll();
                 }
             }
-        } catch (IOException e) {
-            synchronized (lock) { pumpError = e; }
+        } catch (IOException | RuntimeException e) {
+            // close() shuts the connection under a read in progress; the HTTP source can then throw
+            // a NullPointerException instead of an IOException. Either way this thread just ends.
+            synchronized (lock) { pumpError = e instanceof IOException ? (IOException) e : new IOException(e); }
         } finally {
             synchronized (lock) { eof = true; lock.notifyAll(); }
         }
