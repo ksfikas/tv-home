@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Απόψε για εσάς (διαφάνεια προφύλαξης οθόνης) -->
+    <string name="main_tonight">Απόψε για εσάς</string>
+    <string name="ss_tonight">Απόψε για εσάς</string>
+    <string name="tonight_reason_record">Καταγράφετε «%1$s»</string>
+    <string name="tonight_reason_similar">Σαν το «%1$s» που καταγράψατε</string>
+    <string name="tonight_reason_favourite">Στο %1$s, ένα από τα αγαπημένα σας</string>
+    <string name="tonight_reason_prime">Επιλογή για βραδινή ζώνη</string>
+</resources>

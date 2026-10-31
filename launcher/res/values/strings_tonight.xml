@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tonight for you (screensaver slide) -->
+    <string name="main_tonight">Tonight for you</string>
+    <string name="ss_tonight">Tonight for you</string>
+    <string name="tonight_reason_record">You record %1$s</string>
+    <string name="tonight_reason_similar">Like %1$s, which you recorded</string>
+    <string name="tonight_reason_favourite">On %1$s, one of your favourites</string>
+    <string name="tonight_reason_prime">A prime-time pick</string>
+</resources>

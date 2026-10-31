@@ -54,7 +54,7 @@ public class Screensaver extends DreamService {
     private static final long FADE_MS = 1_600, REFRESH_MS = 45 * 60_000L;
 
     // Options (Control Center → Screensaver). All on by default; the slide time is in seconds.
-    static final String WEATHER = "ss_weather", TV = "ss_tv", COMING = "ss_coming", FILMS = "ss_films", NEWS = "ss_news", TICKER = "ss_ticker";
+    static final String WEATHER = "ss_weather", TV = "ss_tv", COMING = "ss_coming", TONIGHT = "ss_tonight", FILMS = "ss_films", NEWS = "ss_news", TICKER = "ss_ticker";
     static final int[] SECONDS = {8, 16, 30};
 
     static boolean option(Context c, String key) { return Tvh.prefs(c).getBoolean(key, true); }
@@ -339,11 +339,12 @@ public class Screensaver extends DreamService {
         if (night) return; // nothing is shown at night: no network either
         final Context c = getApplicationContext();
         final boolean wantWeather = option(c, WEATHER), wantTv = option(c, TV), wantFilms = option(c, FILMS),
-                wantNews = option(c, NEWS), wantTicker = option(c, TICKER), wantComing = option(c, COMING);
+                wantNews = option(c, NEWS), wantTicker = option(c, TICKER), wantComing = option(c, COMING), wantTonight = option(c, TONIGHT);
         Tvh.IO.execute(() -> { try {
             String[] weather = wantWeather ? Weather.glance(c) : null;
             List<Row> tv = wantTv ? onTv(c) : new ArrayList<>();
             List<Coming> coming = wantComing ? comingUp(c) : new ArrayList<>();
+            List<Tonight.Pick> tonight = wantTonight ? tonightPicks(c) : new ArrayList<>();
             List<Shelf.Item> films = wantFilms ? Shelf.films(Txt.of(c)) : new ArrayList<>();
             List<Shelf.Item> news = wantNews || wantTicker ? Shelf.news(Txt.of(c), Shelf.feed(c)) : new ArrayList<>();
             List<String> list = photoList(c);
@@ -360,25 +361,27 @@ public class Screensaver extends DreamService {
                 Bitmap b = Shelf.image(c, it.artUrl, 800);
                 if (b != null) { pics.put(it.artUrl, b); shown++; }
             }
-            handler.post(() -> { if (running) build(weather, tv, coming, films, wantNews ? news : new ArrayList<>(), wantTicker ? tickerText(news) : "", list, pics); });
+            handler.post(() -> { if (running) build(weather, tv, coming, tonight, films, wantNews ? news : new ArrayList<>(), wantTicker ? tickerText(news) : "", list, pics); });
         } catch (Throwable t) { /* offline, or out of memory on a big image: keep what is already showing; this runs on the home app's process */ } });
     }
 
     // What the last successful load produced, so one failed refresh doesn't empty the screen.
     private List<Row> lastTv = new ArrayList<>();
     private List<Coming> lastComing = new ArrayList<>();
+    private List<Tonight.Pick> lastTonight = new ArrayList<>();
     private List<Shelf.Item> lastFilms = new ArrayList<>(), lastNews = new ArrayList<>();
     private String lastLine = "";
     private Map<String, Bitmap> lastPics = new HashMap<>();
     private String tickerShown = "";
 
-    private void build(String[] weather, List<Row> tv, List<Coming> coming, List<Shelf.Item> films, List<Shelf.Item> news, String line,
+    private void build(String[] weather, List<Row> tv, List<Coming> coming, List<Tonight.Pick> tonight, List<Shelf.Item> films, List<Shelf.Item> news, String line,
                        List<String> list, Map<String, Bitmap> pics) {
         photos = list;
         // A source that came back empty this time (offline, server asleep) keeps its previous content.
         boolean keptOld = false;
         if (tv.isEmpty() && !lastTv.isEmpty() && option(this, TV)) tv = lastTv; else lastTv = tv;
         if (coming.isEmpty() && !lastComing.isEmpty() && option(this, COMING)) coming = lastComing; else lastComing = coming;
+        if (tonight.isEmpty() && !lastTonight.isEmpty() && option(this, TONIGHT)) tonight = lastTonight; else lastTonight = tonight;
         if (films.isEmpty() && !lastFilms.isEmpty() && option(this, FILMS)) { films = lastFilms; keptOld = true; } else lastFilms = films;
         if (news.isEmpty() && !lastNews.isEmpty() && option(this, NEWS)) { news = lastNews; keptOld = true; } else lastNews = news;
         if (line.isEmpty() && !lastLine.isEmpty() && option(this, TICKER)) line = lastLine; else lastLine = line;
@@ -398,6 +401,7 @@ public class Screensaver extends DreamService {
         if (weather != null) { out.add(weatherSlide(weather)); out.add(new Slide(null)); }
         if (!tv.isEmpty()) { out.add(tvSlide(tv)); out.add(new Slide(null)); }
         if (!coming.isEmpty()) { out.add(comingSlide(coming)); out.add(new Slide(null)); }
+        if (!tonight.isEmpty()) { out.add(tonightSlide(tonight)); out.add(new Slide(null)); }
         boolean anyPoster = false;
         for (Shelf.Item f : films) if (pics.get(f.artUrl) != null) anyPoster = true;
         if (anyPoster) { out.add(filmsSlide(films, pics)); out.add(new Slide(null)); } // no posters downloaded: no empty slide
@@ -578,6 +582,50 @@ public class Screensaver extends DreamService {
             v.addView(row);
         }
         return new Slide(v);
+    }
+
+    private Slide tonightSlide(List<Tonight.Pick> picks) {
+        LinearLayout v = column();
+        v.addView(label(getString(R.string.ss_tonight)));
+        for (int i = 0; i < picks.size() && i < 5; i++) {
+            Tonight.Pick p = picks.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 6));
+            row.addView(cell(Ui.time(this, p.event.start), 17, "sans-serif-medium", 0xCCFFFFFF, 110));
+            LinearLayout titles = column();
+            titles.setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(this, 560), -2));
+            TextView title = text(p.event.title, 21, "sans-serif-light", Color.WHITE);
+            title.setSingleLine(true);
+            title.setEllipsize(TextUtils.TruncateAt.END);
+            titles.addView(title);
+            TextView meta = text(p.channel + "   ·   " + Tonight.why(Txt.of(this), p), 13, "sans-serif", 0x99FFFFFF);
+            meta.setSingleLine(true);
+            meta.setEllipsize(TextUtils.TruncateAt.END);
+            titles.addView(meta);
+            row.addView(titles);
+            v.addView(row);
+        }
+        return new Slide(v);
+    }
+
+    /** Tonight's picks from the guide, the recordings and the favourites (empty without a server or any taste signal). */
+    private static List<Tonight.Pick> tonightPicks(Context c) {
+        Tvh t = Tvh.get(c);
+        if (t == null) return new ArrayList<>();
+        try {
+            List<Tvh.Channel> channels = Tvh.channels.isEmpty() ? t.loadChannels() : Tvh.channels;
+            Map<String, String> names = new HashMap<>();
+            for (Tvh.Channel ch : channels) if (!ch.radio && ch.fromTvh()) names.put(ch.uuid, ch.name);
+            List<String> recorded = new ArrayList<>();
+            for (Tvh.Recording r : t.recordings()) if (r.title != null) recorded.add(r.title);
+            long now = System.currentTimeMillis() / 1000;
+            Map<String, List<Tvh.Event>> window = t.window(now, now + 6 * 3600);
+            window.keySet().retainAll(names.keySet());     // no radio programmes
+            return Tonight.pick(window, names, new java.util.HashSet<>(Tvh.favourites(c)), recorded, now, now + 6 * 3600, 5);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
     }
 
     private static boolean sameDay(long a, long b) {

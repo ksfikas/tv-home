@@ -1597,8 +1597,8 @@ public class MainActivity extends Activity {
 
     /** Control Center → Screensaver: start it now, which slides to show, and how long each stays. */
     private void pickScreensaver() {
-        String[] keys = {Screensaver.WEATHER, Screensaver.TV, Screensaver.COMING, Screensaver.FILMS, Screensaver.NEWS, Screensaver.TICKER};
-        String[] names = {getString(R.string.main_weather), getString(R.string.main_on_tv_now), getString(R.string.main_coming_up), getString(R.string.main_popular_films), getString(R.string.main_news_slides), getString(R.string.main_news_ticker)};
+        String[] keys = {Screensaver.WEATHER, Screensaver.TV, Screensaver.COMING, Screensaver.TONIGHT, Screensaver.FILMS, Screensaver.NEWS, Screensaver.TICKER};
+        String[] names = {getString(R.string.main_weather), getString(R.string.main_on_tv_now), getString(R.string.main_coming_up), getString(R.string.main_tonight), getString(R.string.main_popular_films), getString(R.string.main_news_slides), getString(R.string.main_news_ticker)};
         List<String> labels = new ArrayList<>();
         labels.add(getString(R.string.main_start_now));
         for (int i = 0; i < keys.length; i++) labels.add(getString(R.string.main_name_state, names[i], getString(Screensaver.option(this, keys[i]) ? R.string.main_state_on : R.string.main_state_off)));
