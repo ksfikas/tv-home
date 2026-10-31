@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- First-run checklist (also Inputs → Set up…) -->
+    <string name="setup_menu_item">Set up…</string>
+    <string name="setup_title">Welcome to Advanced TV Home</string>
+    <string name="setup_language">Language: %1$s</string>
+    <string name="setup_weather">Weather: %1$s</string>
+    <string name="setup_weather_todo">Weather: set your city</string>
+    <string name="setup_tv_done">Live TV: connected</string>
+    <string name="setup_tv_todo">Live TV: connect a Tvheadend server or network tuner (optional)</string>
+    <string name="setup_remote_on">Phone remote: on</string>
+    <string name="setup_remote_todo">Phone remote: turn it on (optional)</string>
+    <string name="setup_saver_done">Screensaver: chosen</string>
+    <string name="setup_saver_todo">Screensaver: choose it (how?)</string>
+    <string name="setup_saver_help">Android picks the screensaver in its own settings: Settings → Device preferences → Screen saver → Advanced TV Home screensaver.\n\nOr from a computer, with USB or network debugging on:\nadb shell settings put secure screensaver_components io.github.ksfikas.tvhome/.Screensaver</string>
+    <string name="setup_done">Done</string>
+</resources>

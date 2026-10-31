@@ -191,6 +191,7 @@ public class MainActivity extends Activity {
         updateWifi();
         updateWeather();
         BoxHealth.dailyTidy(this);
+        handler.postDelayed(this::offerSetup, 1500); // a brand-new install gets the setup checklist once
         // Back from an app: its "last watched" line may have changed.
         refreshShelf(); // also refreshes the focused dock app's line
         Tvh.IO.execute(() -> {
@@ -807,6 +808,7 @@ public class MainActivity extends Activity {
             }));
         }
         if (isInstalled(liveTvPkg)) rows.add(inputRow(getString(R.string.main_live_tv), () -> openPackage(liveTvPkg)));
+        rows.add(inputRow(getString(R.string.setup_menu_item), this::pickSetup));
         rows.add(inputRow(getString(R.string.main_live_tv_setup), this::showLiveSetup));
         if (Tvh.get(this) != null) rows.add(inputRow(getString(R.string.server_menu_item), this::pickServer));
         rows.add(inputRow(getString(R.string.main_weather_menu), this::showWeatherSetup));
@@ -1595,6 +1597,55 @@ public class MainActivity extends Activity {
      * Sources (Tvheadend, a network tuner, tuner apps on the box) and the restart option.
      * Credentials stay in this app's private storage. Any one source is enough.
      */
+    // ---------------------------------------------------------------- setup checklist (first run, and Inputs → Set up…)
+
+    private boolean setupReturn; // a step's dialog is open: show the checklist again when it closes
+
+    /** A brand-new install (nothing set up yet) gets the checklist once; everyone can open it from Inputs. */
+    private void offerSetup() {
+        android.content.SharedPreferences p = Tvh.prefs(this);
+        if (p.getBoolean("setup_offered", false) || p.getBoolean("setup_done", false) || isFinishing() || isDestroyed()) return;
+        boolean fresh = Weather.city(this).isEmpty() && Tvh.get(this) == null && !Sources.configured(this);
+        p.edit().putBoolean("setup_offered", true).apply(); // once, whether or not it's used
+        if (fresh) pickSetup();
+    }
+
+    /** What is set up (✓) and what isn't (○); each line opens the matching dialog, then the list comes back. */
+    private void pickSetup() {
+        String city = Weather.city(this);
+        boolean tv = Tvh.get(this) != null || Sources.configured(this);
+        String chosen = Settings.Secure.getString(getContentResolver(), "screensaver_components");
+        boolean saver = chosen != null && chosen.contains(getPackageName());
+        String[] items = {
+                "✓  " + getString(R.string.setup_language, Lang.label(Txt.of(this), Lang.choice(this))),
+                city.isEmpty() ? "○  " + getString(R.string.setup_weather_todo) : "✓  " + getString(R.string.setup_weather, city),
+                (tv ? "✓  " : "○  ") + getString(tv ? R.string.setup_tv_done : R.string.setup_tv_todo),
+                (RemoteServer.enabled(this) ? "✓  " : "○  ") + getString(RemoteServer.enabled(this) ? R.string.setup_remote_on : R.string.setup_remote_todo),
+                (saver ? "✓  " : "○  ") + getString(saver ? R.string.setup_saver_done : R.string.setup_saver_todo),
+                getString(R.string.setup_done)};
+        Ui.menu(this, getString(R.string.setup_title), items, i -> {
+            switch (i) {
+                case 0: setupReturn = true; pickLanguage(); break;
+                case 1: setupReturn = true; showWeatherSetup(); break;
+                case 2: setupReturn = true; showLiveSetup(); break;
+                case 3: setupReturn = true; showRemoteSetup(); break;
+                case 4: Ui.confirm(this, getString(R.string.main_screensaver), getString(R.string.setup_saver_help), getString(R.string.main_close), this::pickSetup); break;
+                default: Tvh.prefs(this).edit().putBoolean("setup_done", true).apply();
+            }
+        });
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // A step's dialog just closed (this window has the focus again): bring the checklist back.
+        if (hasFocus && setupReturn) {
+            handler.postDelayed(() -> {
+                if (setupReturn && hasWindowFocus() && !isDestroyed()) { setupReturn = false; pickSetup(); }
+            }, 400);
+        }
+    }
+
     private interface IoAction { void run() throws java.io.IOException; }
 
     /** Inputs → Tvheadend server…: what the server is doing, the channel manager, guide refresh and rescan. */
