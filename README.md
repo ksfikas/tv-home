@@ -61,7 +61,10 @@ separate TV client.
   left) and what's next, over the picture.
 - **Series recording**: "Record every episode" from the guide, search or player; manage series
   under Recordings.
-- **Search**: find a programme by title in the whole guide, then watch, record or get a reminder.
+- **Search**: find a channel or a programme by name in the whole guide, then watch, record or get a reminder.
+- **Tvheadend tools** (Inputs → Tvheadend server): a **status** screen (tuners and signal, who is watching,
+  what is recording, disk space), a **channel manager** (show or hide channels, change their numbers),
+  **refresh the guide now** and **rescan channels**.
 - **Reminders**: a popup a minute before a programme starts, with Watch / Dismiss, even over other apps.
 - **Continue watching**: recordings carry on where you stopped, and the last one gets a tile on
   the home row.
@@ -81,7 +84,10 @@ separate TV client.
 - **Radio screen saver**: after three idle minutes the radio screen dims and drifts slowly. Opening
   the channel list there keeps the playing station centred.
 - **Weather** under the clock (Open-Meteo, no account), and **Box status**: free memory and
-  storage, uptime, the recordings disk; the launcher tidies its own cache once a day.
+  storage, uptime, the recordings disk, the installed version and a notice when a newer release
+  exists (checked once a day, can be switched off); the launcher tidies its own cache once a day.
+- **First-run setup**: a short checklist (language, weather, Live TV, phone remote, screensaver) on a
+  fresh install, and any time under Inputs → Set up….
 - **Last watched, under each dock app**: focus an app and its name gets what you last watched there
   ("▶ title · show · 12 min left", with a progress bar and the artwork faded in behind), or "Paused
   at 14:49", or "Last opened 20 min ago" for apps that don't say what they play. Only what was played on
@@ -94,7 +100,8 @@ separate TV client.
 - **Phone remote**: Control → Phone remote shows a QR code; scan it and the remote opens already
   paired (home network only). From the phone: zap, pause, back to live, volume, sleep timer, turn
   the TV off and on, the channel list, the guide (now and next on every channel, or search) with
-  record / every episode / remind me, opening apps, and sending photos as wallpapers. Android
+  record / every episode / remind me, a channel filter, a Tvheadend status card, opening apps, and
+  sending photos as wallpapers. Five wrong PIN attempts lock pairing for a minute. Android
   doesn't let it press keys inside other apps.
 - **Voice search**: the mic in Search uses Google TV's voice input through the remote.
 - **Your dock**: hold OK on any app for Open, Add to dock / Move left / Move right / Remove from dock,
@@ -144,14 +151,16 @@ When the TV sits idle (after 10 minutes, Android's usual timeout) it turns into 
   a gentle zoom, under a thin clock and the date. The weather sits in the corner.
 - **A news ticker** scrolls the latest headlines along the bottom.
 - **In between, a few slides**: the **weather** (now, feels like, three days), **what's on TV right
-  now** on your favourite channels with what comes next, **popular films** with their posters, and
+  now** on your favourite channels with what comes next, **coming up** (your scheduled recordings and
+  reminders), **popular films** with their posters, and
   **headlines** with the story's photo.
 - **Nothing new to set up.** It reuses what the launcher already has: the weather city, your
   Tvheadend guide and favourites, the Top Shelf's news feed (ERT News, Kathimerini or in.gr), the
   wallpapers. Slides for things you haven't set up (no Tvheadend, no weather) simply don't appear.
 - **Your choice of what shows.** *Control → Screensaver* has **Start now**, an on/off switch for
   each of Weather, On TV now, Popular films, News slides and the News ticker, and how long each
-  slide stays (8, 16 or 30 seconds).
+  slide stays (8, 16 or 30 seconds). A **night mode** swaps everything for a small, slowly drifting
+  clock from an hour you pick until 06:00.
 
 <table>
 <tr>
