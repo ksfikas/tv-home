@@ -125,6 +125,35 @@ final class Tvh {
         return null;
     }
 
+    /** Lower case without accents, so "σκαι" finds "ΣΚΑΪ" and "mega" finds "MEGA HD". */
+    static String fold(String s) {
+        if (s == null) return "";
+        return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT).trim();
+    }
+
+    /**
+     * Channels for a typed query: digits match the start of a channel number ("7" finds 7, 70, 700...),
+     * anything else matches inside the name. Names that start with the text come first. At most max.
+     */
+    static List<Channel> matchChannels(List<Channel> all, String query, int max) {
+        List<Channel> starts = new ArrayList<>(), inside = new ArrayList<>();
+        String q = fold(query);
+        if (q.isEmpty()) return starts;
+        boolean digits = q.matches("\\d+");
+        for (Channel ch : all) {
+            if (digits) {
+                if (ch.number > 0 && ch.numberLabel().startsWith(q)) starts.add(ch);
+                continue;
+            }
+            String name = fold(ch.name);
+            if (name.startsWith(q)) starts.add(ch);
+            else if (name.contains(q)) inside.add(ch);
+        }
+        starts.addAll(inside);
+        return starts.size() > max ? new ArrayList<>(starts.subList(0, max)) : starts;
+    }
+
     // Favourites: channel uuids in the user's order, kept on the box.
     static List<String> favourites(Context c) {
         String s = prefs(c).getString("favourites", "");
@@ -359,6 +388,87 @@ final class Tvh {
     }
 
     /** Recording storage {free, total} in bytes, from Tvheadend's status feed; null if not reported. */
+    // ---------------------------------------------------------------- server status and management (Control Center → Tvheadend)
+
+    /** Everything the status screen shows in one go. The inputs/subscriptions pages need an admin user. */
+    ServerStatus serverStatus() throws IOException {
+        JSONObject inputs = json("/api/status/inputs"), subs = json("/api/status/subscriptions");
+        List<Recording> recs = new ArrayList<>();
+        try { recs = recordings(); } catch (IOException ignored) { } // the rest is still worth showing
+        long[] disk = null;
+        try { disk = diskSpace(); } catch (IOException ignored) { }
+        String version = "";
+        try { version = json("/api/serverinfo").optString("sw_version"); } catch (IOException ignored) { }
+        return ServerStatus.parse(inputs, subs, recs, disk, version);
+    }
+
+    /** One row of the channel manager: every channel Tvheadend has, enabled or not. */
+    static final class ChannelRow {
+        String uuid, name;
+        int number;
+        boolean enabled;
+    }
+
+    List<ChannelRow> allChannelRows() throws IOException {
+        return parseChannelRows(json("/api/channel/grid?limit=5000"));
+    }
+
+    /** From /api/channel/grid: numbered channels first (by number), then the rest by name. */
+    static List<ChannelRow> parseChannelRows(JSONObject grid) {
+        List<ChannelRow> out = new ArrayList<>();
+        JSONArray rows = grid == null ? null : grid.optJSONArray("entries");
+        if (rows != null) for (int i = 0; i < rows.length(); i++) {
+            JSONObject o = rows.optJSONObject(i);
+            if (o == null || o.optString("uuid").isEmpty()) continue;
+            ChannelRow r = new ChannelRow();
+            r.uuid = o.optString("uuid");
+            r.name = o.optString("name");
+            r.number = o.optInt("number");
+            r.enabled = o.optBoolean("enabled", true);
+            out.add(r);
+        }
+        java.util.Collections.sort(out, (a, b) -> {
+            if ((a.number > 0) != (b.number > 0)) return a.number > 0 ? -1 : 1;
+            if (a.number != b.number) return Integer.compare(a.number, b.number);
+            return a.name.compareToIgnoreCase(b.name);
+        });
+        return out;
+    }
+
+    void setChannelEnabled(String uuid, boolean on) throws IOException {
+        saveNode(uuid, "enabled", on);
+    }
+
+    void setChannelNumber(String uuid, int number) throws IOException {
+        saveNode(uuid, "number", number);
+    }
+
+    private void saveNode(String uuid, String field, Object value) throws IOException {
+        try {
+            get("/api/idnode/save?node=" + enc(new JSONObject().put("uuid", uuid).put(field, value).toString()));
+        } catch (org.json.JSONException e) {
+            throw new IOException(txt.s(R.string.tvh_bad_reply));
+        }
+    }
+
+    /** Ask the tuner to collect the over-the-air programme guide now instead of at the nightly time. */
+    void grabGuideNow() throws IOException {
+        get("/api/epggrab/ota/trigger?trigger=1");
+    }
+
+    /** Start a scan of every DVB network for new channels; returns how many networks were asked. */
+    int rescanChannels() throws IOException {
+        JSONArray nets = json("/api/mpegts/network/grid").optJSONArray("entries");
+        int n = 0;
+        if (nets != null) for (int i = 0; i < nets.length(); i++) {
+            JSONObject o = nets.optJSONObject(i);
+            if (o == null || o.optString("uuid").isEmpty()) continue;
+            get("/api/mpegts/network/scan?uuid=" + enc(o.optString("uuid")));
+            n++;
+        }
+        return n;
+    }
+
     long[] diskSpace() throws IOException {
         JSONArray msgs = json("/comet/poll").optJSONArray("messages");
         if (msgs != null) for (int i = 0; i < msgs.length(); i++) {

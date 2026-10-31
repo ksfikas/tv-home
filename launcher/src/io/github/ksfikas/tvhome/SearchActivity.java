@@ -110,7 +110,8 @@ public class SearchActivity extends Activity {
         query.setOnEditorActionListener((v, action, e) -> {
             handler.removeCallbacks(search);
             search();
-            if (results.getChildCount() > 1) results.getChildAt(1).requestFocus();
+            View first = firstResult();
+            if (first != null) first.requestFocus();
             return true;
         });
 
@@ -163,11 +164,17 @@ public class SearchActivity extends Activity {
     @Override
     public boolean onKeyDown(int code, KeyEvent e) {
         // Down from the box goes to the first result rather than the keyboard's guess.
-        if (code == KeyEvent.KEYCODE_DPAD_DOWN && getCurrentFocus() == query && results.getChildCount() > 1) {
-            results.getChildAt(1).requestFocus();
+        if (code == KeyEvent.KEYCODE_DPAD_DOWN && getCurrentFocus() == query && firstResult() != null) {
+            firstResult().requestFocus();
             return true;
         }
         return super.onKeyDown(code, e);
+    }
+
+    /** The first row you can focus (a channel or a programme), skipping the message and section headings. */
+    private View firstResult() {
+        for (int i = 1; i < results.getChildCount(); i++) if (results.getChildAt(i).isFocusable()) return results.getChildAt(i);
+        return null;
     }
 
     @Override
@@ -202,10 +209,34 @@ public class SearchActivity extends Activity {
         long keepId = focused != null && focused.getTag() instanceof Tvh.Event ? ((Tvh.Event) focused.getTag()).id : -1;
         results.removeAllViews();
         results.addView(message);
+        // Channels first: they're what you want when you type "ert" or "700", and they need no server call.
+        List<Tvh.Channel> channels = Tvh.matchChannels(Tvh.channels, query.getText().toString(), 8);
+        if (!channels.isEmpty()) {
+            TextView head = Ui.text(this, 12, "sans-serif-medium", 0x99FFFFFF);
+            head.setAllCaps(true);
+            head.setLetterSpacing(0.15f);
+            head.setText(R.string.search_channels);
+            head.setPadding(Ui.dp(this, 16), Ui.dp(this, 10), 0, Ui.dp(this, 4));
+            results.addView(head);
+            for (Tvh.Channel ch : channels) {
+                TextView row = Ui.row(this, channelLabel(ch));
+                row.setTag(ch);
+                row.setOnClickListener(v -> watchChannel(ch));
+                results.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            }
+        }
         if (err != null) { message.setText(err); return; }
         if (found == null) { message.setText(""); return; }
-        message.setText(found.isEmpty() ? getString(R.string.search_none)
+        message.setText(found.isEmpty() ? (channels.isEmpty() ? getString(R.string.search_none) : "")
                 : getResources().getQuantityString(R.plurals.search_upcoming, found.size(), found.size()));
+        if (!found.isEmpty() && !channels.isEmpty()) {
+            TextView head = Ui.text(this, 12, "sans-serif-medium", 0x99FFFFFF);
+            head.setAllCaps(true);
+            head.setLetterSpacing(0.15f);
+            head.setText(R.string.search_programmes);
+            head.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), 0, Ui.dp(this, 4));
+            results.addView(head);
+        }
         long nowSec = System.currentTimeMillis() / 1000;
         for (Tvh.Event ev : found) {
             TextView row = Ui.row(this, label(ev, nowSec));
@@ -214,7 +245,25 @@ public class SearchActivity extends Activity {
             results.addView(row, new LinearLayout.LayoutParams(-1, -2));
             if (ev.id == keepId) row.requestFocus();
         }
-        if (focusFirstResult && results.getChildCount() > 1) { focusFirstResult = false; results.getChildAt(1).requestFocus(); }
+        if (focusFirstResult && firstResult() != null) { focusFirstResult = false; firstResult().requestFocus(); }
+    }
+
+    /** "700  ErtNews Radio" with what is on now underneath. */
+    private CharSequence channelLabel(Tvh.Channel ch) {
+        SpannableStringBuilder s = new SpannableStringBuilder(ch.numberLabel().isEmpty() ? ch.name : ch.numberLabel() + "   " + ch.name);
+        if (ch.now != null && ch.now.title != null && !ch.now.title.isEmpty()) {
+            int meta = s.length();
+            s.append("\n").append(ch.now.title);
+            s.setSpan(new RelativeSizeSpan(0.8f), meta, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            s.setSpan(new ForegroundColorSpan(0x99888888), meta, s.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        return s;
+    }
+
+    private void watchChannel(Tvh.Channel ch) {
+        startActivity(new android.content.Intent(this, PlayerActivity.class).putExtra(PlayerActivity.EXTRA_CHANNEL, ch.uuid)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+        finish();
     }
 
     private CharSequence label(Tvh.Event ev, long nowSec) {

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Είσοδοι → Διακομιστής Tvheadend… -->
+    <string name="server_menu_item">Διακομιστής Tvheadend…</string>
+    <string name="server_title">Διακομιστής Tvheadend</string>
+    <string name="server_status">Κατάσταση διακομιστή</string>
+    <string name="server_channels">Κανάλια (εμφάνιση, απόκρυψη, αρίθμηση)</string>
+    <string name="server_grab_guide">Ανανέωση οδηγού προγράμματος τώρα</string>
+    <string name="server_rescan">Νέα σάρωση καναλιών</string>
+    <string name="server_grab_confirm">Ο διακομιστής συλλέγει τον οδηγό από τον αέρα με τον δέκτη. Μπορεί να πάρει αρκετά λεπτά και ο δέκτης να είναι απασχολημένος στο μεταξύ.</string>
+    <string name="server_rescan_confirm">Ψάχνει για νέα ή αλλαγμένα κανάλια. Μπορεί να πάρει αρκετά λεπτά και ο δέκτης να είναι απασχολημένος στο μεταξύ.</string>
+    <string name="server_go">Έναρξη</string>
+    <string name="server_grab_started">Η ανανέωση του οδηγού ξεκίνησε</string>
+    <string name="server_rescan_started">Η σάρωση καναλιών ξεκίνησε</string>
+
+    <!-- Κατάσταση διακομιστή -->
+    <string name="status_title">Διακομιστής Tvheadend</string>
+    <string name="status_server">Tvheadend %1$s</string>
+    <string name="status_tuner">Δέκτης: %1$s</string>
+    <string name="status_idle">αδρανής</string>
+    <plurals name="status_busy">
+        <item quantity="one">σε χρήση (%1$d ροή)</item>
+        <item quantity="other">σε χρήση (%1$d ροές)</item>
+    </plurals>
+    <string name="status_signal">Σήμα %1$s  ·  SNR %2$s  ·  Μη διορθωμένα %3$d</string>
+    <string name="status_rate">%1$s Mbit/s</string>
+    <string name="status_watching">Παρακολουθούν τώρα</string>
+    <string name="status_nobody">Κανείς δεν παρακολουθεί</string>
+    <string name="status_recording">Εγγράφονται τώρα</string>
+    <string name="status_not_recording">Δεν γίνεται εγγραφή</string>
+    <string name="status_disk">Δίσκος εγγραφών: %1$s ελεύθερα από %2$s</string>
+
+    <!-- Διαχείριση καναλιών -->
+    <string name="chan_title">Κανάλια</string>
+    <string name="chan_hint">OK για εμφάνιση ή απόκρυψη καναλιού · παρατεταμένο OK για αλλαγή αριθμού</string>
+    <string name="chan_filter_all">Εμφάνιση: όλα τα κανάλια (%1$d)  ·  OK για αλλαγή</string>
+    <string name="chan_filter_shown">Εμφάνιση: ορατά κανάλια (%1$d)  ·  OK για αλλαγή</string>
+    <string name="chan_filter_hidden">Εμφάνιση: κρυμμένα κανάλια (%1$d)  ·  OK για αλλαγή</string>
+    <string name="chan_shown">Εμφανίζεται</string>
+    <string name="chan_hidden">Κρυμμένο</string>
+    <string name="chan_number_title">Αριθμός καναλιού: %1$s</string>
+    <string name="chan_number_hint">1 έως 9999</string>
+    <string name="chan_number_bad">Δώστε αριθμό από 1 έως 9999</string>
+</resources>

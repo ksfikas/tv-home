@@ -808,6 +808,7 @@ public class MainActivity extends Activity {
         }
         if (isInstalled(liveTvPkg)) rows.add(inputRow(getString(R.string.main_live_tv), () -> openPackage(liveTvPkg)));
         rows.add(inputRow(getString(R.string.main_live_tv_setup), this::showLiveSetup));
+        if (Tvh.get(this) != null) rows.add(inputRow(getString(R.string.server_menu_item), this::pickServer));
         rows.add(inputRow(getString(R.string.main_weather_menu), this::showWeatherSetup));
         rows.add(inputRow(getString(R.string.main_box_status_menu),() -> BoxHealth.show(this)));
         rows.add(inputRow(getString(R.string.main_phone_remote_menu), this::showRemoteSetup));
@@ -1591,6 +1592,40 @@ public class MainActivity extends Activity {
      * Sources (Tvheadend, a network tuner, tuner apps on the box) and the restart option.
      * Credentials stay in this app's private storage. Any one source is enough.
      */
+    private interface IoAction { void run() throws java.io.IOException; }
+
+    /** Inputs → Tvheadend server…: what the server is doing, the channel manager, guide refresh and rescan. */
+    private void pickServer() {
+        Tvh t = Tvh.get(this);
+        if (t == null) return;
+        String[] items = {getString(R.string.server_status), getString(R.string.server_channels),
+                getString(R.string.server_grab_guide), getString(R.string.server_rescan)};
+        Ui.menu(this, getString(R.string.server_title), items, i -> {
+            switch (i) {
+                case 0: ServerStatus.show(this); break;
+                case 1: launch(new Intent(this, ChannelsActivity.class)); break;
+                case 2:
+                    Ui.confirm(this, items[2], getString(R.string.server_grab_confirm), getString(R.string.server_go),
+                            () -> serverAction(t::grabGuideNow, getString(R.string.server_grab_started)));
+                    break;
+                default:
+                    Ui.confirm(this, items[3], getString(R.string.server_rescan_confirm), getString(R.string.server_go),
+                            () -> serverAction(t::rescanChannels, getString(R.string.server_rescan_started)));
+            }
+        });
+    }
+
+    /** Run a server request off the main thread and say what happened. */
+    private void serverAction(IoAction action, String done) {
+        Tvh.IO.execute(() -> {
+            String msg;
+            try { action.run(); msg = done; }
+            catch (java.io.IOException e) { msg = e.getMessage() == null ? getString(R.string.tvh_bad_reply) : e.getMessage(); }
+            String shown = msg;
+            runOnUiThread(() -> android.widget.Toast.makeText(this, shown, android.widget.Toast.LENGTH_LONG).show());
+        });
+    }
+
     private void showLiveSetup() {
         android.content.SharedPreferences prefs = Tvh.prefs(this);
         LinearLayout form = new LinearLayout(this);

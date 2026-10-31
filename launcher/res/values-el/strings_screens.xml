@@ -56,10 +56,12 @@
 
     <!-- Αναζήτηση -->
     <string name="search_title">Αναζήτηση στον οδηγό</string>
-    <string name="search_hint">Τίτλος εκπομπής, π.χ. ειδήσεις, ποδόσφαιρο, ταινία…</string>
-    <string name="search_say_title">Πείτε τον τίτλο μιας εκπομπής</string>
+    <string name="search_hint">Κανάλι ή εκπομπή, π.χ. ERT, 700, ειδήσεις, ταινία…</string>
+    <string name="search_say_title">Πείτε ένα κανάλι ή μια εκπομπή</string>
     <string name="search_voice_missing">Η φωνητική εισαγωγή δεν είναι διαθέσιμη σε αυτή τη συσκευή· πληκτρολογήστε</string>
     <string name="search_searching">Αναζήτηση…</string>
+    <string name="search_channels">Κανάλια</string>
+    <string name="search_programmes">Εκπομπές</string>
     <string name="search_none">Δεν βρέθηκε προσεχής εκπομπή με αυτόν τον τίτλο</string>
     <plurals name="search_upcoming">
         <item quantity="one">%1$d προσεχής εκπομπή</item>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Inputs → Tvheadend server… -->
+    <string name="server_menu_item">Tvheadend server…</string>
+    <string name="server_title">Tvheadend server</string>
+    <string name="server_status">Server status</string>
+    <string name="server_channels">Channels (show, hide, renumber)</string>
+    <string name="server_grab_guide">Refresh the programme guide now</string>
+    <string name="server_rescan">Rescan for channels</string>
+    <string name="server_grab_confirm">The server collects the guide over the air with the tuner. This can take several minutes, and the tuner may be busy meanwhile.</string>
+    <string name="server_rescan_confirm">Scans for new or changed channels. This can take several minutes, and the tuner may be busy meanwhile.</string>
+    <string name="server_go">Start</string>
+    <string name="server_grab_started">Guide refresh started</string>
+    <string name="server_rescan_started">Channel scan started</string>
+
+    <!-- Server status -->
+    <string name="status_title">Tvheadend server</string>
+    <string name="status_server">Tvheadend %1$s</string>
+    <string name="status_tuner">Tuner: %1$s</string>
+    <string name="status_idle">idle</string>
+    <plurals name="status_busy">
+        <item quantity="one">in use (%1$d stream)</item>
+        <item quantity="other">in use (%1$d streams)</item>
+    </plurals>
+    <string name="status_signal">Signal %1$s  ·  SNR %2$s  ·  Uncorrected %3$d</string>
+    <string name="status_rate">%1$s Mbit/s</string>
+    <string name="status_watching">Watching now</string>
+    <string name="status_nobody">Nobody is watching</string>
+    <string name="status_recording">Recording now</string>
+    <string name="status_not_recording">Nothing is recording</string>
+    <string name="status_disk">Recordings disk: %1$s free of %2$s</string>
+
+    <!-- Channel manager -->
+    <string name="chan_title">Channels</string>
+    <string name="chan_hint">OK to show or hide a channel · hold OK to change its number</string>
+    <string name="chan_filter_all">Showing: all channels (%1$d)  ·  OK to change</string>
+    <string name="chan_filter_shown">Showing: shown channels (%1$d)  ·  OK to change</string>
+    <string name="chan_filter_hidden">Showing: hidden channels (%1$d)  ·  OK to change</string>
+    <string name="chan_shown">Shown</string>
+    <string name="chan_hidden">Hidden</string>
+    <string name="chan_number_title">Channel number: %1$s</string>
+    <string name="chan_number_hint">1 to 9999</string>
+    <string name="chan_number_bad">Enter a number from 1 to 9999</string>
+</resources>

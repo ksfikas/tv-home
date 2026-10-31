@@ -56,10 +56,12 @@
 
     <!-- Search -->
     <string name="search_title">Search the guide</string>
-    <string name="search_hint">Programme title, e.g. news, football, a film…</string>
-    <string name="search_say_title">Say a programme title</string>
+    <string name="search_hint">Channel or programme, e.g. ERT, 700, news, a film…</string>
+    <string name="search_say_title">Say a channel or programme</string>
     <string name="search_voice_missing">Voice input isn\'t available on this box; type instead</string>
     <string name="search_searching">Searching…</string>
+    <string name="search_channels">Channels</string>
+    <string name="search_programmes">Programmes</string>
     <string name="search_none">Nothing coming up with that title</string>
     <plurals name="search_upcoming">
         <item quantity="one">%1$d upcoming</item>
