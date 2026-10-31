@@ -68,4 +68,17 @@ public class OffersTest {
         List<Shelf.Offer> web = Shelf.parseOffers(answer(node("Film", 2020, offer("RENT", "amazon"))), "Film", 2020);
         assertEquals("https://x/amazon", web.get(0).url);
     }
+
+    @Test
+    public void everyServiceIsNamedIncludedOnesSeparateFromRentAndBuy() throws Exception {
+        String offers = "{\"monetizationType\":\"FLATRATE\",\"package\":{\"technicalName\":\"x\",\"clearName\":\"Vodafone TV\"}},"
+                + "{\"monetizationType\":\"RENT\",\"package\":{\"technicalName\":\"itunes\",\"clearName\":\"Apple TV Store\"}},"
+                + "{\"monetizationType\":\"BUY\",\"package\":{\"technicalName\":\"itunes\",\"clearName\":\"Apple TV Store\"}},"
+                + "{\"monetizationType\":\"ADS\",\"package\":{\"technicalName\":\"y\",\"clearName\":\"ERTFLIX\"}}";
+        String[] n = Shelf.parseNames(answer(node("Film", 2020, offers)), "Film", 2020);
+        assertEquals("Vodafone TV, ERTFLIX", n[0]);
+        assertEquals("Apple TV Store", n[1]);
+        String[] none = Shelf.parseNames(answer(node("Other", 2020, offers)), "Film", 2020);
+        assertEquals("", none[0] + none[1]);
+    }
 }

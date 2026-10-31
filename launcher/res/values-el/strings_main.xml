@@ -56,6 +56,9 @@
     <string name="main_shelf_resume">Συνέχιση</string>
     <string name="main_shelf_remove">Κατάργηση</string>
     <string name="main_shelf_where">Πού να το δείτε</string>
+    <string name="shelf_where_stream">Σε streaming: %1$s</string>
+    <string name="shelf_where_rent">Ενοικίαση ή αγορά: %1$s</string>
+    <string name="shelf_where_none">Δεν είναι ακόμη σε καμία υπηρεσία στην Ελλάδα</string>
     <string name="main_shelf_rent_buy">ενοικίαση</string>
     <string name="main_shelf_phone">Διαβάστε στο κινητό</string>
     <string name="main_scan_phone">Σαρώστε με την κάμερα του κινητού για να το διαβάσετε.</string>

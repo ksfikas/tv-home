@@ -56,6 +56,9 @@
     <string name="main_shelf_resume">Resume</string>
     <string name="main_shelf_remove">Remove</string>
     <string name="main_shelf_where">Where to watch</string>
+    <string name="shelf_where_stream">Streaming on: %1$s</string>
+    <string name="shelf_where_rent">Rent or buy: %1$s</string>
+    <string name="shelf_where_none">Not on any service in Greece yet</string>
     <string name="main_shelf_rent_buy">rent</string>
     <string name="main_shelf_phone">Read on phone</string>
     <string name="main_scan_phone">Scan with your phone\'s camera to read it.</string>

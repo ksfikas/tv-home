@@ -1554,7 +1554,14 @@ public class MainActivity extends Activity {
         t.setLineSpacing(dp(3), 1f);
         String about = it.summary == null || it.summary.isEmpty() ? "" : it.summary;
         if (about.length() > 600) about = about.substring(0, 597) + "…";
-        t.setText(it.sub + (about.isEmpty() ? "" : "\n\n" + about) + (link != null ? "\n\n" + getString(R.string.main_scan_phone) : ""));
+        String where = "";
+        String[] names = "film".equals(it.kind) ? Shelf.cachedNames(it.title) : null;   // every service with the film, as found when the card showed
+        if (names != null) {
+            where = "\n\n" + (names[0].isEmpty() && names[1].isEmpty() ? getString(R.string.shelf_where_none)
+                    : (names[0].isEmpty() ? "" : getString(R.string.shelf_where_stream, names[0]) + (names[1].isEmpty() ? "" : "\n"))
+                    + (names[1].isEmpty() ? "" : getString(R.string.shelf_where_rent, names[1])));
+        }
+        t.setText(it.sub + where + (about.isEmpty() ? "" : "\n\n" + about) + (link != null ? "\n\n" + getString(R.string.main_scan_phone) : ""));
         LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1f);
         tl.setMargins(link != null ? dp(24) : 0, 0, 0, 0);
         box.addView(t, tl);

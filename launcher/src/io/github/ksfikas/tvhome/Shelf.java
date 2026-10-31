@@ -294,6 +294,10 @@ final class Shelf {
     }
 
     private static final java.util.Map<String, List<Offer>> OFFERS = new java.util.HashMap<>();
+    private static final java.util.Map<String, String[]> NAMES = new java.util.HashMap<>();
+
+    /** {streaming, rent or buy}: every service that has the film, comma separated; null before the lookup. */
+    static synchronized String[] cachedNames(String title) { return NAMES.get(title); }
 
     /** JustWatch's name for a service -> its label and the Android TV app. Only apps worth opening. */
     private static final String[][] SERVICES = {
@@ -315,7 +319,7 @@ final class Shelf {
         List<Offer> out = new ArrayList<>();
         try {
             String q = "{\"query\":\"query($q:String!,$c:Country!,$l:Language!){popularTitles(country:$c,first:5,filter:{searchQuery:$q,objectTypes:[MOVIE]})"
-                    + "{edges{node{content(country:$c,language:$l){title originalReleaseYear} offers(country:$c,platform:WEB){monetizationType package{technicalName} standardWebURL androidtv:deeplinkURL(platform:ANDROID_TV)}}}}}\","
+                    + "{edges{node{content(country:$c,language:$l){title originalReleaseYear} offers(country:$c,platform:WEB){monetizationType package{technicalName clearName} standardWebURL androidtv:deeplinkURL(platform:ANDROID_TV)}}}}}\","
                     + "\"variables\":{\"q\":" + JSONObject.quote(title) + ",\"c\":\"GR\",\"l\":\"en\"}}";
             HttpURLConnection con = (HttpURLConnection) new URL("https://apis.justwatch.com/graphql").openConnection();
             con.setConnectTimeout(6000);
@@ -326,7 +330,9 @@ final class Shelf {
             con.setRequestProperty("User-Agent", "Advanced-TV-Home");
             con.getOutputStream().write(q.getBytes(StandardCharsets.UTF_8));
             try (InputStream in = con.getInputStream()) {
-                out = parseOffers(new String(read(in), StandardCharsets.UTF_8), title, year);
+                String body = new String(read(in), StandardCharsets.UTF_8);
+                out = parseOffers(body, title, year);
+                synchronized (Shelf.class) { NAMES.put(title, parseNames(body, title, year)); }
             } finally {
                 con.disconnect();
             }
@@ -337,6 +343,32 @@ final class Shelf {
         return out;
     }
 
+
+    /** Names of every service with the film: {included ones, rent or buy ones}, each comma separated, in the order given. */
+    static String[] parseNames(String json, String title, int year) throws org.json.JSONException {
+        StringBuilder[] sb = {new StringBuilder(), new StringBuilder()};
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        JSONArray edges = new JSONObject(json).getJSONObject("data").getJSONObject("popularTitles").getJSONArray("edges");
+        for (int i = 0; i < edges.length(); i++) {
+            JSONObject n = edges.getJSONObject(i).getJSONObject("node");
+            JSONObject c = n.getJSONObject("content");
+            boolean sameYear = year <= 0 || Math.abs(c.optInt("originalReleaseYear") - year) <= 1;
+            if (!sameYear || !Tvh.fold(c.optString("title")).equals(Tvh.fold(title))) continue;
+            JSONArray offers = n.getJSONArray("offers");
+            for (int pass = 0; pass < 2; pass++) for (int j = 0; j < offers.length(); j++) {
+                JSONObject o = offers.getJSONObject(j);
+                String type = o.optString("monetizationType");
+                boolean included = type.equals("FLATRATE") || type.equals("FREE") || type.equals("ADS");
+                if (included != (pass == 0)) continue;
+                String name = o.getJSONObject("package").optString("clearName");
+                if (name.isEmpty() || !seen.add(pass + name)) continue;
+                if (sb[pass].length() > 0) sb[pass].append(", ");
+                sb[pass].append(name);
+            }
+            break;
+        }
+        return new String[]{sb[0].toString(), sb[1].toString()};
+    }
     /**
      * The services that have the film (the search result matching its title and year), included ones
      * first, one entry per app. Services without a known app on Android TV are left out.
